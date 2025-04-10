@@ -23,7 +23,8 @@
 
 ## 1. Account Service
 
-### POST /accounts
+### POST /v3/accounts
+Create a new account with basic configuration
 ```json
 {
   "name": "string",
@@ -33,7 +34,8 @@
 }
 ```
 
-### GET /accounts/{id}
+### GET /v3/accounts/{id}
+Retrieve account details by ID
 ```json
 {
   "id": "string",
@@ -49,17 +51,20 @@
 }
 ```
 
-### POST /accounts/{id}/status
+### POST /v3/accounts/{id}/status
+Update account status
 ```json
 { "status": "active|closed" }
 ```
 
-### POST /accounts/{id}/administrator
+### POST /v3/accounts/{id}/administrator
+Update account administrator
 ```json
 { "administrator": "user_id" }
 ```
 
-### POST /accounts/{id}/users
+### POST /v3/accounts/{id}/users
+Add a new user to the account
 ```json
 {
   "name": "string",
@@ -70,7 +75,8 @@
 }
 ```
 
-### GET /accounts/{id}/users
+### GET /v3/accounts/{id}/users
+List all users in the account
 ```json
 [
   {
@@ -88,12 +94,14 @@
 ]
 ```
 
-### POST /accounts/{id}/roles
+### POST /v3/accounts/{id}/roles
+Create a new role in the account
 ```json
 { "name": "string", "permissions": ["string"] }
 ```
 
-### GET /accounts/{id}/roles
+### GET /v3/accounts/{id}/roles
+List all roles in the account
 ```json
 [
   { "role_id": "string", "name": "string", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
@@ -104,22 +112,26 @@
 
 ## 2. Identity Service (OIDC)
 
-### POST /auth/token
+### POST /v3/auth/token
+Authenticate user and get JWT token
 ```json
 { "username": "string", "password": "string" }
 ```
 
-### GET /auth/userinfo
+### GET /v3/auth/userinfo
+Get user information from JWT token
 ```json
 { "sub": "string", "name": "string", "email": "string" }
 ```
 
-### POST /auth/logout
+### POST /v3/auth/logout
+Invalidate current JWT token
 ```json
 { "success": true }
 ```
 
-### GET /.well-known/openid-configuration
+### GET /v3/.well-known/openid-configuration
+Get OIDC configuration details
 ```json
 {
   "issuer": "string",
@@ -137,12 +149,14 @@
 
 ## 3. Catalogue Service
 
-### POST /catalogue/services
+### POST /v3/catalogue/services
+Register a new service in the catalogue
 ```json
 { "name": "string", "description": "string", "endpoint": "string", "configuration": {} }
 ```
 
-### GET /catalogue/services
+### GET /v3/catalogue/services
+List all registered services
 ```json
 [
   {
@@ -159,7 +173,8 @@
 ]
 ```
 
-### GET /catalogue/services/{id}
+### GET /v3/catalogue/services/{id}
+Get service details by ID
 ```json
 {
   "id": "string",
@@ -174,7 +189,8 @@
 }
 ```
 
-### PUT /catalogue/services/{id}
+### PUT /v3/catalogue/services/{id}
+Update service details
 ```json
 { "description": "string", "endpoint": "string", "configuration": {} }
 ```
@@ -183,12 +199,14 @@
 
 ## 4. Registration Service
 
-### POST /requests
+### POST /v3/requests
+Create a new registration request
 ```json
 { "service_id": "string", "data": {} }
 ```
 
-### GET /requests/{id}
+### GET /v3/requests/{id}
+Get registration request details
 ```json
 {
   "id": "string",
@@ -201,12 +219,14 @@
 }
 ```
 
-### PUT /requests/{id}
+### PUT /v3/requests/{id}
+Update registration request data
 ```json
 { "data": {} }
 ```
 
-### GET /requests?serviceId=&status=&userId=
+### GET /v3/requests?serviceId=&status=&userId=
+Search registration requests with filters
 ```json
 [
   {
@@ -224,37 +244,44 @@
 
 ## 5. Registry Service
 
-### POST /registry/schemas
+### POST /v3/registry/schemas
+Register a new data schema
 ```json
 { "name": "string", "schema": {} }
 ```
 
-### GET /registry/schemas/{name}
+### GET /v3/registry/schemas/{name}
+Get schema details by name
 ```json
 { "name": "string", "schema": {}, "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
 ```
 
-### POST /registry/data/{schema}
+### POST /v3/registry/data/{schema}
+Create new data record for a schema
 ```json
 { "data": {} }
 ```
 
-### GET /registry/data/{schema}/{id}
+### GET /v3/registry/data/{schema}/{id}
+Get data record by ID
 ```json
 { "id": "string", "data": {}, "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
 ```
 
-### PUT /registry/data/{schema}/{id}
+### PUT /v3/registry/data/{schema}/{id}
+Update data record
 ```json
 { "data": {} }
 ```
 
-### DELETE /registry/data/{schema}/{id}
+### DELETE /v3/registry/data/{schema}/{id}
+Delete data record
 ```json
 { "deleted": true }
 ```
 
-### GET /registry/data/{schema}?filters
+### GET /v3/registry/data/{schema}?filters
+Search data records with filters
 ```json
 [
   { "id": "string", "data": {}, "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
@@ -265,27 +292,32 @@
 
 ## 6. Workflow Service
 
-### POST /workflows
+### POST /v3/workflows
+Create a new workflow definition
 ```json
 { "name": "string", "states": [], "transitions": [] }
 ```
 
-### GET /workflows/{id}
+### GET /v3/workflows/{id}
+Get workflow definition details
 ```json
 { "id": "string", "name": "string", "states": [], "transitions": [], "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
 ```
 
-### POST /workflows/{id}/instances
+### POST /v3/workflows/{id}/instances
+Create a new workflow instance
 ```json
 { "entity_id": "string" }
 ```
 
-### POST /workflow-instances/{id}/transition
+### POST /v3/workflow-instances/{id}/transition
+Transition workflow instance to next state
 ```json
 { "action": "string" }
 ```
 
-### GET /workflow-instances/{id}
+### GET /v3/workflow-instances/{id}
+Get workflow instance details
 ```json
 { "id": "string", "state": "string", "history": [], "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
 ```
@@ -294,22 +326,26 @@
 
 ## 7. Notification Service
 
-### POST /notifications
+### POST /v3/notifications
+Send a notification using template
 ```json
 { "template_id": "string", "recipient": "string", "data": {} }
 ```
 
-### GET /notifications/{id}
+### GET /v3/notifications/{id}
+Get notification status
 ```json
 { "id": "string", "status": "string", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
 ```
 
-### POST /templates
+### POST /v3/templates
+Create a new notification template
 ```json
 { "name": "string", "content": "string", "type": "email|sms|inapp" }
 ```
 
-### GET /templates
+### GET /v3/templates
+List all notification templates
 ```json
 [
   { "id": "string", "name": "string", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
@@ -320,30 +356,36 @@
 
 ## 8. File Service
 
-### POST /files
-*Request*: Multipart/form-data with file.
+### POST /v3/files
+Upload a new file
 ```json
 { "id": "string" }
 ```
 
-### GET /files/{id}
+### GET /v3/files/{id}
+Get file metadata
 ```json
 { "id": "string", "filename": "string", "size": "number", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
 ```
 
-### GET /files/{id}/url
+### GET /v3/files/{id}/url
+Get file download URL
 ```json
 { "url": "string" }
 ```
 
-### DELETE /files/{id}
+### DELETE /v3/files/{id}
+Delete a file
 ```json
 { "deleted": true }
 ```
 
+---
+
 ## 9. Certificate Service
 
-### POST /certificates
+### POST /v3/certificates
+Issue a new certificate
 ```json
 {
   "subject_id": "string",
@@ -352,7 +394,8 @@
 }
 ```
 
-### GET /certificates/{id}
+### GET /v3/certificates/{id}
+Get certificate details
 ```json
 {
   "id": "string",
@@ -366,7 +409,8 @@
 }
 ```
 
-### POST /certificates/{id}/verify
+### POST /v3/certificates/{id}/verify
+Verify certificate validity
 ```json
 {
   "id": "string",
@@ -375,7 +419,8 @@
 }
 ```
 
-### POST /certificates/{id}/revoke
+### POST /v3/certificates/{id}/revoke
+Revoke a certificate
 ```json
 {
   "id": "string",

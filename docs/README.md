@@ -227,3 +227,17 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 - Use secure key management via Vault for signing operations
 - Scale to handle millions of certificates efficiently with indexed queries
 - Expose REST APIs for sign, retrieve, verify, and revoke operations
+
+### 10. eSignature Service
+
+**Purpose**: Allow users to digitally sign structured or unstructured data using one-time or device-based cryptographic signatures with legal and audit guarantees.
+
+**High-Level Requirements**:
+- Support one-time eSignatures and device-based (SCD) signatures
+- Enable user authentication via Identity Building Block before signing  
+- Generate and issue X.509 certificates for signing via HSM or SCD
+- Sign document hashes (PDF, JSON, XML, etc.) with timestamp
+- Support pseudonym-based user flows and SCD onboarding
+- Provide public signature verification and audit logging
+- Enable revocation of certificates with OCSP/CRL publication
+- Support PAdES, CAdES, XAdES, JWS, ASIC signature formats
