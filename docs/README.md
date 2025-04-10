@@ -8,8 +8,8 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
     - **DIGIT Console**: Account(or Tenant) administration user interface.
     - **DIGIT Studio**: A low code no code Service Design and Management portal for service providers.
     - **DIGIT Citizen**: Unified Interface for Citizens to discover and engage with services.
-    - **DIGIT Employee**: Unified Interface for Employees to track and fulfill service requests
-    - **DIGIT Administrator**: Unified Interface for Administrators to monitor and plan for Services
+    - **DIGIT Workbench**: Unified Interface for Employees\Vendors to track and fulfill service requests
+    - **DIGIT Dashboard**: Unified Interface for Administrators to monitor and plan for Services
 
 - **Backend Services**
     - **Account**: Provides APIs for registration and management of accounts and users of the service provider.
@@ -20,7 +20,7 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
     - **Workflow**: Manages workflow schema and workflow instances. 
     - **Notification**: Manages notification configuration and notification requests like email, sms, apps etc.
     - **File**: Manages files and provides secure short urls to files.
-	- **Certificate**: Enables issuance, storage and verification of certificates.  
+    - **Certificate**: Enables issuance, storage and verification of certificates.  
 
 
 ## Frontend Applications
@@ -69,7 +69,7 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 
 ---
 
-### 4. DIGIT Employee
+### 4. DIGIT Workbench
 
 **Purpose**: Operational interface for employees managing service requests.
 
@@ -84,7 +84,7 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 
 ---
 
-### 5. DIGIT Administrator
+### 5. DIGIT Dashboard
 
 **Purpose**: Monitoring and analytics dashboard for administrators.
 
