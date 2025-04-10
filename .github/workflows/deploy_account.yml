@@ -3,7 +3,7 @@ name: Deploy Account Service
 on:
   push:
     paths:
-      - 'services/account/**'
+      - 'code/services/account/**'
     branches: [main]
 
 jobs:
