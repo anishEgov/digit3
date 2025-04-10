@@ -20,6 +20,7 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
     - **Workflow**: Manages workflow schema and workflow instances. 
     - **Notification**: Manages notification configuration and notification requests like email, sms, apps etc.
     - **File**: Manages files and provides secure short urls to files.
+	- **Certificate**: Enables issuance, storage and verification of certificates.  
 
 
 ## Frontend Applications
@@ -211,3 +212,18 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 - Validate file types and size limits
 - Encrypt files at rest and in transit
 - Link files to service request records
+
+### 9. Certificate Service
+
+**Purpose**: Issue, store, retrieve, revoke, and verify signed digital certificates for service delivery.
+
+**High-Level Requirements**:
+- Sign certificates as Verifiable Credentials (JSON-LD or JWT) using tenant-specific keys
+- Store issued certificates with metadata (type, subject, issuer, status, timestamps)
+- Support lookup and retrieval of certificates by ID or subject
+- Allow verification of certificate authenticity and integrity
+- Enable revocation of certificates and status tracking
+- Ensure tenant isolation using account_id and X-Account header
+- Use secure key management via Vault for signing operations
+- Scale to handle millions of certificates efficiently with indexed queries
+- Expose REST APIs for sign, retrieve, verify, and revoke operations

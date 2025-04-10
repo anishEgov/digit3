@@ -341,3 +341,45 @@
 { "deleted": true }
 ```
 
+## 9. Certificate Service
+
+### POST /certificates
+```json
+{
+  "subject_id": "string",
+  "certificate_type": "string",
+  "data": { "any": "json" }
+}
+```
+
+### GET /certificates/{id}
+```json
+{
+  "id": "string",
+  "certificate_type": "string",
+  "subject_id": "string",
+  "account_id": "string",
+  "status": "issued",
+  "issued_at": "datetime",
+  "revoked_at": "datetime|null",
+  "data": { "any": "json" }
+}
+```
+
+### POST /certificates/{id}/verify
+```json
+{
+  "id": "string",
+  "valid": true,
+  "reason": "string|null"
+}
+```
+
+### POST /certificates/{id}/revoke
+```json
+{
+  "id": "string",
+  "status": "revoked",
+  "revoked_at": "datetime"
+}
+```
