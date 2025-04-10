@@ -15,7 +15,7 @@ This service provides account management functionality, including user registrat
 
 ## Tech Stack
 
-- Go 1.22
+- Go 1.22 
 - PostgreSQL
 - Chi Router
 - Docker
