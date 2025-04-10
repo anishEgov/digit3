@@ -104,4 +104,4 @@ The service is automatically deployed to Google Cloud Run when changes are pushe
 
 ## License
 
-[Add your license information here] 
+[Add your license information here] # retry deploy
