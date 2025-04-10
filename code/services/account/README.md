@@ -6,7 +6,7 @@ A microservice responsible for managing user accounts and authentication in the 
 
 This service provides account management functionality, including user registration, authentication, and profile management. It's built using Go and uses PostgreSQL as its database.
 
-## Features  
+## Features
 
 - User account management
 - Authentication
