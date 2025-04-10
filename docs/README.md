@@ -227,6 +227,7 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 - Use secure key management via Vault for signing operations
 - Scale to handle millions of certificates efficiently with indexed queries
 - Expose REST APIs for sign, retrieve, verify, and revoke operations
+<<<<<<< HEAD
 
 ### 10. eSignature Service
 
@@ -241,3 +242,5 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 - Provide public signature verification and audit logging
 - Enable revocation of certificates with OCSP/CRL publication
 - Support PAdES, CAdES, XAdES, JWS, ASIC signature formats
+=======
+>>>>>>> fcc99cee9ddad8626bc4c4e136cbcd0a9648214b
