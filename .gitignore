@@ -1,0 +1,49 @@
+# Go build output
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go vendor directory
+vendor/
+
+# Logs
+*.log
+
+# IDE settings
+.vscode/
+.idea/
+
+# Dependency files
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Env / Secrets
+.env
+.env.*
+*.key
+*.pem
+*.crt
+*.enc
+
+# Docker
+**/tmp/
+docker-compose.override.yml
+
+# GitHub Actions artifacts
+.github/*.log
+
+# Local GCP keys
+deployment/gcp/gcp-key.json
+
+# Mac/OSX
+.DS_Store
+
+# Misc
+*.swp
