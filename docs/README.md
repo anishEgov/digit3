@@ -39,3 +39,4 @@ To familiarize yourself with the system and begin contributing, we recommend exp
 - [Architecture](Architecture.md): Gain insights into DIGIT's technical architecture and design principles.
 - [Contribution Guidelines](Contribution.md): Learn how to effectively contribute to the DIGIT project.
 - [Governance](Governance.md): Understand the governance structure and the roles of various stakeholders.
+- [Code of Conduct](CodeOfConduct.md): Review the community guidelines and expected behavior.
