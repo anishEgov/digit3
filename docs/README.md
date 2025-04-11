@@ -28,3 +28,14 @@ DIGIT is built from the ground up with the following principles:
 7. **Interoperable** – Standards-based APIs for easy integration across systems.
 8. **Observable and Transparent** – Makes rules, workflows, and decisions visible, while emitting real-time data for monitoring and analytics.
 9. **Intelligent** – Leverages data, analytics, and AI to enable smarter, proactive public service delivery.
+
+## Getting Started
+
+To familiarize yourself with the system and begin contributing, we recommend exploring the following resources:
+
+- [Services](Services.md): Understand the modular microservices that power DIGIT's functionalities.
+- [Applications](Apps.md): Discover the suite of applications available for citizens, employees, and administrators.
+- [API Specifications](APIs.md): Review the comprehensive API documentation to integrate or extend services.
+- [Architecture](Architecture.md): Gain insights into DIGIT's technical architecture and design principles.
+- [Contribution Guidelines](Contribution.md): Learn how to effectively contribute to the DIGIT project.
+- [Governance](Governance.md): Understand the governance structure and the roles of various stakeholders.
