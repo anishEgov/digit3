@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---- CONFIGURE THESE ----
-PROJECT_ID="digitnxt"
+PROJECT_ID="digit-platform-456501"
 REGION="us-central1"
 SERVICE_ACCOUNT_NAME="github-deployer"
 ARTIFACT_REGISTRY="digit-docker-repo"

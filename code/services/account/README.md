@@ -13,7 +13,7 @@ This service provides account management functionality, including user registrat
 - Profile management
 - Database migrations support
 
-## Tech Stack
+## Tech Stack  
 
 - Go 1.22 
 - PostgreSQL

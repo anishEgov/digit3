@@ -2,9 +2,8 @@ services:
   db:
     image: postgres:15
     container_name: digit-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+    env_file:
+      - ./.env
     volumes:
       - ./init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
     ports:
@@ -19,8 +18,8 @@ services:
     build:
       context: ../../code/services/account
     container_name: digit-account
-    environment:
-      DATABASE_URL: postgres://account_user:account_pass@db:5432/account?sslmode=disable
+    env_file:
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
