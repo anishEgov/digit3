@@ -14,7 +14,7 @@ This service provides account management functionality, including user registrat
 - Database migrations support
 
 ## Tech Stack
-
+ 
 - Go 1.22 
 - PostgreSQL
 - Chi Router
