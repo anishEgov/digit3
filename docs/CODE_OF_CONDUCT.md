@@ -1,7 +1,3 @@
-Certainly! Here’s a tailored CODE_OF_CONDUCT.md file for the DIGIT project, based on the Contributor Covenant v2.1. This document outlines the expectations for participants, enforcement responsibilities, and reporting procedures to foster a welcoming and inclusive community.
-
-⸻
-
 Contributor Covenant Code of Conduct ￼
 
 Our Pledge ￼
