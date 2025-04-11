@@ -43,3 +43,5 @@ jobs:
             --port 8080 \
             --set-env-vars DATABASE_URL=${{ secrets.DATABASE_URL }} \
             --add-cloudsql-instances digit-platform-456501:us-central1:account-db
+
+
