@@ -1,430 +1,244 @@
-# DIGIT Platform - Backend API Design Document
+# DIGIT Platform Requirements
 
-## Common Conventions
-- **Auth**: All endpoints secured via JWT (issued by Identity Service).
-- **Headers**:
-  - `Authorization: Bearer <token>`
-  - `X-Tenant-ID: <tenant-id>`
-- **Format**: JSON over HTTPS
-- **Audit Fields** (included in all read responses):
-  - `created_by`, `created_on`, `modified_by`, `modified_on`
-- **Error Schema**:
-```json
-{
-  "error": {
-    "code": "string",
-    "message": "string",
-    "details": "string"
-  }
-}
-```
+## Overview
 
----
+DIGIT is being built as modular, multi-tenant digital public infrastructure for public service deliver. It provides pluggable identity, account and service management capabilities through a set of backend services (built in Go) and frontend UIs (built in Flutter). It is managed using Docker Compose and consists of following:
 
-## 1. Account Service
+- **Frontend Applicaitons**
+    - **DIGIT Console**: Account(or Tenant) administration user interface.
+    - **DIGIT Studio**: A low code no code Service Design and Management portal for service providers.
+    - **DIGIT Citizen**: Unified Interface for Citizens to discover and engage with services.
+    - **DIGIT Workbench**: Unified Interface for Employees\Vendors to track and fulfill service requests
+    - **DIGIT Dashboard**: Unified Interface for Administrators to monitor and plan for Services
 
-### POST /v3/accounts
-Create a new account with basic configuration
-```json
-{
-  "name": "string",
-  "domain": "string",
-  "oidc_config": { "issuer": "string", "client_id": "string" },
-  "administrator": "user_id"
-}
-```
+- **Backend Services**
+    - **Account**: Provides APIs for registration and management of accounts and users of the service provider.
+    - **Identity**: Provides OIDC endpoints to authenticate users.
+    - **Catalogue**: Enables service providers to register and manage services and enables discovery of services by service consumers.
+    - **Registration**: Manages registration and service requests by the service consumers. These could be citizens or other service providers.
+    - **Registry**: Manages registry schema and data about the registry.
+    - **Workflow**: Manages workflow schema and workflow instances. 
+    - **Notification**: Manages notification configuration and notification requests like email, sms, apps etc.
+    - **File**: Manages files and provides secure short urls to files.
+    - **Certificate**: Enables issuance, storage and verification of certificates.  
 
-### GET /v3/accounts/{id}
-Retrieve account details by ID
-```json
-{
-  "id": "string",
-  "name": "string",
-  "domain": "string",
-  "status": "active|closed",
-  "administrator": "user_id",
-  "oidc_config": { "issuer": "string", "client_id": "string" },
-  "created_by": "string",
-  "created_on": "datetime",
-  "modified_by": "string",
-  "modified_on": "datetime"
-}
-```
 
-### POST /v3/accounts/{id}/status
-Update account status
-```json
-{ "status": "active|closed" }
-```
+## Frontend Applications
 
-### POST /v3/accounts/{id}/administrator
-Update account administrator
-```json
-{ "administrator": "user_id" }
-```
+### 1. DIGIT Console
 
-### POST /v3/accounts/{id}/users
-Add a new user to the account
-```json
-{
-  "name": "string",
-  "email": "string",
-  "phone": "string",
-  "unique_id": "string",
-  "roles": ["string"]
-}
-```
+**Purpose**: Admin interface for account (tenant) setup and management.
 
-### GET /v3/accounts/{id}/users
-List all users in the account
-```json
-[
-  {
-    "user_id": "string",
-    "name": "string",
-    "email": "string",
-    "phone": "string",
-    "unique_id": "string",
-    "roles": ["string"],
-    "created_by": "string",
-    "created_on": "datetime",
-    "modified_by": "string",
-    "modified_on": "datetime"
-  }
-]
-```
-
-### POST /v3/accounts/{id}/roles
-Create a new role in the account
-```json
-{ "name": "string", "permissions": ["string"] }
-```
-
-### GET /v3/accounts/{id}/roles
-List all roles in the account
-```json
-[
-  { "role_id": "string", "name": "string", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-]
-```
+**High-Level Requirements**:
+- Tenant onboarding and lifecycle management
+- Manage OIDC configuration for the tenant (Google, Keycloak, etc.)
+- Manage tenant-specific configuration (logos, themes, settings)
+- User and role management for tenant administrators
+- Service enablement (select which backend services are active for the tenant)
+- Show usage statistics and logs per tenant
 
 ---
 
-## 2. Identity Service (OIDC)
+### 2. DIGIT Studio
 
-### POST /v3/auth/token
-Authenticate user and get JWT token
-```json
-{ "username": "string", "password": "string" }
-```
+**Purpose**: Low-code/no-code environment to design and manage services.
 
-### GET /v3/auth/userinfo
-Get user information from JWT token
-```json
-{ "sub": "string", "name": "string", "email": "string" }
-```
-
-### POST /v3/auth/logout
-Invalidate current JWT token
-```json
-{ "success": true }
-```
-
-### GET /v3/.well-known/openid-configuration
-Get OIDC configuration details
-```json
-{
-  "issuer": "string",
-  "authorization_endpoint": "string",
-  "token_endpoint": "string",
-  "userinfo_endpoint": "string",
-  "jwks_uri": "string",
-  "response_types_supported": ["string"],
-  "subject_types_supported": ["string"],
-  "id_token_signing_alg_values_supported": ["string"]
-}
-```
+**High-Level Requirements**:
+- Service designer (form, workflow, rules engine)
+- Define service schemas (uses Registry Service)
+- Link services to workflows (uses Workflow Service)
+- Preview and test service flows
+- Version control and publishing services
+- Enable/disable services for specific user roles
+- Role-based access control for designers
 
 ---
 
-## 3. Catalogue Service
+### 3. DIGIT Citizen
 
-### POST /v3/catalogue/services
-Register a new service in the catalogue
-```json
-{ "name": "string", "description": "string", "endpoint": "string", "configuration": {} }
-```
+**Purpose**: Unified portal for citizens to access and request services.
 
-### GET /v3/catalogue/services
-List all registered services
-```json
-[
-  {
-    "id": "string",
-    "name": "string",
-    "description": "string",
-    "endpoint": "string",
-    "configuration": {},
-    "created_by": "string",
-    "created_on": "datetime",
-    "modified_by": "string",
-    "modified_on": "datetime"
-  }
-]
-```
-
-### GET /v3/catalogue/services/{id}
-Get service details by ID
-```json
-{
-  "id": "string",
-  "name": "string",
-  "description": "string",
-  "endpoint": "string",
-  "configuration": {},
-  "created_by": "string",
-  "created_on": "datetime",
-  "modified_by": "string",
-  "modified_on": "datetime"
-}
-```
-
-### PUT /v3/catalogue/services/{id}
-Update service details
-```json
-{ "description": "string", "endpoint": "string", "configuration": {} }
-```
+**High-Level Requirements**:
+- Discover available services (uses Catalogue Service)
+- View and initiate service requests (uses Registration Service)
+- Track request status (uses Workflow Service)
+- Receive notifications (uses Notification Service)
+- Store profile and linked service IDs (e.g., electricity, water)
+- Authenticate with OIDC (platform or tenant-level)
+- Multilingual and responsive design
 
 ---
 
-## 4. Registration Service
+### 4. DIGIT Workbench
 
-### POST /v3/requests
-Create a new registration request
-```json
-{ "service_id": "string", "data": {} }
-```
+**Purpose**: Operational interface for employees managing service requests.
 
-### GET /v3/requests/{id}
-Get registration request details
-```json
-{
-  "id": "string",
-  "status": "string",
-  "data": {},
-  "created_by": "string",
-  "created_on": "datetime",
-  "modified_by": "string",
-  "modified_on": "datetime"
-}
-```
-
-### PUT /v3/requests/{id}
-Update registration request data
-```json
-{ "data": {} }
-```
-
-### GET /v3/requests?serviceId=&status=&userId=
-Search registration requests with filters
-```json
-[
-  {
-    "id": "string",
-    "status": "string",
-    "created_by": "string",
-    "created_on": "datetime",
-    "modified_by": "string",
-    "modified_on": "datetime"
-  }
-]
-```
+**High-Level Requirements**:
+- View assigned service requests (uses Workflow Service)
+- Act on service requests (approve, reject, add comments)
+- Role-based dashboards (inspector, verifier, supervisor, etc.)
+- Search and filter service requests
+- View citizen-submitted documents and data (uses File and Registry Services)
+- Internal chat or comments on requests
+- Notification inbox (internal memos, alerts)
 
 ---
 
-## 5. Registry Service
+### 5. DIGIT Dashboard
 
-### POST /v3/registry/schemas
-Register a new data schema
-```json
-{ "name": "string", "schema": {} }
-```
+**Purpose**: Monitoring and analytics dashboard for administrators.
 
-### GET /v3/registry/schemas/{name}
-Get schema details by name
-```json
-{ "name": "string", "schema": {}, "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-```
-
-### POST /v3/registry/data/{schema}
-Create new data record for a schema
-```json
-{ "data": {} }
-```
-
-### GET /v3/registry/data/{schema}/{id}
-Get data record by ID
-```json
-{ "id": "string", "data": {}, "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-```
-
-### PUT /v3/registry/data/{schema}/{id}
-Update data record
-```json
-{ "data": {} }
-```
-
-### DELETE /v3/registry/data/{schema}/{id}
-Delete data record
-```json
-{ "deleted": true }
-```
-
-### GET /v3/registry/data/{schema}?filters
-Search data records with filters
-```json
-[
-  { "id": "string", "data": {}, "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-]
-```
+**High-Level Requirements**:
+- View request volume and turnaround time across services
+- Monitor service performance and bottlenecks
+- User activity audit logs
+- System health indicators (per backend service)
+- Manage workflows and routing rules
+- Export and schedule reports
+- Set escalation rules or auto-reminders
 
 ---
 
-## 6. Workflow Service
+## Backend Services (Go)
 
-### POST /v3/workflows
-Create a new workflow definition
-```json
-{ "name": "string", "states": [], "transitions": [] }
-```
+### 1. Account Service
 
-### GET /v3/workflows/{id}
-Get workflow definition details
-```json
-{ "id": "string", "name": "string", "states": [], "transitions": [], "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-```
+**Purpose**: Tenant (account) and user management.
 
-### POST /v3/workflows/{id}/instances
-Create a new workflow instance
-```json
-{ "entity_id": "string" }
-```
-
-### POST /v3/workflow-instances/{id}/transition
-Transition workflow instance to next state
-```json
-{ "action": "string" }
-```
-
-### GET /v3/workflow-instances/{id}
-Get workflow instance details
-```json
-{ "id": "string", "state": "string", "history": [], "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-```
+**High-Level Requirements**:
+- Create and manage tenants
+- Store tenant configurations (themes, logos, OIDC config)
+- User registration, role assignment, and authentication link to OIDC
+- Link users to tenants and roles
+- Provide user and role APIs to frontends
+- Secure REST APIs with JWT
 
 ---
 
-## 7. Notification Service
+### 2. Identity Service
 
-### POST /v3/notifications
-Send a notification using template
-```json
-{ "template_id": "string", "recipient": "string", "data": {} }
-```
+**Purpose**: Platform-level OIDC authentication.
 
-### GET /v3/notifications/{id}
-Get notification status
-```json
-{ "id": "string", "status": "string", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-```
-
-### POST /v3/templates
-Create a new notification template
-```json
-{ "name": "string", "content": "string", "type": "email|sms|inapp" }
-```
-
-### GET /v3/templates
-List all notification templates
-```json
-[
-  { "id": "string", "name": "string", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-]
-```
+**High-Level Requirements**:
+- OIDC-compliant identity provider OR integrate with external OIDC (e.g., Firebase, Keycloak)
+- Provide access and refresh tokens
+- Support multi-tenant login with tenant-specific provider config
+- Support user info and introspection endpoints
+- Logout and session management APIs
 
 ---
 
-## 8. File Service
+### 3. Catalogue Service
 
-### POST /v3/files
-Upload a new file
-```json
-{ "id": "string" }
-```
+**Purpose**: Service discovery and metadata.
 
-### GET /v3/files/{id}
-Get file metadata
-```json
-{ "id": "string", "filename": "string", "size": "number", "created_by": "string", "created_on": "datetime", "modified_by": "string", "modified_on": "datetime" }
-```
-
-### GET /v3/files/{id}/url
-Get file download URL
-```json
-{ "url": "string" }
-```
-
-### DELETE /v3/files/{id}
-Delete a file
-```json
-{ "deleted": true }
-```
+**High-Level Requirements**:
+- Register and update service metadata (name, description, version, endpoints)
+- Tag services with categories, keywords, roles
+- Mark services as public, restricted, or hidden
+- Search and filter services for consumers (citizens/employees)
+- Track usage metrics per service
 
 ---
 
-## 9. Certificate Service
+### 4. Registration Service
 
-### POST /v3/certificates
-Issue a new certificate
-```json
-{
-  "subject_id": "string",
-  "certificate_type": "string",
-  "data": { "any": "json" }
-}
-```
+**Purpose**: Handles service request initiation.
 
-### GET /v3/certificates/{id}
-Get certificate details
-```json
-{
-  "id": "string",
-  "certificate_type": "string",
-  "subject_id": "string",
-  "account_id": "string",
-  "status": "issued",
-  "issued_at": "datetime",
-  "revoked_at": "datetime|null",
-  "data": { "any": "json" }
-}
-```
+**High-Level Requirements**:
+- Accept service request submissions (linked to catalogue entry)
+- Validate inputs based on schema (uses Registry Service)
+- Generate unique service request IDs
+- Initiate workflow (uses Workflow Service)
+- Maintain state and status of requests
+- Support viewing, updating, and cancelling requests
 
-### POST /v3/certificates/{id}/verify
-Verify certificate validity
-```json
-{
-  "id": "string",
-  "valid": true,
-  "reason": "string|null"
-}
-```
+---
 
-### POST /v3/certificates/{id}/revoke
-Revoke a certificate
-```json
-{
-  "id": "string",
-  "status": "revoked",
-  "revoked_at": "datetime"
-}
-```
+### 5. Registry Service
+
+**Purpose**: Schema-based, tenant-aware data store.
+
+**High-Level Requirements**:
+- Define and store JSON schema definitions per tenant
+- Create collections (e.g., property, water-connection, grievance)
+- CRUD APIs for registry data (with schema enforcement)
+- Role-based access control to registry entries
+- Audit logs and history for each entry
+- Ensure data isolation by X-Tenant-ID
+
+**Sub-services**:
+- Database Service: Manages schema definitions
+- Data Service: Manages CRUD operations on data based on schema
+
+---
+
+### 6. Workflow Service
+
+**Purpose**: State machine and rules engine for requests.
+
+**High-Level Requirements**:
+- Define workflows per service (states, transitions, roles, rules)
+- Initiate workflow instances per request
+- Track workflow history and current state
+- Trigger role-based notifications or actions
+- Support SLAs and escalation rules
+- Link workflows to UI actions and buttons
+
+---
+
+### 7. Notification Service
+
+**Purpose**: Multi-channel messaging engine.
+
+**High-Level Requirements**:
+- Configure notification templates (SMS, email, in-app)
+- Send notification events triggered by services or workflows
+- Queue and retry failed deliveries
+- Channel integrations (SMTP, SMS gateway, push)
+- Log delivery status per notification
+- Multilingual support for messages
+
+---
+
+### 8. File Service
+
+**Purpose**: Secure file storage and short-lived URL generation.
+
+**High-Level Requirements**:
+- Upload and store files per request (PDFs, images, etc.)
+- Tag files with metadata (service, user, status)
+- Generate expiring short URLs for access
+- Validate file types and size limits
+- Encrypt files at rest and in transit
+- Link files to service request records
+
+### 9. Certificate Service
+
+**Purpose**: Issue, store, retrieve, revoke, and verify signed digital certificates for service delivery.
+
+**High-Level Requirements**:
+- Sign certificates as Verifiable Credentials (JSON-LD or JWT) using tenant-specific keys
+- Store issued certificates with metadata (type, subject, issuer, status, timestamps)
+- Support lookup and retrieval of certificates by ID or subject
+- Allow verification of certificate authenticity and integrity
+- Enable revocation of certificates and status tracking
+- Ensure tenant isolation using account_id and X-Account header
+- Use secure key management via Vault for signing operations
+- Scale to handle millions of certificates efficiently with indexed queries
+- Expose REST APIs for sign, retrieve, verify, and revoke operations
+
+### 10. eSignature Service
+
+**Purpose**: Allow users to digitally sign structured or unstructured data using one-time or device-based cryptographic signatures with legal and audit guarantees.
+
+**High-Level Requirements**:
+- Support one-time eSignatures and device-based (SCD) signatures
+- Enable user authentication via Identity Building Block before signing  
+- Generate and issue X.509 certificates for signing via HSM or SCD
+- Sign document hashes (PDF, JSON, XML, etc.) with timestamp
+- Support pseudonym-based user flows and SCD onboarding
+- Provide public signature verification and audit logging
+- Enable revocation of certificates with OCSP/CRL publication
+- Support PAdES, CAdES, XAdES, JWS, ASIC signature formats
+
