@@ -1,103 +1,18 @@
-# DIGIT Platform Requirements
+# DIGIT Backend Services
 
 ## Overview
 
-DIGIT is being built as modular, multi-tenant digital public infrastructure for public service deliver. It provides pluggable identity, account and service management capabilities through a set of backend services (built in Go) and frontend UIs (built in Flutter). It is managed using Docker Compose and consists of following:
+DIGIT provides a set of backend services, offering pluggable identity, account, and service management capabilities. These services are managed using Docker Compose and include:
 
-- **Frontend Applicaitons**
-    - **DIGIT Console**: Account(or Tenant) administration user interface.
-    - **DIGIT Studio**: A low code no code Service Design and Management portal for service providers.
-    - **DIGIT Citizen**: Unified Interface for Citizens to discover and engage with services.
-    - **DIGIT Workbench**: Unified Interface for Employees\Vendors to track and fulfill service requests
-    - **DIGIT Dashboard**: Unified Interface for Administrators to monitor and plan for Services
-
-- **Backend Services**
-    - **Account**: Provides APIs for registration and management of accounts and users of the service provider.
-    - **Identity**: Provides OIDC endpoints to authenticate users.
-    - **Catalogue**: Enables service providers to register and manage services and enables discovery of services by service consumers.
-    - **Registration**: Manages registration and service requests by the service consumers. These could be citizens or other service providers.
-    - **Registry**: Manages registry schema and data about the registry.
-    - **Workflow**: Manages workflow schema and workflow instances. 
-    - **Notification**: Manages notification configuration and notification requests like email, sms, apps etc.
-    - **File**: Manages files and provides secure short urls to files.
-    - **Certificate**: Enables issuance, storage and verification of certificates.  
-
-
-## Frontend Applications
-
-### 1. DIGIT Console
-
-**Purpose**: Admin interface for account (tenant) setup and management.
-
-**High-Level Requirements**:
-- Tenant onboarding and lifecycle management
-- Manage OIDC configuration for the tenant (Google, Keycloak, etc.)
-- Manage tenant-specific configuration (logos, themes, settings)
-- User and role management for tenant administrators
-- Service enablement (select which backend services are active for the tenant)
-- Show usage statistics and logs per tenant
-
----
-
-### 2. DIGIT Studio
-
-**Purpose**: Low-code/no-code environment to design and manage services.
-
-**High-Level Requirements**:
-- Service designer (form, workflow, rules engine)
-- Define service schemas (uses Registry Service)
-- Link services to workflows (uses Workflow Service)
-- Preview and test service flows
-- Version control and publishing services
-- Enable/disable services for specific user roles
-- Role-based access control for designers
-
----
-
-### 3. DIGIT Citizen
-
-**Purpose**: Unified portal for citizens to access and request services.
-
-**High-Level Requirements**:
-- Discover available services (uses Catalogue Service)
-- View and initiate service requests (uses Registration Service)
-- Track request status (uses Workflow Service)
-- Receive notifications (uses Notification Service)
-- Store profile and linked service IDs (e.g., electricity, water)
-- Authenticate with OIDC (platform or tenant-level)
-- Multilingual and responsive design
-
----
-
-### 4. DIGIT Workbench
-
-**Purpose**: Operational interface for employees managing service requests.
-
-**High-Level Requirements**:
-- View assigned service requests (uses Workflow Service)
-- Act on service requests (approve, reject, add comments)
-- Role-based dashboards (inspector, verifier, supervisor, etc.)
-- Search and filter service requests
-- View citizen-submitted documents and data (uses File and Registry Services)
-- Internal chat or comments on requests
-- Notification inbox (internal memos, alerts)
-
----
-
-### 5. DIGIT Dashboard
-
-**Purpose**: Monitoring and analytics dashboard for administrators.
-
-**High-Level Requirements**:
-- View request volume and turnaround time across services
-- Monitor service performance and bottlenecks
-- User activity audit logs
-- System health indicators (per backend service)
-- Manage workflows and routing rules
-- Export and schedule reports
-- Set escalation rules or auto-reminders
-
----
+- **Account**: Provides APIs for registration and management of accounts and users of the service provider.
+- **Identity**: Provides OIDC endpoints to authenticate users.
+- **Catalogue**: Enables service providers to register and manage services and enables discovery of services by service consumers.
+- **Registration**: Manages registration and service requests by the service consumers. These could be citizens or other service providers.
+- **Registry**: Manages registry schema and data about the registry.
+- **Workflow**: Manages workflow schema and workflow instances. 
+- **Notification**: Manages notification configuration and notification requests like email, sms, apps etc.
+- **File**: Manages files and provides secure short urls to files.
+- **Certificate**: Enables issuance, storage and verification of certificates.
 
 ## Backend Services (Go)
 
@@ -213,6 +128,8 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 - Encrypt files at rest and in transit
 - Link files to service request records
 
+---
+
 ### 9. Certificate Service
 
 **Purpose**: Issue, store, retrieve, revoke, and verify signed digital certificates for service delivery.
@@ -227,6 +144,8 @@ DIGIT is being built as modular, multi-tenant digital public infrastructure for 
 - Use secure key management via Vault for signing operations
 - Scale to handle millions of certificates efficiently with indexed queries
 - Expose REST APIs for sign, retrieve, verify, and revoke operations
+
+---
 
 ### 10. eSignature Service
 
