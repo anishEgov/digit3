@@ -48,19 +48,45 @@ To make the platform easy to use and configure, DIGIT comes with a suite of fron
 
 DIGIT is designed for robustness, reusability, and ease of use, enabling governments to deliver services that are accessible, efficient, and inclusive—at speed and scale.
 
-## Core Design Principles
+# Design Principles
 
-DIGIT is built from the ground up with the following principles:
+Building digital platforms for public service delivery requires more than technical proficiency—it demands a thoughtful approach to sustainability, trust, and impact. These nine foundational design principles are critical for building resilient, inclusive, and scalable public digital infrastructure.
 
-1. **Modular and Evolvable** – Build only what you need, extend easily as requirements grow.
-2. **Single Source of Truth** – Consistent, reusable, and reliable data across services.
-3. **Security and Privacy** – Designed with strong security and privacy controls.
-4. **Scalable and Performant** – Proven to handle large-scale, real-time workloads.
-5. **Reliable and Cost Effective** – Supports mission-critical services efficiently.
-6. **Open Source** – Community-driven and free from vendor lock-in.
-7. **Interoperable** – Standards-based APIs for easy integration across systems.
-8. **Observable and Transparent** – Makes rules, workflows, and decisions visible, while emitting real-time data for monitoring and analytics.
-9. **Intelligent** – Leverages data, analytics, and AI to enable smarter, proactive public service delivery.
+## 1. Modular and Evolvable
+
+Modular design means building systems as small, composable pieces rather than a single monolithic structure. By starting with core functionality and expanding over time, governments can adapt quickly to changing policies, local needs, or citizen demands. This flexibility enables rapid rollout of new services without disrupting existing operations and allows for easy localization across different states or municipalities, reducing duplication of effort and accelerating innovation.
+
+## 2. Single Source of Truth
+
+A single source of truth ensures that data is stored and maintained in a consistent and authoritative manner across the platform. This prevents duplication, contradictions, and inconsistencies—common pain points in public systems where citizen names, property records, or benefit eligibility data are involved. Reliable, centralized data reduces reconciliation efforts, supports seamless service delivery, and builds long-term trust in the government's digital ecosystem.
+
+## 3. Security and Privacy
+
+Public digital systems handle sensitive citizen information—identity data, addresses, financial records, and more. Security and privacy must be built in from the start, through encryption, consent management, access controls, and compliance with legal standards. Breaches not only compromise data but also erode public trust. A privacy-aware architecture ensures ethical and responsible data use, particularly in low-trust environments where maintaining legitimacy is critical.
+
+## 4. Scalable and Performant
+
+Digital platforms must remain stable and responsive even under heavy usage, such as during peak times like tax payment deadlines. Scalability ensures that systems can handle millions of users and records concurrently, while performance optimization keeps response times fast and reliable. Poor performance can cripple essential services and lead to financial or reputational loss. Scalability isn't just about technology—it's about ensuring that no citizen is left behind when demand surges.
+
+## 5. Reliable and Cost Effective
+
+Government systems are mission-critical—downtime can halt vital services like pension disbursals, water supply tracking, or sanitation scheduling. High availability, efficient infrastructure usage, and minimal operational overhead are essential. Public budgets are often constrained; optimizing for cost-effectiveness ensures that more services can be delivered with the same resources. Long-term sustainability also improves when systems reduce dependency on vendors and can be maintained locally.
+
+## 6. Open Source
+
+Open source software ensures that the platform's code is publicly accessible, enabling reuse, collaboration, and transparency. This reduces reliance on proprietary vendors, encourages innovation through community contributions, and allows governments to retain control over their own infrastructure. Transparency in code also allows for audits by external parties, building public confidence in the system's fairness and integrity.
+
+## 7. Interoperable
+
+Interoperability allows systems to work with other digital platforms using standards-based APIs and protocols. Public service delivery frequently spans departments and jurisdictions—seamless data exchange and coordination are crucial. Whether integrating with identity systems (e.g., Aadhaar), GIS tools, or payment gateways, interoperability ensures a cohesive experience for citizens and future-proofs the infrastructure for ongoing evolution.
+
+## 8. Observable and Transparent
+
+Digital systems must provide visibility into how decisions are made. This includes logging, workflows, rules, and real-time analytics. Observability supports audits, improves governance, and helps troubleshoot issues rapidly. More importantly, transparency ensures citizens understand how outcomes—such as subsidy approvals or tax calculations—are determined. It fosters trust and accountability, key pillars of democratic governance.
+
+## 9. Intelligent
+
+Modern digital platforms should go beyond automation—they should actively support data-driven decision-making. Intelligence through analytics and AI allows governments to move from reactive to proactive service delivery. For example, predicting sanitation needs, identifying at-risk households, or optimizing public resource allocation. Intelligent systems don't just make operations more efficient—they improve lives by enabling faster, fairer, and more personalized services.
 
 ## Getting Started
 
