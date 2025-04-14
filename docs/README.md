@@ -69,7 +69,7 @@ To familiarize yourself with the system and begin contributing, we recommend exp
 - [Services](Services.md): Understand the modular microservices that power DIGIT's functionalities.
 - [Applications](Apps.md): Discover the suite of applications available for citizens, employees, and administrators.
 - [API Specifications](APIs.md): Review the comprehensive API documentation to integrate or extend services.
-- [Architecture](Architecture.md): Gain insights into DIGIT's technical architecture and design principles.
+- [Architecture](Architecture/Architecture.md): Gain insights into DIGIT's design principles, practices and technology choices.
 - [Deployment](Deployment.md): Learn how to deploy DIGIT in different environments.
 - [Contribution Guidelines](Contribution.md): Learn how to effectively contribute to the DIGIT project.
 - [Governance](Governance.md): Understand the governance structure and the roles of various stakeholders.
