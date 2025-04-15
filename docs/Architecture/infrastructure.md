@@ -1,4 +1,4 @@
-# Technical Architecture: Secure Microservices Platform on Kubernetes
+# Technical Architecture: Secure Microservices Platform
 
 ## 1. Overview
 This document outlines the technical infrastructure of a secure, scalable, and cloud-native microservices platform. The architecture ensures modular deployment, traffic management, observability, and data handling across different subnets.
@@ -85,3 +85,104 @@ The infrastructure is divided into four primary subnets:
 
 ## 7. Conclusion
 This architecture provides a secure, scalable, and observable platform for deploying modular microservices. The separation of concerns via subnets and service layers ensures operational clarity, scalability, and maintainability.
+
+
+```mermaid
+graph TD
+  %% Public Subnet: Top-Level with NAT Gateway
+  subgraph "Public Subnet"
+    NAT[NAT Gateway #40;For Egress#41;]
+    LB[Cloud Provider Load Balancer #40;ELB/ALB#41;]
+    WAF[WAF/Firewall]
+    Ingress[Ingress Controller #40;NGINX/Traefik#41; TLS Termination]
+  end
+
+  %% External Clients
+  subgraph "External Clients"
+    EC[External Clients]
+    Internet[Internet Services]
+  end
+
+  %% Private Subnet: Core Service Layer
+  subgraph "Private Subnet"
+    APIGW[API Gateway #40;Rate Limiting, Auth#41;]
+    subgraph "Service Layer"
+      CP[Service Mesh Control Plane #40;Discovery, Configuration, Observability#41;]
+      subgraph "Microservice A Pod"
+        AProxy[Sidecar Proxy]
+        A[Microservice A]
+      end
+      subgraph "Microservice B Pod"
+        BProxy[Sidecar Proxy]
+        B[Microservice B]
+      end
+      subgraph "Microservice C Pod"
+        CProxy[Sidecar Proxy]
+        C[Microservice C]
+      end
+    end
+  end
+
+  %% Data & Messaging Subnet
+  subgraph "Data & Messaging Subnet"
+    TX[Transactional DB #40;RDBMS#41;]
+    QS[Queuing Service #40;Kafka/RabbitMQ#41;]
+    Pipeline[Data Pipeline #40;Consumes QS, Pushes Data#41;]
+    Analytics[Analytical DB #40;Data Warehouse#41;]
+    Cache[Cache Database #40;Redis#41;]
+    Filesystem[Shared Filesystem #40;NFS/S3 etc.#41;]
+  end
+
+  %% Shared Services
+  subgraph "Shared Services #40;Logging, Metrics#41;"
+    Shared[Shared Services]
+  end
+
+  %% Request Flow: Downward
+  EC -->|HTTPS/TLS| LB
+  LB --> WAF
+  WAF --> Ingress
+  Ingress -->|Decrypted Traffic #40;HTTP#41;| APIGW
+  APIGW --> AProxy
+  APIGW --> BProxy
+  APIGW --> CProxy
+
+  %% Sidecar to Microservice
+  AProxy --> A
+  BProxy --> B
+  CProxy --> C
+
+  %% Microservices to Queue
+  A -->|Messaging| QS
+  B -->|Messaging| QS
+  C -->|Messaging| QS
+
+  %% Microservices to DB/Cache
+  A -->|Access #40;Enc. & Auth.#41;| TX
+  A -->|Caching| Cache
+  B -->|Access #40;Enc. & Auth.#41;| TX
+  B -->|Caching| Cache
+  C -->|Access #40;Enc. & Auth.#41;| TX
+  C -->|Caching| Cache
+
+  %% Filesystem Access
+  A -->|Access #40;Read/Write#41;| Filesystem
+
+  %% Data Pipeline
+  QS --> Pipeline
+  Pipeline --> Analytics
+
+  %% Service Mesh Control Plane (non-data path)
+  CP --- AProxy
+  CP --- BProxy
+  CP --- CProxy
+  Shared --- CP
+
+  %% Egress Flow (UPWARD to NAT)
+  A -->|Egress #40;via NAT#41;| NAT
+  B -->|Egress #40;via NAT#41;| NAT
+  C -->|Egress #40;via NAT#41;| NAT
+
+  %% NAT to Internet
+  NAT --> Internet
+```
