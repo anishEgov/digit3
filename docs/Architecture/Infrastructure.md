@@ -1,4 +1,4 @@
-# Technical Architecture: Secure Microservices Platform
+# Infrastructure Architecture: Secure Microservices Platform
 
 ## 1. Overview
 This document outlines the technical infrastructure of a secure, scalable, and cloud-native microservices platform. The architecture ensures modular deployment, traffic management, observability, and data handling across different subnets.
