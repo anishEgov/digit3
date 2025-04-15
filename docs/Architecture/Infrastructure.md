@@ -1,5 +1,8 @@
 # Infrastructure Architecture: Secure Microservices Platform
 
+🚧 **Work in Progress**  
+_This architecture and documentation are actively being refined. Contributions and suggestions are welcome._
+
 ## 1. Overview
 This document outlines the technical infrastructure of a secure, scalable, and cloud-native microservices platform. The architecture ensures modular deployment, traffic management, observability, and data handling across different subnets.
 
@@ -134,7 +137,7 @@ graph TD
   end
 
   %% Shared Services
-  subgraph "Shared Services #40;Logging, Metrics#41;"
+  subgraph "Logging, Metrics"
     Shared[Shared Services]
   end
 
@@ -172,7 +175,7 @@ graph TD
   QS --> Pipeline
   Pipeline --> Analytics
 
-  %% Service Mesh Control Plane (non-data path)
+  %% Service Mesh Control Plane Awareness (non-data path)
   CP --- AProxy
   CP --- BProxy
   CP --- CProxy
@@ -185,4 +188,15 @@ graph TD
 
   %% NAT to Internet
   NAT --> Internet
+
+  %% Logging & Metrics Collection
+  A -->|Logs/Metrics| Shared
+  B -->|Logs/Metrics| Shared
+  C -->|Logs/Metrics| Shared
+
+  AProxy -->|Telemetry| Shared
+  BProxy -->|Telemetry| Shared
+  CProxy -->|Telemetry| Shared
+
+  CP -->|Observability Data| Shared
 ```
