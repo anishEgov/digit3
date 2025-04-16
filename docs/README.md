@@ -1,102 +1,109 @@
-# DIGIT
+## DIGIT
 
-Governments around the world have taken significant steps toward digitizing public service delivery. However, the first phase of this transformation has mostly relied on siloed vertical applications or monolithic ERP systems. While these systems addressed immediate automation needs, they introduced long-term challenges:
+Governments around the world have made significant strides in digitising public service delivery. However, most early systems were siloed vertical applications or monolithic ERP implementations. While they addressed immediate needs, they introduced long-term challenges:
 
-- Data is fragmented across multiple systems, often requiring citizens to repeatedly provide the same information.
-- Government employees must navigate multiple disconnected tools to serve the public.
-- Administrators lack real-time visibility across services, limiting their ability to make informed decisions.
-- Evolution and scale are difficult due to rigid architectures and vendor lock-ins.
+- Fragmented data requiring citizens to repeatedly provide the same information
+- Disconnected tools forcing government employees to navigate multiple systems
+- Lack of real-time visibility for administrators to monitor service delivery
+- Rigid, unscalable architectures with high vendor lock-in
 
-These problems are widespread—and increasingly, governments are recognizing the need for a new phase of digital transformation.
+DIGIT represents a new phase of digital transformation—one that is modular, interoperable, and citizen-centric. It enables governments to build inclusive, accessible, and accountable digital infrastructure for public service delivery.
 
-## What is Public Service Delivery?
+### What is Public Service Delivery?
 
-Public service delivery refers to the systems and processes through which governments provide essential services to citizens—such as water, sanitation, healthcare, education, civil registration, welfare benefits, and more. These services are fundamental to well-being, equity, and the functioning of society. When delivered effectively, they enhance trust in government, enable inclusive development, and improve quality of life.
+Public service delivery encompasses the systems and processes through which governments provide essential services to citizens—such as water, sanitation, healthcare, education, welfare, and civil registration. When delivered effectively, these services improve well-being, equity, and public trust.
 
-However, access to public services is often uneven—especially for marginalized communities—due to fragmented systems, manual processes, and limited transparency. DIGIT is designed to accelerate the transformation of public service delivery, making it more accessible, inclusive, efficient, and citizen-centric. By enabling digital interfaces, shared infrastructure, and interoperable systems, DIGIT helps governments reimagine how services are delivered and how citizens experience them.
+However, access is often uneven—especially for marginalised communities—due to manual processes, fragmented systems, and limited transparency. DIGIT helps governments modernise these processes through shared infrastructure, digital workflows, and citizen-friendly interfaces.
 
-## Why DIGIT?
+### Why DIGIT?
 
-DIGIT is designed to address these systemic issues by providing shared digital infrastructure that enables governments to build citizen-centric services at speed and scale.
+DIGIT enables governments to:
 
-It offers a modular suite of backend services and frontend applications that can be composed, extended, and reused across use cases and departments. DIGIT promotes interoperability, data reuse, and trusted data sharing across service providers, enabling governments to move from siloed systems to an integrated digital ecosystem.
+- Deliver services through a common infrastructure, reducing duplication
+- Reuse data and processes across departments
+- Support inclusive service access in multiple languages and formats
+- Monitor operations in real-time and make data-driven decisions
 
-## DIGIT in Action
+Its suite of backend services and frontend applications are modular, configurable, and extensible—allowing local customisation while preserving platform consistency.
 
-DIGIT is designed from a citizen-centric perspective, reimagining how individuals engage with public services. Whether it's registering a property, applying for a business license, or getting a building plan approved, citizens typically follow a common pattern of interaction with government systems. They start by discovering the service they need, then try to understand the requirements—such as rules, policies, or documents to be submitted. Once ready, they register or log in, fill out the application, upload necessary documents, and make payments if required. Throughout the process, they want to track the status of their application, receive timely notifications, make updates when needed, and eventually download receipts or certificates. After receiving the service, they may provide feedback or raise a complaint if necessary.
+### DIGIT in Action
 
-To enable this end-to-end experience, DIGIT provides a set of common platform services that are configurable and extensible. These include services for:
+DIGIT supports a full-service lifecycle—from discovery to fulfilment. Citizens can discover services, understand eligibility, submit applications, track status, receive notifications, and provide feedback—all through digital interfaces.
+
+To support this, DIGIT provides reusable services for:
 
 - Authentication and User Management
-- Registries and Reference Data Management
-- Workflow and Process Orchestration
-- Notifications
-- Document Storage and Encryption
-- Boundary
+- Registries and Reference Data
+- Workflow and Process Management
+- Notifications and Communication
+- Document Management
+- Service Configuration
 
-These services are designed to be reused across different use cases, reducing duplication and ensuring consistency.
+Its frontend applications include:
 
-DIGIT is built as a multi-tenant platform, meaning it can be adopted and operated by multiple agencies—such as ministries, departments, or local governments—within a shared infrastructure. Each tenant can manage its own users, services, and data independently, while still benefiting from common capabilities. 
+- **Console**: Administer tenants and users
+- **Studio**: Configure services with low-code/no-code tools
+- **Portal**: Help citizens discover and access services
+- **Workbench**: Assist employees in fulfilling requests
+- **Dashboard**: Enable administrators to monitor and analyse data
 
-To make the platform easy to use and configure, DIGIT comes with a suite of frontend applications tailored to different roles:
+DIGIT is designed to make public service delivery more accessible, efficient, and inclusive.
 
-- **Console**: Managing tenants (or accounts) and user roles
-- **Studio**: Low-code/no-code tool for configuring and publishing services
-- **Portal**: Unified interface for citizens to discover and access services
-- **Workbench**: Interface for government employees to manage and fulfill requests across departments
-- **Dashboard**: Helps administrators monitor operations, gain insights, and make data-driven decisions
+## Design Principles
 
-DIGIT is designed for robustness, reusability, and ease of use, enabling governments to deliver services that are accessible, efficient, and inclusive—at speed and scale.
+### 1. Security and Privacy
 
-# Design Principles
+Ensure that all citizen data is handled securely and respectfully. Build in encryption, access controls, and consent management. Prevent data misuse through auditability and responsible data handling.
 
-Building digital platforms for public service delivery requires more than technical proficiency—it demands a thoughtful approach to sustainability, trust, and impact. These nine foundational design principles are critical for building resilient, inclusive, and scalable public digital infrastructure.
+### 2. Single Source of Truth
 
-## 1. Modular and Evolvable
+Avoid data duplication and contradictions by establishing authoritative registries and event-driven data sharing. Enable reliable, consistent decision-making across services.
 
-Modular design means building systems as small, composable pieces rather than a single monolithic structure. By starting with core functionality and expanding over time, governments can adapt quickly to changing policies, local needs, or citizen demands. This flexibility enables rapid rollout of new services without disrupting existing operations and allows for easy localization across different states or municipalities, reducing duplication of effort and accelerating innovation.
+### 3. Reliable and Cost-Effective
 
-## 2. Single Source of Truth
+Design for high availability, graceful degradation, and infrastructure efficiency. Reduce downtime risks while optimising for public sector budgets.
 
-A single source of truth ensures that data is stored and maintained in a consistent and authoritative manner across the platform. This prevents duplication, contradictions, and inconsistencies—common pain points in public systems where citizen names, property records, or benefit eligibility data are involved. Reliable, centralized data reduces reconciliation efforts, supports seamless service delivery, and builds long-term trust in the government's digital ecosystem.
+### 4. Scalable and Performant
 
-## 3. Security and Privacy
+Ensure services remain fast and responsive under increasing load. Use stateless components, asynchronous processing, and distributed design.
 
-Public digital systems handle sensitive citizen information—identity data, addresses, financial records, and more. Security and privacy must be built in from the start, through encryption, consent management, access controls, and compliance with legal standards. Breaches not only compromise data but also erode public trust. A privacy-aware architecture ensures ethical and responsible data use, particularly in low-trust environments where maintaining legitimacy is critical.
+### 5. User-Centered and Inclusive
 
-## 4. Scalable and Performant
+Design for diverse users—citizens, employees, vendors, and administrators. Support local languages, accessibility, and multi-modal interaction including voice. Respect privacy and support low-literacy and low-connectivity use cases.
 
-Digital platforms must remain stable and responsive even under heavy usage, such as during peak times like tax payment deadlines. Scalability ensures that systems can handle millions of users and records concurrently, while performance optimization keeps response times fast and reliable. Poor performance can cripple essential services and lead to financial or reputational loss. Scalability isn't just about technology—it's about ensuring that no citizen is left behind when demand surges.
+### 6. Observable and Transparent
 
-## 5. Reliable and Cost Effective
+Enable audits, real-time monitoring, and citizen visibility into service processes. Publish logs, events, and metrics to promote accountability and trust.
 
-Government systems are mission-critical—downtime can halt vital services like pension disbursals, water supply tracking, or sanitation scheduling. High availability, efficient infrastructure usage, and minimal operational overhead are essential. Public budgets are often constrained; optimizing for cost-effectiveness ensures that more services can be delivered with the same resources. Long-term sustainability also improves when systems reduce dependency on vendors and can be maintained locally.
+### 7. Interoperable
 
-## 6. Open Source
+Support open APIs, common data formats, and event standards to enable systems to work together. Promote ecosystem collaboration over vendor lock-in.
 
-Open source software ensures that the platform's code is publicly accessible, enabling reuse, collaboration, and transparency. This reduces reliance on proprietary vendors, encourages innovation through community contributions, and allows governments to retain control over their own infrastructure. Transparency in code also allows for audits by external parties, building public confidence in the system's fairness and integrity.
+### 8. Open Source
 
-## 7. Interoperable
+Foster transparency, auditability, and community contribution through open licensing. Allow governments to inspect, adapt, and extend software freely.
 
-Interoperability allows systems to work with other digital platforms using standards-based APIs and protocols. Public service delivery frequently spans departments and jurisdictions—seamless data exchange and coordination are crucial. Whether integrating with identity systems (e.g., Aadhaar), GIS tools, or payment gateways, interoperability ensures a cohesive experience for citizens and future-proofs the infrastructure for ongoing evolution.
+### 9. Modular and Evolvable
 
-## 8. Observable and Transparent
+Structure the platform as a set of independent, composable services. Enable independent upgrades, localisation, and extension without disrupting the whole system.
 
-Digital systems must provide visibility into how decisions are made. This includes logging, workflows, rules, and real-time analytics. Observability supports audits, improves governance, and helps troubleshoot issues rapidly. More importantly, transparency ensures citizens understand how outcomes—such as subsidy approvals or tax calculations—are determined. It fosters trust and accountability, key pillars of democratic governance.
+### 10. Configuration-First and Extensible
 
-## 9. Intelligent
+Empower business users to define services without writing code. Use declarative, low-code approaches with options for technical extension through plugins and APIs.
 
-Modern digital platforms should go beyond automation—they should actively support data-driven decision-making. Intelligence through analytics and AI allows governments to move from reactive to proactive service delivery. For example, predicting sanitation needs, identifying at-risk households, or optimizing public resource allocation. Intelligent systems don't just make operations more efficient—they improve lives by enabling faster, fairer, and more personalized services.
+### 11. Intelligent
+
+Leverage data and AI to support personalisation, prediction, and decision support. Use analytics to improve policy, target delivery, and proactively detect service issues using GIS, IoT, and other signals.
 
 ## Getting Started
 
-To familiarize yourself with the system and begin contributing, we recommend exploring the following resources:
+Explore the following to get started:
 
-- [Services](Services.md): Understand the modular microservices that power DIGIT's functionalities.
-- [Applications](Apps.md): Discover the suite of applications available for citizens, employees, and administrators.
-- [API Specifications](APIs.md): Review the comprehensive API documentation to integrate or extend services.
-- [Architecture](Architecture/Architecture.md): Gain insights into DIGIT's design principles, practices and technology choices.
-- [Deployment](Deployment.md): Learn how to deploy DIGIT in different environments.
-- [Contribution Guidelines](Contribution.md): Learn how to effectively contribute to the DIGIT project.
-- [Governance](Governance.md): Understand the governance structure and the roles of various stakeholders.
-- [Code of Conduct](CodeOfConduct.md): Review the community guidelines and expected behavior.
+- [Services](Services.md)
+- [Applications](Apps.md)
+- [API Specifications](APIs.md)
+- [Architecture](Architecture/Architecture.md)
+- [Deployment](Deployment.md)
+- [Contribution Guidelines](Contribution.md)
+- [Governance](Governance.md)
+- [Code of Conduct](CodeOfConduct.md)
