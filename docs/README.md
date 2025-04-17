@@ -62,66 +62,67 @@ DIGIT 3.0 supports the complete citizen service journey—from discovery to fulf
 
 #### Service Delivery Architecture
 
-DIGIT's architecture is designed to facilitate the entire service delivery lifecycle, connecting service consumers (citizens, residents, businesses) with service providers (government departments, agencies, and third parties). 
-
 DIGIT's architecture consists of three primary layers that work together to create a seamless public service delivery ecosystem:
 
-#### Consumer Layer
-This layer provides citizens with a unified service experience through:
+1. **Consumer Layer**: Provides citizens with a unified service experience through consumer registration, multi-channel access, and document/credential management.
 
-- **Consumer**: Registration, profiles, and preference management
-- **Channels**: Multi-Lingual and Multi-Modal Channels to discover and access services.
-  - Citizen Portal: Web interface for citizens or front line works to access services
-  - Mobile App: On-the-go access to services directly or via field force
-- **Wallet**: Storage and management of digital credentials and documents
-  - Document verification and selective sharing
-  - Consent management for data access
+2. **Shared Infrastructure Layer**: Enables data sharing, reuse, and interoperability with services for identity, data, encryption, payment, notification, and data exchange.
 
-#### Shared Infrastructure Layer
-This layer enables data sharing, reuse, and interoperability:
-- **Identity**: 
-  - Authentication and authorization for both consumers and providers
-  - Plugs into existing Identity Systems if they already exist.
-- **Data**: 
-  - Registry services for structured data storage
-  - Reference data management
-  - Document storage and retrieval
-  - Store certificates issued by various agencies.
-  - Synchronizes data from external data sources.
-- **Encryption**: 
-  - Key Management
-  - Encryption
-  - Signing
-- **Payment**: 
-  - Billing and demand generation
-  - Transaction processing and receipt management
-  - Integrates with existing payment providers.
-- **Notification**: 
-  - Multi-channel messaging and alerts
-  - Integrate with multiple messaging service providers
-- **Data Exchange**: 
-  - Asynchronous Service Request/Response routing between consumers and providers.
-  - Data Exchange between external systems.
-  - APIs, Messaging, Publish Suscribe Events. 
+3. **Provider Layer**: Empowers government agencies to streamline service delivery through service management, service delivery, and service intelligence components.
 
-#### Provider Layer
-This layer empowers government agencies to streamline service delivery:
-- **Service Management**:
-  - **Provider**: Administration and configuration
-  - **Catalog**: Service discovery and metadata
-  - **Service Studio**: Low-code/no-code service design tools
-- **Service Delivery**:
-  - **Service Orchestration**: Request management and form handling
-  - **Service Desk**: Assisted access for citizens with limited digital access
-  - **Workflow**: Process automation and task management
-  - **Employee Workbench**: Case management interface for staff
-- **Service Intelligence**:
-  - **Analytics**: Performance monitoring and insights
-  - **Service Planning**: Demand forecasting and resource optimization
-  - **Service Performance**: SLA monitoring and quality management
-  - **Administrator Console**: System configuration and management
+```mermaid
+flowchart TD
+    %% Top Layer: Service Consumers
+    subgraph Consumers [ ]
+        direction LR
+        Citizens["Citizens"]
+        Residents["Residents"]
+        Businesses["Businesses"]
+    end
 
-This layered architecture enables cost-effective transformation at scale by allowing agencies to share infrastructure costs while maintaining control over their service configurations. The multi-tenant design ensures data separation while promoting reuse of common components, standards, and registries across government entities.
+    %% Consumer Layer
+    CL["Consumer Layer: Registration, Channels, Wallet"]
+
+    %% Shared Infrastructure Layer
+    SIL["Shared Infrastructure: Identity, Data, Payments, etc."]
+
+    %% Provider Layer
+    PL["Provider Layer: Management, Delivery, Intelligence"]
+
+    %% Bottom Layer: Service Providers
+    subgraph Providers [ ]
+        direction LR
+        Agencies["Gov Agencies"]
+        Departments["Departments"]
+        ExternalOrgs["Other Providers"]
+    end
+
+    %% Connections
+    Citizens --> CL
+    Residents --> CL
+    Businesses --> CL
+    CL --> SIL
+    SIL --> PL
+    PL --> Agencies
+    PL --> Departments
+    PL --> ExternalOrgs
+
+    %% Style all boxes for centering, same width, and no wrapping
+    style Citizens width:150px, text-align:center, white-space:nowrap
+    style Residents width:150px, text-align:center, white-space:nowrap
+    style Businesses width:150px, text-align:center, white-space:nowrap
+    style CL width:450px, text-align:center, white-space:nowrap
+    style SIL width:450px, text-align:center, white-space:nowrap
+    style PL width:450px, text-align:center, white-space:nowrap
+    style Agencies width:150px, text-align:center, white-space:nowrap
+    style Departments width:150px, text-align:center, white-space:nowrap
+    style ExternalOrgs width:150px, text-align:center, white-space:nowrap
+
+    classDef centerStyle text-align:center,white-space:nowrap
+    class Citizens,Residents,Businesses,CL,SIL,PL,Agencies,Departments,ExternalOrgs centerStyle
+```
+
+For detailed information on the Service Delivery Architecture, see [Services](Architecture/Services/Services.md).
 
 DIGIT 3.0 is designed to make public service delivery more accessible, efficient, and inclusive while reducing the total cost of ownership for governments.
 
@@ -177,7 +178,7 @@ Leverage data and AI to support personalisation, prediction, and decision suppor
 
 Explore the following to get started:
 
-- [Services](Services/Services.md) - Overview of backend microservices
+- [Services](Architecture/Services/Services.md) - Overview of backend microservices
 - [Applications](Apps/Apps.md) - Frontend applications and user interfaces
 - [API Specifications](Specifications/APIs.md) - API documentation and standards
 - [Architecture](Architecture/Architecture.md) - Platform architecture and design
