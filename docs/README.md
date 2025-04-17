@@ -1,5 +1,6 @@
-## DIGIT
+## DIGIT 3.0
 
+DIGIT 3.0 is an open source, citizen-centric platform designed to transform how governments deliver public services. Built on the principles of digital public infrastructure, it provides governments with a flexible, modular toolkit to create inclusive, accessible, and efficient service delivery systems. DIGIT 3.0 focuses on the complete citizen journey—from service discovery to fulfillment—while giving governments the tools to streamline operations, integrate disparate systems, and make data-driven decisions. As a global public good, DIGIT 3.0 empowers governments of all sizes to build sovereign digital capabilities without vendor lock-in or proprietary constraints.
 
 
 ### What is Public Service Delivery?
