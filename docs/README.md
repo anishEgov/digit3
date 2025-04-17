@@ -1,5 +1,28 @@
 ## DIGIT
 
+
+
+### What is Public Service Delivery?
+
+Public service delivery encompasses the systems and processes through which governments provide essential services to citizens—such as water, sanitation, healthcare, education, welfare, and civil registration. From a citizen perspective, it represents the primary touchpoint with government, where public needs are addressed through efficient, user-friendly interactions that minimize bureaucracy and maximize value.
+
+Citizens typically interact with public services through key stages of a journey:
+
+1. **Discovery** - Finding and learning about available services
+2. **Information** - Understanding eligibility, requirements, and processes  
+3. **Application** - Submitting service requests and required information
+4. **Documentation** - Uploading supporting documents and evidence
+5. **Payment** - Paying applicable fees and charges
+6. **Tracking** - Monitoring application status and progress
+7. **Communication** - Receiving notifications and updates
+8. **Fulfillment** - Receiving the service outcome or benefit
+9. **Feedback** - Providing input on service quality
+10. **Post-delivery** - Accessing certificates, renewals, or follow-up services
+
+When delivered effectively, these services improve well-being, equity, and public trust.
+
+### Challenges in Public Service Delivery Digitization
+
 Governments around the world have made significant strides in digitising public service delivery. However, most early systems were siloed vertical applications or monolithic ERP implementations. While they addressed immediate needs, they introduced long-term challenges:
 
 - Fragmented data requiring citizens to repeatedly provide the same information
@@ -7,24 +30,30 @@ Governments around the world have made significant strides in digitising public 
 - Lack of real-time visibility for administrators to monitor service delivery
 - Rigid, unscalable architectures with high vendor lock-in
 
+Access to public services remains uneven—especially for marginalised communities—due to manual processes, complex bureaucracy, and limited transparency. Citizens often face multiple barriers including:
+
+- Inconsistent information across different government channels
+- Cumbersome application processes requiring multiple in-person visits
+- Limited visibility into application status and decision-making
+- Difficulty accessing services in their preferred language or format
+- Lack of accessible options for persons with disabilities
+
+### Why DIGIT: A New Approach to Digital Public Service Delivery
+
 DIGIT represents a new phase of digital transformation—one that is modular, interoperable, and citizen-centric. It enables governments to build inclusive, accessible, and accountable digital infrastructure for public service delivery.
 
-### What is Public Service Delivery?
-
-Public service delivery encompasses the systems and processes through which governments provide essential services to citizens—such as water, sanitation, healthcare, education, welfare, and civil registration. When delivered effectively, these services improve well-being, equity, and public trust.
-
-However, access is often uneven—especially for marginalised communities—due to manual processes, fragmented systems, and limited transparency. DIGIT helps governments modernise these processes through shared infrastructure, digital workflows, and citizen-friendly interfaces.
-
-### Why DIGIT?
-
-DIGIT enables governments to:
+With DIGIT, governments can:
 
 - Deliver services through a common infrastructure, reducing duplication
+- Create unified citizen interfaces that simplify discovery and access
+- Implement digital workflows that increase transparency and efficiency
+- Adopt open standards that promote ecosystem collaboration
+- Deploy configurable components that support local adaptation
 - Reuse data and processes across departments
 - Support inclusive service access in multiple languages and formats
 - Monitor operations in real-time and make data-driven decisions
 
-Its suite of backend services and frontend applications are modular, configurable, and extensible—allowing local customisation while preserving platform consistency.
+Its suite of backend services and frontend applications are modular, configurable, and extensible—allowing local customisation while preserving platform consistency. DIGIT helps governments modernise service delivery processes through integrated digital infrastructure, streamlined workflows, and citizen-friendly interfaces.
 
 ### DIGIT in Action
 
@@ -50,6 +79,8 @@ Its frontend applications include:
 DIGIT is designed to make public service delivery more accessible, efficient, and inclusive.
 
 ## Design Principles
+
+DIGIT's architecture and implementation are guided by the following principles that ensure it meets the needs of governments, citizens, and the broader digital ecosystem. These principles reflect best practices in building digital public infrastructure that is secure, inclusive, and sustainable.
 
 ### 1. Security and Privacy
 
@@ -99,11 +130,16 @@ Leverage data and AI to support personalisation, prediction, and decision suppor
 
 Explore the following to get started:
 
-- [Services](Services.md)
-- [Applications](Apps.md)
-- [API Specifications](APIs.md)
-- [Architecture](Architecture/Architecture.md)
-- [Deployment](Deployment.md)
-- [Contribution Guidelines](Contribution.md)
-- [Governance](Governance.md)
-- [Code of Conduct](CodeOfConduct.md)
+- [Services](Services/Services.md) - Overview of backend microservices
+- [Applications](Apps/Apps.md) - Frontend applications and user interfaces
+- [API Specifications](Specifications/APIs.md) - API documentation and standards
+- [Architecture](Architecture/Architecture.md) - Platform architecture and design
+  - [Technology Choices](Architecture/Technology-Choice.md) - Technology stack decisions
+  - [Security](Architecture/Security.md) - Security principles and implementation
+  - [Authentication](Architecture/Authentication.md) - User authentication approach
+  - [Multi-Tenancy](Architecture/MultiTenancy.md) - Multi-tenant implementation
+  - [Registry Architecture](Architecture/Registry-Architecture.md) - Data registry design
+- [Deployment](Deployment.md) - Deployment options and infrastructure
+- [Contribution Guidelines](Contribution.md) - How to contribute to DIGIT
+- [Governance](Governance.md) - Project governance and decision making
+- [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
