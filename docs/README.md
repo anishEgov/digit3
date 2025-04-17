@@ -74,100 +74,54 @@ At its core, DIGIT provides:
 
 4. **Shared digital infrastructure**: Common building blocks for identity, data, payments, and more reduce costs and accelerate digital transformation.
 
-When a citizen accesses a service, DIGIT coordinates the entire journey through four integrated groupings of building blocks:
+DIGIT's architecture consists of three primary layers that work together to create a seamless public service delivery ecosystem:
 
-**Core Shared Building Blocks** provide the foundational infrastructure:
-- Identity verifies the citizen and service provider
-- Data services validate information using existing registries
-- Payment processes any associated fees
-- Notification delivers updates through preferred channels
-- Data Exchange securely shares information between departments
+#### Consumer Layer
+This layer provides citizens with a unified service experience through:
 
-**Service Consumer Building Blocks** support citizen interactions:
-- Consumer manages citizen profiles and preferences
-- Wallet stores and shares official credentials and certificates
+- **Consumer**: Registration, profiles, and preference management
+- **Channels**: Multi-Lingual and Multi-Modal Channels to discover and access services.
+  - Citizen Portal: Web interface for citizens or front line works to access services
+  - Mobile App: On-the-go access to services directly or via field force
+- **Wallet**: Storage and management of digital credentials and documents
+  - Document verification and selective sharing
+  - Consent management for data access
 
-**Service Provider Building Blocks** facilitate service delivery:
-- Catalog helps citizens discover relevant services
-- Service Orchestration guides them through the application process
-- Workflow routes requests to the appropriate officials
-- Provider manages service configuration and delivery
-
-**Service Administrator Building Blocks** ensure continuous improvement:
-- Analytics tracks service usage and operational metrics
-- Service Planning optimizes resource allocation
-- Service Performance monitors quality and compliance
-
-This integrated approach eliminates the traditional silos between government departments, creating a seamless experience for citizens while reducing duplication and inefficiency for governments.
-
-#### Service Building Blocks
-
-To enable the citizen journey, DIGIT is organized into modular building blocks, each consisting of multiple microservices:
-
-**Core Shared Building Blocks:**
+#### Shared Infrastructure Layer
+This layer enables data sharing, reuse, and interoperability:
 - **Identity**: 
-  - Authentication, authorization, and user management services for both service consumers (citizens, residents, migrants) and service providers
+  - Authentication and authorization for both consumers and providers
+  - Plugs into existing Identity Systems if they already exist.
 - **Data**: 
-  - Registry services for schema-based data storage
-  - Reference data services (country codes, currencies, etc.)
-  - Master data management
-  - Document storage, retrieval, and secure sharing
-- **Data Exchange**: 
-  - Standardized APIs for inter-provider communication
-  - Digital signing and verification of documents
+  - Registry services for structured data storage
+  - Reference data management
+  - Document storage and retrieval
+  - Plugs into existing Data if they already exist.
 - **Payment**: 
   - Billing and demand generation
-  - Transaction processing
-  - Payment gateway integrations
-  - Receipt management
-- **Notification**: Multi-channel messaging (SMS, email, push) and templates
+  - Transaction processing and receipt management
+  - Integrates with existing payment providers.
+- **Notification**: Multi-channel messaging and alerts
+- **Data Exchange**: API integration and document verification between systems
 
-**Service Provider Building Blocks:**
-- **Provider**: 
-  - Provider administration, configuration, and provider management
-- **Service Orchestration**: 
-  - Service request management
-  - Form rendering and validation
-- **Workflow**: 
-  - State machines, process definitions, and task management
-- **Catalog**: Service discovery, metadata, and search capabilities
+#### Provider Layer
+This layer empowers government agencies to streamline service delivery:
+- **Service Management**:
+  - **Provider**: Administration and configuration
+  - **Catalog**: Service discovery and metadata
+  - **Service Studio**: Low-code/no-code service design tools
+- **Service Delivery**:
+  - **Service Orchestration**: Request management and form handling
+  - **Service Desk**: Assisted access for citizens with limited digital access
+  - **Workflow**: Process automation and task management
+  - **Employee Workbench**: Case management interface for staff
+- **Service Intelligence**:
+  - **Analytics**: Performance monitoring and insights
+  - **Service Planning**: Demand forecasting and resource optimization
+  - **Service Performance**: SLA monitoring and quality management
+  - **Administrator Console**: System configuration and management
 
-**Service Consumer Building Blocks:**
-- **Consumer**: 
-  - Consumer registration, profiles, and preference management for citizens, residents, and other service recipients
-- **Wallet**:
-  - Storage for digitally issued credentials and documents
-  - Verification of document authenticity
-  - Selective sharing of verified information
-  - Management of consent for data sharing
-
-**Service Administrator Building Blocks:**
-- **Analytics**: 
-  - Insights, dashboards, and performance monitoring
-  - Service usage and adoption metrics
-  - Operational efficiency analysis
-- **Service Planning**: 
-  - Demand forecasting and capacity planning
-  - Resource allocation and optimization
-  - Service improvement recommendations
-- **Service Performance**: 
-  - SLA monitoring and compliance tracking
-  - Quality of service measurement
-  - Bottleneck identification and resolution
-
-#### Application Suite
-
-These services are exposed through tailored applications for different users:
-
-- **Citizen Portal**: Unified interface for citizens to access all services
-- **Mobile App**: On-the-go access to services for citizens
-- **Service Desk**: Assisted service access for citizens with limited digital access
-- **Employee Workbench**: Case management interface for government staff
-- **Administrator Console**: System configuration and tenant management
-- **Service Studio**: Low-code/no-code service configuration tools
-- **Analytics Dashboard**: Performance monitoring and data visualization
-
-This architecture enables cost-effective transformation at scale by allowing agencies to share infrastructure costs while maintaining control over their service configurations. The multi-tenant design ensures data separation while promoting reuse of common components, standards, and registries across government entities.
+This layered architecture enables cost-effective transformation at scale by allowing agencies to share infrastructure costs while maintaining control over their service configurations. The multi-tenant design ensures data separation while promoting reuse of common components, standards, and registries across government entities.
 
 DIGIT 3.0 is designed to make public service delivery more accessible, efficient, and inclusive while reducing the total cost of ownership for governments.
 
