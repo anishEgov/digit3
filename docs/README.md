@@ -64,16 +64,6 @@ DIGIT 3.0 supports the complete citizen service journey—from discovery to fulf
 
 DIGIT's architecture is designed to facilitate the entire service delivery lifecycle, connecting service consumers (citizens, residents, businesses) with service providers (government departments, agencies, and third parties). 
 
-At its core, DIGIT provides:
-
-1. **A unified consumer experience**: Citizens can discover, apply for, pay for, and receive services through consistent interfaces, regardless of which government agency provides the service.
-
-2. **Service provider enablement**: Government departments can digitize, manage, and improve their service offerings without building custom infrastructure for each service.
-
-3. **Interoperability layer**: Standardized data exchange between providers enables cross-departmental services and reduces redundant data collection from citizens.
-
-4. **Shared digital infrastructure**: Common building blocks for identity, data, payments, and more reduce costs and accelerate digital transformation.
-
 DIGIT's architecture consists of three primary layers that work together to create a seamless public service delivery ecosystem:
 
 #### Consumer Layer
@@ -96,13 +86,23 @@ This layer enables data sharing, reuse, and interoperability:
   - Registry services for structured data storage
   - Reference data management
   - Document storage and retrieval
-  - Plugs into existing Data if they already exist.
+  - Store certificates issued by various agencies.
+  - Synchronizes data from external data sources.
+- **Encryption**: 
+  - Key Management
+  - Encryption
+  - Signing
 - **Payment**: 
   - Billing and demand generation
   - Transaction processing and receipt management
   - Integrates with existing payment providers.
-- **Notification**: Multi-channel messaging and alerts
-- **Data Exchange**: API integration and document verification between systems
+- **Notification**: 
+  - Multi-channel messaging and alerts
+  - Integrate with multiple messaging service providers
+- **Data Exchange**: 
+  - Asynchronous Service Request/Response routing between consumers and providers.
+  - Data Exchange between external systems.
+  - APIs, Messaging, Publish Suscribe Events. 
 
 #### Provider Layer
 This layer empowers government agencies to streamline service delivery:
