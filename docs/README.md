@@ -58,26 +58,118 @@ Its suite of backend services and frontend applications are modular, configurabl
 
 ### DIGIT in Action
 
-DIGIT supports a full-service lifecycle—from discovery to fulfilment. Citizens can discover services, understand eligibility, submit applications, track status, receive notifications, and provide feedback—all through digital interfaces.
+DIGIT 3.0 supports the complete citizen service journey—from discovery to fulfillment—through a shared digital infrastructure that multiple government agencies can leverage. By enabling multi-tenancy, DIGIT allows different departments and levels of government to transform their service delivery while sharing common services, data registries, and infrastructure costs.
 
-To support this, DIGIT provides reusable services for:
+#### Service Delivery Architecture
 
-- Authentication and User Management
-- Registries and Reference Data
-- Workflow and Process Management
-- Notifications and Communication
-- Document Management
-- Service Configuration
+DIGIT's architecture is designed to facilitate the entire service delivery lifecycle, connecting service consumers (citizens, residents, businesses) with service providers (government departments, agencies, and third parties). 
 
-Its frontend applications include:
+At its core, DIGIT provides:
 
-- **Console**: Administer tenants and users
-- **Studio**: Configure services with low-code/no-code tools
-- **Portal**: Help citizens discover and access services
-- **Workbench**: Assist employees in fulfilling requests
-- **Dashboard**: Enable administrators to monitor and analyse data
+1. **A unified consumer experience**: Citizens can discover, apply for, pay for, and receive services through consistent interfaces, regardless of which government agency provides the service.
 
-DIGIT is designed to make public service delivery more accessible, efficient, and inclusive.
+2. **Service provider enablement**: Government departments can digitize, manage, and improve their service offerings without building custom infrastructure for each service.
+
+3. **Interoperability layer**: Standardized data exchange between providers enables cross-departmental services and reduces redundant data collection from citizens.
+
+4. **Shared digital infrastructure**: Common building blocks for identity, data, payments, and more reduce costs and accelerate digital transformation.
+
+When a citizen accesses a service, DIGIT coordinates the entire journey through four integrated groupings of building blocks:
+
+**Core Shared Building Blocks** provide the foundational infrastructure:
+- Identity verifies the citizen and service provider
+- Data services validate information using existing registries
+- Payment processes any associated fees
+- Notification delivers updates through preferred channels
+- Data Exchange securely shares information between departments
+
+**Service Consumer Building Blocks** support citizen interactions:
+- Consumer manages citizen profiles and preferences
+- Wallet stores and shares official credentials and certificates
+
+**Service Provider Building Blocks** facilitate service delivery:
+- Catalog helps citizens discover relevant services
+- Service Orchestration guides them through the application process
+- Workflow routes requests to the appropriate officials
+- Provider manages service configuration and delivery
+
+**Service Administrator Building Blocks** ensure continuous improvement:
+- Analytics tracks service usage and operational metrics
+- Service Planning optimizes resource allocation
+- Service Performance monitors quality and compliance
+
+This integrated approach eliminates the traditional silos between government departments, creating a seamless experience for citizens while reducing duplication and inefficiency for governments.
+
+#### Service Building Blocks
+
+To enable the citizen journey, DIGIT is organized into modular building blocks, each consisting of multiple microservices:
+
+**Core Shared Building Blocks:**
+- **Identity**: 
+  - Authentication, authorization, and user management services for both service consumers (citizens, residents, migrants) and service providers
+- **Data**: 
+  - Registry services for schema-based data storage
+  - Reference data services (country codes, currencies, etc.)
+  - Master data management
+  - Document storage, retrieval, and secure sharing
+- **Data Exchange**: 
+  - Standardized APIs for inter-provider communication
+  - Digital signing and verification of documents
+- **Payment**: 
+  - Billing and demand generation
+  - Transaction processing
+  - Payment gateway integrations
+  - Receipt management
+- **Notification**: Multi-channel messaging (SMS, email, push) and templates
+
+**Service Provider Building Blocks:**
+- **Provider**: 
+  - Provider administration, configuration, and provider management
+- **Service Orchestration**: 
+  - Service request management
+  - Form rendering and validation
+- **Workflow**: 
+  - State machines, process definitions, and task management
+- **Catalog**: Service discovery, metadata, and search capabilities
+
+**Service Consumer Building Blocks:**
+- **Consumer**: 
+  - Consumer registration, profiles, and preference management for citizens, residents, and other service recipients
+- **Wallet**:
+  - Storage for digitally issued credentials and documents
+  - Verification of document authenticity
+  - Selective sharing of verified information
+  - Management of consent for data sharing
+
+**Service Administrator Building Blocks:**
+- **Analytics**: 
+  - Insights, dashboards, and performance monitoring
+  - Service usage and adoption metrics
+  - Operational efficiency analysis
+- **Service Planning**: 
+  - Demand forecasting and capacity planning
+  - Resource allocation and optimization
+  - Service improvement recommendations
+- **Service Performance**: 
+  - SLA monitoring and compliance tracking
+  - Quality of service measurement
+  - Bottleneck identification and resolution
+
+#### Application Suite
+
+These services are exposed through tailored applications for different users:
+
+- **Citizen Portal**: Unified interface for citizens to access all services
+- **Mobile App**: On-the-go access to services for citizens
+- **Service Desk**: Assisted service access for citizens with limited digital access
+- **Employee Workbench**: Case management interface for government staff
+- **Administrator Console**: System configuration and tenant management
+- **Service Studio**: Low-code/no-code service configuration tools
+- **Analytics Dashboard**: Performance monitoring and data visualization
+
+This architecture enables cost-effective transformation at scale by allowing agencies to share infrastructure costs while maintaining control over their service configurations. The multi-tenant design ensures data separation while promoting reuse of common components, standards, and registries across government entities.
+
+DIGIT 3.0 is designed to make public service delivery more accessible, efficient, and inclusive while reducing the total cost of ownership for governments.
 
 ## Design Principles
 
