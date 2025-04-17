@@ -163,6 +163,74 @@ components:
 
   schemas:
     
+    Document:
+      type: object
+      description: |
+        Represents a user-uploaded document associated with an application or entity.
+        Contains metadata such as document type (from MDMS), file storage reference, and an optional document identifier (e.g., Aadhaar number).
+      required:
+        - documentType
+        - fileStoreId
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          minLength: 2
+          maxLength: 64
+          description: |
+            System-generated unique identifier (UUID) for the document. 
+            This field is read-only and assigned after creation.
+        documentType:
+          type: string
+          minLength: 2
+          maxLength: 64
+          description: |
+            Code representing the type of document. 
+            This should match one of the predefined codes from MDMS (Master Data Management System).
+          example: AADHAR
+        fileStoreId:
+          type: string
+          minLength: 2
+          maxLength: 64
+          description: |
+            Reference ID of the uploaded file in the file storage system.
+          example: abcde23423523sdfsd
+        documentUid:
+          type: string
+          minLength: 2
+          maxLength: 64
+          description: |
+            Optional unique identifier of the document provided by the user. 
+            Examples include PAN number, Aadhaar number, Driving License number, etc.
+          example: 1234-5678-9012
+
+    DocumentType:
+      type: object
+      description: |
+        Represents metadata for a supported document type. 
+        Used to standardize and validate the types of documents accepted in workflows and applications.
+      required:
+        - name
+        - code
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 64
+          description: |
+            Human-readable name of the document type.
+          example: Aadhar
+        code:
+          type: string
+          minLength: 2
+          maxLength: 32
+          description: |
+            Unique code used to identify the document type programmatically. 
+            Should be used as a reference in the `documentType` field of the Document object.
+          example: AADHAR
+
+
     AuditDetails:
       type: object
       description: "Contains audit details, tracking record creation, modification, and deletion events."
