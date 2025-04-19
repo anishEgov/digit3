@@ -182,10 +182,9 @@ Leverage data and AI to support personalisation, prediction, and decision suppor
 
 Explore the following to get started:
 
-- [Practices and Patterns](Practices%20and%20Patterns) - Implementation of our [Design Principles](#design-principles) in real-world scenarios
+- [Practices and Patterns](Practices%20and%20Patterns/Principles.md) - Implementation of our [Design Principles](#design-principles) through concrete patterns
 - [Architecture](Architecture) - Technical foundation and structure of the DIGIT platform
-  - [Principles](Architecture/Principles.md) - Core architectural guidelines and patterns
-  - [Services](Architecture/Services) - Backend microservices powering the platform
+  - [Services](Architecture/Services/Services.md) - Service Delivery Architecture
   - [Apps](Architecture/Apps) - Frontend applications and user interfaces
   - [Data](Architecture/Data) - Data models, storage, and management strategies
   - [Infrastructure](Architecture/Infrastructure) - Deployment infrastructure and configuration
@@ -196,7 +195,6 @@ Explore the following to get started:
   - [APIs](Specifications/APIs.md) - API documentation, standards, and examples
   - [Common](Specifications/Common) - Shared models, patterns, and standards
 - [Guides](Guides) - Practical how-to documentation for implementation
-  - [Deployment](Guides/Deployment.md) - Instructions for deploying DIGIT in various environments
 - [Governance](Governance/Governance.md) - Project governance model and decision-making processes
 - [Community](Community) - Join the DIGIT community
   - [Contribution Guidelines](Community/Contribution.md) - How to contribute to the platform
