@@ -1,6 +1,6 @@
 # Technology Choice
 
-This document consolidates technology patterns and choices from various architectural principles. Each section provides a comprehensive overview of recommended technologies and patterns, with links back to the original principles for detailed context.
+This document consolidates technology patterns and choices from various [architectural principles](../../Practices%20and%20Patterns/Principles.md). Each section provides a list of technology patterns and choices that can be used to implement the principles.
 
 ## Table of Contents
 

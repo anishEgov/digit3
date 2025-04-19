@@ -1,3 +1,7 @@
+## Status
+
+This project is currently in active development. The documentation outlines the intended features and structure of the platform. Expect changes, and contributions are welcome!
+
 ## DIGIT 3.0
 
 DIGIT 3.0 is an open source, citizen-centric platform designed to transform how governments deliver public services. Built on the principles of digital public infrastructure, it provides governments with a flexible, modular toolkit to create inclusive, accessible, and efficient service delivery systems. DIGIT 3.0 focuses on the complete citizen journey—from service discovery to fulfillment—while giving governments the tools to streamline operations, integrate disparate systems, and make data-driven decisions. As a global public good, DIGIT 3.0 empowers governments of all sizes to build sovereign digital capabilities without vendor lock-in or proprietary constraints.
@@ -178,16 +182,22 @@ Leverage data and AI to support personalisation, prediction, and decision suppor
 
 Explore the following to get started:
 
-- [Services](Architecture/Services/Services.md) - Overview of backend microservices
-- [Applications](Apps/Apps.md) - Frontend applications and user interfaces
-- [API Specifications](Specifications/APIs.md) - API documentation and standards
-- [Architecture](Architecture/Architecture.md) - Platform architecture and design
-  - [Technology Choices](Architecture/Technology-Choice.md) - Technology stack decisions
-  - [Security](Architecture/Security.md) - Security principles and implementation
-  - [Authentication](Architecture/Authentication.md) - User authentication approach
-  - [Multi-Tenancy](Architecture/MultiTenancy.md) - Multi-tenant implementation
-  - [Registry Architecture](Architecture/Registry-Architecture.md) - Data registry design
-- [Deployment](Deployment.md) - Deployment options and infrastructure
-- [Contribution Guidelines](Contribution.md) - How to contribute to DIGIT
-- [Governance](Governance.md) - Project governance and decision making
-- [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
+- [Practices and Patterns](Practices%20and%20Patterns) - Implementation of our [Design Principles](#design-principles) in real-world scenarios
+- [Architecture](Architecture) - Technical foundation and structure of the DIGIT platform
+  - [Principles](Architecture/Principles.md) - Core architectural guidelines and patterns
+  - [Services](Architecture/Services) - Backend microservices powering the platform
+  - [Apps](Architecture/Apps) - Frontend applications and user interfaces
+  - [Data](Architecture/Data) - Data models, storage, and management strategies
+  - [Infrastructure](Architecture/Infrastructure) - Deployment infrastructure and configuration
+  - [Technology](Architecture/Technology) - Technology stack and component choices
+  - [Security](Architecture/Security) - Security implementation and best practices
+  - [Multi-Tenancy](Architecture/Multi-Tenancy) - Supporting multiple organizations on a shared platform
+- [Specifications](Specifications) - Detailed technical specifications and interfaces
+  - [APIs](Specifications/APIs.md) - API documentation, standards, and examples
+  - [Common](Specifications/Common) - Shared models, patterns, and standards
+- [Guides](Guides) - Practical how-to documentation for implementation
+  - [Deployment](Guides/Deployment.md) - Instructions for deploying DIGIT in various environments
+- [Governance](Governance/Governance.md) - Project governance model and decision-making processes
+- [Community](Community) - Join the DIGIT community
+  - [Contribution Guidelines](Community/Contribution.md) - How to contribute to the platform
+  - [Code of Conduct](Community/CODE_OF_CONDUCT.md) - Standards for community participation
