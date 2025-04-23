@@ -231,7 +231,7 @@ components:
           example: AADHAR
 
 
-    AuditDetails:
+    AuditDetail:
       type: object
       description: "Contains audit details, tracking record creation, modification, and deletion events."
       properties:
