@@ -239,12 +239,20 @@ components:
           type: string
           description: "UUID of the user or system that created the record."
           example: "550e8400-e29b-41d4-a716-446655440000"
+          minLength: 2
+          maxLength: 64
         createdTime:
           type: integer
           format: int64
           description: "Timestamp (epoch milliseconds) when the record was created."
           example: 1701234567890
-        lastModifiedTime:
+        modifiedBy:
+          type: string
+          description: "UUID of the user or system that updated the record."
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          minLength: 2
+          maxLength: 64
+        modifiedTime:
           type: integer
           format: int64
           description: "Timestamp (epoch milliseconds) when the record was last modified."
