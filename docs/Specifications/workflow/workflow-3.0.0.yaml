@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Workflow service APIs definations
   version: 3.0.0
-  description: API for creating, updating, and searching workflow process, states and actions
+  description: API for creating, updating, and searching Individuals
 
 servers:
   - url: /workflow/v3
@@ -370,7 +370,7 @@ paths:
             minItems: 1
     
 
-  /state/_create:
+  /process/{processId}/state:
     post:
       summary: Create a new State
       tags:
@@ -423,7 +423,44 @@ paths:
         - $ref: '#/components/parameters/ClientSecret'
         - $ref: '#/components/parameters/TimeStamp'
 
-  /state/_update:
+    get:
+      summary: Search States
+      tags:
+        - State
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/State'
+          headers:  # same as above
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+      parameters:
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+        - in: path
+          name: processId
+          required: true
+          schema:
+            type: string
+
+  /state/{id}:
     put:
       summary: Update existing State
       tags:
@@ -476,8 +513,6 @@ paths:
         - $ref: '#/components/parameters/ClientSecret'
         - $ref: '#/components/parameters/TimeStamp'
 
-
-  /state/_search:
     get:
       summary: Search States
       tags:
@@ -488,9 +523,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/State'
+                $ref: '#/components/schemas/State'
           headers:  # same as above
         '400':
           description: Bad Request
@@ -509,28 +542,63 @@ paths:
         - $ref: '#/components/parameters/ClientId'
         - $ref: '#/components/parameters/ClientSecret'
         - $ref: '#/components/parameters/TimeStamp'
-        - in: query
+        - in: path
           name: id
-          required: false
-          schema:
-            type: array
-            items:
-              type: string
-            minItems: 1
-        - in: query
-          name: name
-          required: false
-          schema:
-            type: array
-            items:
-              type: string
-            minItems: 1
-        - in: query
-          name: applicationStatus
-          required: false
+          required: true
           schema:
             type: string
-  /action/_create:
+
+    delete:
+      summary: Delete existing state
+      tags:
+        - State
+      responses:
+        '204':
+          description: state deleted successfully
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
+
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+
+      parameters: 
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the state
+          schema:
+            type: string  
+  
+  /state/{stateid}/action:
     post:
       summary: Create a new Action
       tags:
@@ -566,7 +634,57 @@ paths:
         - $ref: '#/components/parameters/ClientId'
         - $ref: '#/components/parameters/ClientSecret'
         - $ref: '#/components/parameters/TimeStamp'
-  /action/_update:
+
+    get:
+      summary: Search Actions
+      tags:
+        - Action
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Action'
+          headers:  # same as above
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+      parameters:  # same
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+        - in: query
+          name: id
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 1
+        - in: query
+          name: currentState
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: nextState
+          required: false
+          schema:
+            type: string    
+  /action/{id}:
     put:
       summary: Update existing Action
       tags:
@@ -603,7 +721,6 @@ paths:
         - $ref: '#/components/parameters/ClientSecret'
         - $ref: '#/components/parameters/TimeStamp'
 
-  /action/_search:
     get:
       summary: Search Actions
       tags:
@@ -654,7 +771,57 @@ paths:
           schema:
             type: string
 
+    delete:
+      summary: Delete existing action
+      tags:
+        - Action
+      responses:
+        '204':
+          description: Action deleted successfully
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
 
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+
+      parameters: 
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier of the action
+          schema:
+            type: string  
+
+    
 components:
   securitySchemes:
     BearerAuth:
@@ -703,6 +870,9 @@ components:
     
     AuditDetail:
       $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/Specifications/Common/Common-3.0.0.yaml#/components/schemas/AuditDetail'
+    
+    Document:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/Specifications/Common/Common-3.0.0.yaml#/components/schemas/Document'
 
     Process:
       type: object
@@ -776,6 +946,17 @@ components:
         isInitial:
           type: boolean
           description: Indicates whether this is the initial state
+        isParallel:
+          type: boolean
+          description: If true, this state starts parallel branches
+        isJoin:
+          type: boolean
+          description: If true, this state waits for all branches to complete
+        branchStates:
+          type: array
+          items:
+            type: string
+          description: List of states to enter in parallel (used with isParallel = true)
         auditDetail:
           $ref: '#/components/schemas/AuditDetail'
 
@@ -831,21 +1012,62 @@ components:
     
     ProcessInstance:
       type: object
-      required:
-        - processId
-        - currentState
       properties:
         id:
+          maxLength: 64
+          minLength: 2
           type: string
-          description: Unique identifier of the process instance
+          description: Unique process instance id (UUID)
+          readOnly: true
         processId:
           type: string
-          description: Reference to the associated process
+          description: ID of the associated process definition
+        entityId:
+          type: string
+          description: ID of the entity the process is managing (e.g., application ID, document ID)
+        action:
+          maxLength: 128
+          minLength: 2
+          type: string
+          description: Actions are define for each business service.
+        status:
+          maxLength: 64
+          minLength: 2
+          type: string
+          description: Status will be populate by efengine for each action, if it is configured.
+          readOnly: true
+        comment:
+          maxLength: 512
+          minLength: 2
+          type: string
+          description: actors can pass the comment on each action.
+        documents:
+          type: array
+          description: Documents can be attached with each of the action.
+          items:
+            $ref: '#/components/schemas/Document'
+        assigner:
+          type: string
+        assignes:
+          type: array
+          items:
+            type:  string
         currentState:
           type: string
           description: Code of the current state
-        previousState:
-          type: string
-          description: Code of the previous state
+        stateSla:
+          type: integer
+          description: Date from when license is valid as epoch.
+          format: int64
+        processSla:
+          type: integer
+          description: Date from when license is valid as epoch.
+          format: int64  
+        auditDetails:
+          $ref: '#/components/schemas/AuditDetail'
+
+            
         
-        
+
+
+    
