@@ -10,7 +10,9 @@ The Filestore Service is a Go-based microservice that provides secure, scalable 
 
 
 
-## 2. File Upload Flow
+## 2. Flow Digram
+
+### 1. Upload File
 
 When a client submits a file for upload, the service first inspects the file’s extension against its content to guard against spoofing. Depending on the configured mode, the file is either scanned immediately (synchronous) or queued for later analysis (asynchronous). In synchronous mode, the service calls ClamAV and, if the file is clean, requests a data‐encryption key (DEK) from HashiCorp Vault before handing the encrypted payload off to MinIO; any virus detection aborts the upload. In asynchronous mode, the file is optimistically stored—MinIO automatically contacts Vault to retrieve and apply the DEK—then the service enqueues a background scan; infected files are purged post-scan and the client is notified of the removal, while clean files remain accessible.
 
@@ -54,3 +56,36 @@ sequenceDiagram
         end
     end
 ```
+
+
+### 2. Get Pre-signed URL
+
+In this flow, the client sends a request to the Filestore Service’s /presign endpoint, including the file identifier. Authentication is handled upstream by the API gateway before the request reaches the service. Once received, the Filestore Service requests a presigned URL from MinIO. MinIO returns a time-limited URL, which the service wraps in a JSON response and sends back to the client. This presigned URL allows the client to interact directly with MinIO to upload or download the file securely within the allowed time window.
+
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Service as Filestore Service
+    participant MinIO as MinIO Storage
+
+    Client->>Service: GET /presign?file=#123;id#125;;
+    Service->>Service: Validate #38; Authorize
+    alt Authorized
+        alt upload
+            Service->>MinIO: Presign PUT URL
+            MinIO-->>Service: 200 URL
+        else download
+            Service->>MinIO: Presign GET URL
+            MinIO-->>Service: 200 URL
+        end
+        Service-->>Client: 200 OK + JSON { url }
+    else Unauthorized
+        Service-->>Client: 403 Forbidden
+    end
+```
+
+
+
+
+
