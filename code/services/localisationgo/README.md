@@ -28,6 +28,45 @@ A Go-based implementation of the DIGIT localization service using the Gin framew
 - **Request Body**: JSON structure with tenantId, module, locale, and optional codes
 - **Response**: JSON with matching messages
 
+### Create Messages
+
+- **Endpoint**: `/localization/messages/v1/_create`
+- **Method**: POST
+- **Description**: Creates new localization messages (fails if any message already exists)
+- **Request Body**: JSON structure with tenantId and array of messages
+- **Response**: JSON with the newly created messages
+
+### Update Messages
+
+- **Endpoint**: `/localization/messages/v1/_update`
+- **Method**: POST
+- **Description**: Updates existing localization messages for a specific module
+- **Request Body**: JSON structure with tenantId, locale, module, and array of messages with codes and updated content
+- **Response**: JSON with the updated messages
+
+### Delete Messages
+
+- **Endpoint**: `/localization/messages/v1/_delete`
+- **Method**: POST
+- **Description**: Deletes localization messages
+- **Request Body**: JSON structure with tenantId and array of message identifiers (code, module, locale)
+- **Response**: JSON with success status
+
+### Cache Bust
+
+- **Endpoint**: `/localization/messages/cache-bust`
+- **Method**: POST
+- **Description**: Clears the entire message cache
+- **Response**: JSON with success status
+
+### URL Parameter-based Search
+
+- **Endpoint**: `/localization/messages`
+- **Method**: GET
+- **Description**: Searches for localization messages using URL query parameters
+- **Query Parameters**: tenantId, module, locale, codes (comma-separated)
+- **Response**: JSON with matching messages
+
 ## Configuration
 
 The service can be configured using environment variables:
@@ -184,6 +223,111 @@ curl --location 'http://localhost:8088/localization/messages/v1/_search' \
     "module": "digit-ui",
     "locale": "en_IN"
 }'
+```
+
+### Create Messages
+
+```bash
+curl --location 'http://localhost:8088/localization/messages/v1/_create' \
+--header 'Content-Type: application/json' \
+--data '{
+    "RequestInfo": {
+        "apiId": "emp",
+        "ver": "1.0",
+        "action": "create",
+        "did": "1",
+        "key": "abcdkey",
+        "msgId": "20170310130900",
+        "requesterId": "rajesh",
+        "authToken": "0cfe07e1-94b5-4f50-a7a0-c7c186feb9d5",
+        "userInfo": {
+            "id": 128
+        }
+    },
+    "tenantId": "DEFAULT",
+    "messages": [
+      {
+            "code": "NewFeature",
+            "message": "New Feature",
+            "module": "digit-ui",
+            "locale": "en_IN"
+        }
+    ]
+}'
+```
+
+### Update Messages
+
+```bash
+curl --location 'http://localhost:8088/localization/messages/v1/_update' \
+--header 'Content-Type: application/json' \
+--data '{
+    "RequestInfo": {
+        "apiId": "emp",
+        "ver": "1.0",
+        "action": "update",
+        "did": "1",
+        "key": "abcdkey",
+        "msgId": "20170310130900",
+        "requesterId": "rajesh",
+        "authToken": "0cfe07e1-94b5-4f50-a7a0-c7c186feb9d5",
+        "userInfo": {
+            "id": 128
+        }
+    },
+    "tenantId": "DEFAULT",
+    "locale": "en_IN",
+    "module": "digit-ui",
+    "messages": [
+      {
+            "code": "ComplaintsInbox",
+            "message": "Updated Complaints Inbox Text"
+        }
+    ]
+}'
+```
+
+### Delete Messages
+
+```bash
+curl --location 'http://localhost:8088/localization/messages/v1/_delete' \
+--header 'Content-Type: application/json' \
+--data '{
+    "RequestInfo": {
+        "apiId": "emp",
+        "ver": "1.0",
+        "action": "delete",
+        "did": "1",
+        "key": "abcdkey",
+        "msgId": "20170310130900",
+        "requesterId": "rajesh",
+        "authToken": "0cfe07e1-94b5-4f50-a7a0-c7c186feb9d5",
+        "userInfo": {
+            "id": 128
+        }
+    },
+    "tenantId": "DEFAULT",
+    "messages": [
+      {
+            "code": "ComplaintsInbox",
+            "module": "digit-ui",
+            "locale": "en_IN"
+        }
+    ]
+}'
+```
+
+### Cache Bust
+
+```bash
+curl --location 'http://localhost:8088/localization/messages/cache-bust' \
+--header 'Content-Type: application/json'
+```
+
+### URL Parameter-based Search
+
+```bash
+curl --location 'http://localhost:8088/localization/messages?tenantId=DEFAULT&module=digit-ui&locale=en_IN&codes=ComplaintsInbox,NewFeature'
 ```
 
 ## License

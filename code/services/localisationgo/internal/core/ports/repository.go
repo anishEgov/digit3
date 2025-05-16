@@ -16,4 +16,10 @@ type MessageRepository interface {
 
 	// FindMessagesByCode finds messages with specific codes
 	FindMessagesByCode(ctx context.Context, tenantID, locale string, codes []string) ([]domain.Message, error)
+
+	// UpdateMessages updates existing messages
+	UpdateMessages(ctx context.Context, tenantID, locale, module string, messages []domain.Message) error
+
+	// DeleteMessages deletes messages by tenantID, locale, module and codes
+	DeleteMessages(ctx context.Context, tenantID, locale, module string, codes []string) error
 }

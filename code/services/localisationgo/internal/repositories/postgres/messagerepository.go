@@ -81,6 +81,148 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 	return nil
 }
 
+// UpdateMessages updates existing messages
+func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID, locale, module string, messages []domain.Message) error {
+	// Start a transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+	}()
+
+	// Prepare statement for updating messages
+	stmt, err := tx.PrepareContext(ctx, `
+		UPDATE message
+		SET message = $1, last_modified_by = $2, last_modified_date = $3
+		WHERE tenant_id = $4 AND locale = $5 AND module = $6 AND code = $7
+		RETURNING id
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for i := range messages {
+		var id int64
+		err = stmt.QueryRowContext(ctx,
+			messages[i].Message,
+			messages[i].LastModifiedBy,
+			messages[i].LastModifiedDate,
+			tenantID,
+			locale,
+			module,
+			messages[i].Code,
+		).Scan(&id)
+		if err != nil {
+			// If no rows are affected, the message doesn't exist - create it
+			if err == sql.ErrNoRows {
+				insertStmt, err := tx.PrepareContext(ctx, `
+					INSERT INTO message (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
+					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+					RETURNING id
+				`)
+				if err != nil {
+					return err
+				}
+				defer insertStmt.Close()
+
+				err = insertStmt.QueryRowContext(ctx,
+					tenantID,
+					module,
+					locale,
+					messages[i].Code,
+					messages[i].Message,
+					messages[i].CreatedBy,
+					messages[i].CreatedDate,
+					messages[i].LastModifiedBy,
+					messages[i].LastModifiedDate,
+				).Scan(&id)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		messages[i].ID = id
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteMessages deletes messages by tenantID, locale, module and codes
+func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID, locale, module string, codes []string) error {
+	// If no codes provided, return immediately
+	if len(codes) == 0 {
+		return nil
+	}
+
+	// Start a transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+			return
+		}
+	}()
+
+	// Create a placeholder string for the IN clause
+	placeholders := make([]string, len(codes))
+	args := make([]interface{}, len(codes)+3)
+	args[0] = tenantID
+	args[1] = locale
+	args[2] = module
+
+	// Build the query dynamically
+	for i, code := range codes {
+		placeholders[i] = fmt.Sprintf("$%d", i+4)
+		args[i+3] = code
+	}
+
+	// Create the delete query
+	query := fmt.Sprintf(`
+		DELETE FROM message
+		WHERE tenant_id = $1 AND locale = $2 AND module = $3 AND code IN (%s)
+	`, strings.Join(placeholders, ","))
+
+	// Execute the delete query
+	result, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	// Check how many rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Deleted %d messages with tenantID=%s, locale=%s, module=%s, codes=%v",
+		rowsAffected, tenantID, locale, module, codes)
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // FindMessages finds messages based on the search criteria
 func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error) {
 	// Base query

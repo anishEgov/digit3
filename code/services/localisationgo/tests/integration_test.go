@@ -229,6 +229,221 @@ func TestIntegrationFlow(t *testing.T) {
 		assert.Len(t, response.Messages, 1)
 		assert.Equal(t, "test-code-1", response.Messages[0].Code)
 	})
+
+	// Step 5: Create new messages
+	t.Run("Create messages", func(t *testing.T) {
+		// Define new messages
+		newMessages := []domain.Message{
+			{
+				TenantID: tenantID,
+				Module:   module,
+				Locale:   locale,
+				Code:     "test-code-3",
+				Message:  "Test Message 3",
+			},
+			{
+				TenantID: tenantID,
+				Module:   module,
+				Locale:   locale,
+				Code:     "test-code-4",
+				Message:  "Test Message 4",
+			},
+		}
+
+		// Create request body
+		reqBody := dtos.CreateMessagesRequest{
+			RequestInfo: requestInfo,
+			TenantId:    tenantID,
+			Messages:    newMessages,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		// Create request
+		req, err := http.NewRequest("POST", "/localization/messages/v1/_create", bytes.NewBuffer(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		// Create response recorder
+		w := httptest.NewRecorder()
+
+		// Perform request
+		router.ServeHTTP(w, req)
+
+		// Check status code
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Verify response
+		var response dtos.CreateMessagesResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Len(t, response.Messages, 2)
+		assert.Equal(t, newMessages[0].Code, response.Messages[0].Code)
+		assert.Equal(t, newMessages[0].Message, response.Messages[0].Message)
+		assert.Equal(t, newMessages[1].Code, response.Messages[1].Code)
+		assert.Equal(t, newMessages[1].Message, response.Messages[1].Message)
+
+		// Verify we can search for these new messages
+		searchURL := fmt.Sprintf("/localization/messages?tenantId=%s&module=%s&locale=%s&codes=test-code-3,test-code-4", tenantID, module, locale)
+		req, err = http.NewRequest("GET", searchURL, nil)
+		require.NoError(t, err)
+
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var searchResponse dtos.SearchMessagesResponse
+		err = json.Unmarshal(w.Body.Bytes(), &searchResponse)
+		require.NoError(t, err)
+		assert.Len(t, searchResponse.Messages, 2)
+	})
+
+	// Step 6: Update existing messages
+	t.Run("Update messages", func(t *testing.T) {
+		// Create update messages
+		updateMessages := []dtos.UpdateMessage{
+			{
+				Code:    "test-code-1",
+				Message: "Updated Test Message 1",
+			},
+		}
+
+		// Create request body
+		reqBody := dtos.UpdateMessagesRequest{
+			RequestInfo: requestInfo,
+			TenantId:    tenantID,
+			Locale:      locale,
+			Module:      module,
+			Messages:    updateMessages,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		// Create request
+		req, err := http.NewRequest("POST", "/localization/messages/v1/_update", bytes.NewBuffer(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		// Create response recorder
+		w := httptest.NewRecorder()
+
+		// Perform request
+		router.ServeHTTP(w, req)
+
+		// Check status code
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Verify response
+		var response dtos.UpdateMessagesResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Len(t, response.Messages, 1)
+		assert.Equal(t, updateMessages[0].Code, response.Messages[0].Code)
+		assert.Equal(t, updateMessages[0].Message, response.Messages[0].Message)
+
+		// Verify the message was updated by searching for it
+		searchURL := fmt.Sprintf("/localization/messages?tenantId=%s&module=%s&locale=%s&codes=test-code-1", tenantID, module, locale)
+		req, err = http.NewRequest("GET", searchURL, nil)
+		require.NoError(t, err)
+
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var searchResponse dtos.SearchMessagesResponse
+		err = json.Unmarshal(w.Body.Bytes(), &searchResponse)
+		require.NoError(t, err)
+		assert.Len(t, searchResponse.Messages, 1)
+		assert.Equal(t, "Updated Test Message 1", searchResponse.Messages[0].Message)
+	})
+
+	// Step 7: Delete messages
+	t.Run("Delete messages", func(t *testing.T) {
+		// Create delete messages
+		deleteMessages := []dtos.DeleteMessage{
+			{
+				Code:   "test-code-2",
+				Module: module,
+				Locale: locale,
+			},
+		}
+
+		// Create request body
+		reqBody := dtos.DeleteMessagesRequest{
+			RequestInfo: requestInfo,
+			TenantId:    tenantID,
+			Messages:    deleteMessages,
+		}
+		jsonBody, err := json.Marshal(reqBody)
+		require.NoError(t, err)
+
+		// Create request
+		req, err := http.NewRequest("POST", "/localization/messages/v1/_delete", bytes.NewBuffer(jsonBody))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		// Create response recorder
+		w := httptest.NewRecorder()
+
+		// Perform request
+		router.ServeHTTP(w, req)
+
+		// Check status code
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Verify response
+		var response dtos.DeleteMessagesResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.True(t, response.Success)
+
+		// Verify the message was deleted by searching for all messages
+		searchURL := fmt.Sprintf("/localization/messages?tenantId=%s&module=%s&locale=%s", tenantID, module, locale)
+		req, err = http.NewRequest("GET", searchURL, nil)
+		require.NoError(t, err)
+
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var searchResponse dtos.SearchMessagesResponse
+		err = json.Unmarshal(w.Body.Bytes(), &searchResponse)
+		require.NoError(t, err)
+
+		// We should have 3 messages left (1 updated + 2 created new ones)
+		assert.Len(t, searchResponse.Messages, 3)
+
+		// test-code-2 should not be in the results
+		for _, msg := range searchResponse.Messages {
+			assert.NotEqual(t, "test-code-2", msg.Code)
+		}
+	})
+
+	// Step 8: Bust cache
+	t.Run("Bust cache", func(t *testing.T) {
+		// Create request
+		req, err := http.NewRequest("POST", "/localization/messages/cache-bust", nil)
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		// Create response recorder
+		w := httptest.NewRecorder()
+
+		// Perform request
+		router.ServeHTTP(w, req)
+
+		// Check status code
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		// Verify response
+		var response dtos.CacheBustResponse
+		err = json.Unmarshal(w.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.True(t, response.Success)
+	})
 }
 
 // setupInMemoryDB creates an in-memory SQLite database for testing

@@ -16,4 +16,7 @@ type MessageCache interface {
 
 	// Invalidate removes cached messages for a specific tenant+module+locale
 	Invalidate(ctx context.Context, tenantID, module, locale string) error
+
+	// BustCache clears the entire cache
+	BustCache(ctx context.Context) error
 }

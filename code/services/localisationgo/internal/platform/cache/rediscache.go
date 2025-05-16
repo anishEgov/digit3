@@ -82,3 +82,35 @@ func (c *RedisCacheImpl) Invalidate(ctx context.Context, tenantID, module, local
 	key := buildKey(tenantID, module, locale)
 	return c.client.Del(ctx, key).Err()
 }
+
+// BustCache clears the entire cache by deleting all message keys
+func (c *RedisCacheImpl) BustCache(ctx context.Context) error {
+	// Use SCAN to find all message keys
+	var cursor uint64
+	var keys []string
+
+	for {
+		var batch []string
+		var err error
+
+		// Scan for keys with the pattern 'messages:*'
+		batch, cursor, err = c.client.Scan(ctx, cursor, "messages:*", 100).Result()
+		if err != nil {
+			return err
+		}
+
+		keys = append(keys, batch...)
+
+		// If cursor is 0, we've scanned all keys
+		if cursor == 0 {
+			break
+		}
+	}
+
+	// Delete the keys if any found
+	if len(keys) > 0 {
+		return c.client.Del(ctx, keys...).Err()
+	}
+
+	return nil
+}
