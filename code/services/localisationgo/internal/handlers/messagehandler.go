@@ -49,7 +49,6 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 	// Check for duplicate messages within the request
 	messageKeys := make(map[string]bool)
 	for i, msg := range req.Messages {
-		// Create a unique key for each message
 		key := fmt.Sprintf("%s:%s:%s:%s", req.TenantId, msg.Module, msg.Locale, msg.Code)
 		if _, exists := messageKeys[key]; exists {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("duplicate message at index %d with code '%s', module '%s', locale '%s'", i, msg.Code, msg.Module, msg.Locale)})
@@ -269,46 +268,26 @@ func (h *MessageHandler) BustCache(c *gin.Context) {
 func (h *MessageHandler) SearchMessages(c *gin.Context) {
 	var req dtos.SearchMessagesRequest
 
-	// Try to bind JSON if present in the body
-	jsonBindErr := c.ShouldBindJSON(&req)
+	// For GET requests, get parameters from URL query
+	tenantID := c.Query("tenantId")
+	module := c.Query("module")
+	locale := c.Query("locale")
+	codeStr := c.Query("codes")
 
-	// If JSON binding failed or body is empty, check for query parameters
-	if jsonBindErr != nil || (jsonBindErr == nil && req.TenantId == "") {
-		// Get parameters from URL query
-		tenantID := c.Query("tenantId")
-		module := c.Query("module")
-		locale := c.Query("locale")
-		codeStr := c.Query("codes")
+	// Create RequestInfo with minimal data
+	req.RequestInfo = models.RequestInfo{
+		APIId: "api.localization",
+		Ver:   "1.0",
+		Ts:    time.Now(),
+		MsgId: uuid.New().String(),
+	}
 
-		// Parse comma-separated codes if present
-		var codes []string
-		if codeStr != "" {
-			codes = strings.Split(codeStr, ",")
-		}
-
-		// Create RequestInfo with minimal data for empty requests
-		if req.RequestInfo.APIId == "" {
-			req.RequestInfo = models.RequestInfo{
-				APIId: "api.localization",
-				Ver:   "1.0",
-				Ts:    time.Now(),
-				MsgId: uuid.New().String(),
-			}
-		}
-
-		// Update request with query parameters if provided
-		if tenantID != "" {
-			req.TenantId = tenantID
-		}
-		if module != "" {
-			req.Module = module
-		}
-		if locale != "" {
-			req.Locale = locale
-		}
-		if len(codes) > 0 {
-			req.Codes = codes
-		}
+	// Update request with query parameters
+	req.TenantId = tenantID
+	req.Module = module
+	req.Locale = locale
+	if codeStr != "" {
+		req.Codes = strings.Split(codeStr, ",")
 	}
 
 	// Validate the request
@@ -337,8 +316,6 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Found %d messages", len(messages))
-
 	// Convert domain messages to response format
 	responseMessages := make([]dtos.MessageResponse, len(messages))
 	for i, msg := range messages {
@@ -358,11 +335,18 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 
 // RegisterRoutes registers the API routes on the given router group
 func (h *MessageHandler) RegisterRoutes(router *gin.RouterGroup) {
-	router.POST("/localization/messages/v1/_upsert", h.UpsertMessages)
-	router.POST("/localization/messages/v1/_search", h.SearchMessages)
+	// Search/Read operations - use GET
+	router.GET("/localization/messages/v1/_search", h.SearchMessages)
 	router.GET("/localization/messages", h.SearchMessages) // URL parameter-based search
+
+	// Create operation - use POST
 	router.POST("/localization/messages/v1/_create", h.CreateMessages)
-	router.POST("/localization/messages/v1/_update", h.UpdateMessages)
-	router.POST("/localization/messages/v1/_delete", h.DeleteMessages)
-	router.POST("/localization/messages/cache-bust", h.BustCache)
+
+	// Update operations - use PUT
+	router.PUT("/localization/messages/v1/_upsert", h.UpsertMessages)
+	router.PUT("/localization/messages/v1/_update", h.UpdateMessages)
+
+	// Delete operations - use DELETE
+	router.DELETE("/localization/messages/v1/_delete", h.DeleteMessages)
+	router.DELETE("/localization/messages/cache-bust", h.BustCache)
 }

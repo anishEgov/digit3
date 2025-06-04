@@ -37,10 +37,10 @@ func LoadConfig() *Config {
 
 		// Database configuration
 		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5433"),
+		DBPort:     getEnv("DB_PORT", "5432"),
 		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "localization"),
+		DBPassword: getEnv("DB_PASSWORD", "1234"),
+		DBName:     getEnv("DB_NAME", "keycloak"),
 		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
 
 		// Redis configuration
