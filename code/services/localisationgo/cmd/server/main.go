@@ -4,16 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
 	"localisationgo/configs"
 	"localisationgo/internal/core/services"
-	"localisationgo/internal/handlers"
 	"localisationgo/internal/platform/cache"
 	"localisationgo/internal/repositories/postgres"
+	"localisationgo/internal/server"
 )
 
 func main() {
@@ -62,19 +64,31 @@ func main() {
 	messageCache := cache.NewRedisCache(redisClient)
 	messageService := services.NewMessageService(messageRepo, messageCache)
 
-	// Initialize handler
-	messageHandler := handlers.NewMessageHandler(messageService)
+	// Create and start the server
+	srv := server.NewServer(
+		config.RESTPort,  // Use RESTPort from config
+		config.GRPCPort,  // Use GRPCPort from config
+		messageService,
+	)
 
-	// Setup Gin router
-	router := gin.Default()
-
-	// Add routes
-	apiGroup := router.Group("")
-	messageHandler.RegisterRoutes(apiGroup)
-
-	// Start server
-	log.Printf("Starting server on port %s...", config.ServerPort)
-	if err := router.Run(":" + config.ServerPort); err != nil {
-		log.Fatalf("Failed to run server: %v", err)
+	// Start the server
+	if err := srv.Start(); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
 	}
+
+	log.Printf("Server started - REST on port %d, gRPC on port %d", config.RESTPort, config.GRPCPort)
+
+	// Wait for interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+
+	// Gracefully shutdown the server
+	if err := srv.Stop(); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+
+	log.Println("Server exited properly")
 }

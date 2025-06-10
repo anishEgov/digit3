@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package localization.v1;
+
+option go_package = "localisationgo/api/proto/localization/v1;localizationv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Localization service definition
+service LocalizationService {
+  // Search messages
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse) {}
+  
+  // Create messages
+  rpc CreateMessages(CreateMessagesRequest) returns (CreateMessagesResponse) {}
+  
+  // Update messages
+  rpc UpdateMessages(UpdateMessagesRequest) returns (UpdateMessagesResponse) {}
+  
+  // Upsert messages
+  rpc UpsertMessages(UpsertMessagesRequest) returns (UpsertMessagesResponse) {}
+  
+  // Delete messages
+  rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse) {}
+  
+  // Bust cache
+  rpc BustCache(BustCacheRequest) returns (BustCacheResponse) {}
+}
+
+// Common message types
+message Message {
+  string code = 1;
+  string message = 2;
+  string module = 3;
+  string locale = 4;
+}
+
+message MessageIdentity {
+  string tenant_id = 1;
+  string module = 2;
+  string locale = 3;
+  string code = 4;
+}
+
+// Request/Response types
+message SearchMessagesRequest {
+  string tenant_id = 1;
+  string module = 2;
+  string locale = 3;
+  repeated string codes = 4;
+}
+
+message SearchMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message CreateMessagesRequest {
+  string tenant_id = 1;
+  repeated Message messages = 2;
+}
+
+message CreateMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message UpdateMessagesRequest {
+  string tenant_id = 1;
+  string locale = 2;
+  string module = 3;
+  repeated Message messages = 4;
+}
+
+message UpdateMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message UpsertMessagesRequest {
+  string tenant_id = 1;
+  repeated Message messages = 2;
+}
+
+message UpsertMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message DeleteMessagesRequest {
+  string tenant_id = 1;
+  repeated MessageIdentity messages = 2;
+}
+
+message DeleteMessagesResponse {
+  bool success = 1;
+}
+
+message BustCacheRequest {}
+
+message BustCacheResponse {
+  string message = 1;
+  bool success = 2;
+} 
