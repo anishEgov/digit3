@@ -40,7 +40,7 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 
 	// Use upsert (INSERT ... ON CONFLICT UPDATE) for each message
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO message (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
+		INSERT INTO localisation (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (tenant_id, locale, module, code) 
 		DO UPDATE SET 
@@ -98,7 +98,7 @@ func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID, lo
 
 	// Prepare statement for updating messages
 	stmt, err := tx.PrepareContext(ctx, `
-		UPDATE message
+		UPDATE localisation
 		SET message = $1, last_modified_by = $2, last_modified_date = $3
 		WHERE tenant_id = $4 AND locale = $5 AND module = $6 AND code = $7
 		RETURNING id
@@ -123,7 +123,7 @@ func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID, lo
 			// If no rows are affected, the message doesn't exist - create it
 			if err == sql.ErrNoRows {
 				insertStmt, err := tx.PrepareContext(ctx, `
-					INSERT INTO message (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
+					INSERT INTO localisation (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
 					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 					RETURNING id
 				`)
@@ -196,7 +196,7 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID, lo
 
 	// Create the delete query
 	query := fmt.Sprintf(`
-		DELETE FROM message
+		DELETE FROM localisation
 		WHERE tenant_id = $1 AND locale = $2 AND module = $3 AND code IN (%s)
 	`, strings.Join(placeholders, ","))
 
@@ -228,7 +228,7 @@ func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, modu
 	// Base query
 	query := `
 		SELECT id, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
-		FROM message 
+		FROM localisation 
 		WHERE tenant_id = $1
 	`
 	args := []interface{}{tenantID}
@@ -313,7 +313,7 @@ func (r *MessageRepositoryImpl) FindMessagesByCode(ctx context.Context, tenantID
 	// Create the complete query
 	query := fmt.Sprintf(`
 		SELECT id, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
-		FROM message 
+		FROM localisation 
 		WHERE tenant_id = $1 AND locale = $2 AND code IN (%s)
 		ORDER BY id
 	`, strings.Join(placeholders, ","))

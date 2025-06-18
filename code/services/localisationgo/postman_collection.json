@@ -1,0 +1,326 @@
+{
+	"info": {
+		"_postman_id": "localization-service",
+		"name": "Localization Service",
+		"description": "Collection for Localization Service REST and gRPC APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "REST APIs",
+			"item": [
+				{
+					"name": "Search Messages",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/localization/messages?tenantId={{tenant_id}}&module={{module}}&locale={{locale}}&codes={{codes}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "localization", "messages"],
+							"query": [
+								{
+									"key": "tenantId",
+									"value": "{{tenant_id}}"
+								},
+								{
+									"key": "module",
+									"value": "{{module}}"
+								},
+								{
+									"key": "locale",
+									"value": "{{locale}}"
+								},
+								{
+									"key": "codes",
+									"value": "{{codes}}"
+								}
+							]
+						},
+						"description": "Search for localization messages using URL query parameters"
+					}
+				},
+				{
+					"name": "Create Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/localization/messages/v1/_create",
+							"host": ["{{base_url}}"],
+							"path": ["api", "localization", "messages", "v1", "_create"]
+						},
+						"description": "Create new localization messages"
+					}
+				},
+				{
+					"name": "Update Messages",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"locale\": \"{{locale}}\",\n    \"module\": \"{{module}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Updated Message\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/localization/messages/v1/_update",
+							"host": ["{{base_url}}"],
+							"path": ["api", "localization", "messages", "v1", "_update"]
+						},
+						"description": "Update existing localization messages for a specific module"
+					}
+				},
+				{
+					"name": "Upsert Messages",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/localization/messages/v1/_upsert",
+							"host": ["{{base_url}}"],
+							"path": ["api", "localization", "messages", "v1", "_upsert"]
+						},
+						"description": "Create or update localization messages"
+					}
+				},
+				{
+					"name": "Delete Messages",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\",\n            \"code\": \"example.code\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/localization/messages/v1/_delete",
+							"host": ["{{base_url}}"],
+							"path": ["api", "localization", "messages", "v1", "_delete"]
+						},
+						"description": "Delete localization messages"
+					}
+				},
+				{
+					"name": "Bust Cache",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/localization/messages/cache-bust",
+							"host": ["{{base_url}}"],
+							"path": ["api", "localization", "messages", "cache-bust"]
+						},
+						"description": "Clear the entire message cache"
+					}
+				}
+			]
+		},
+		{
+			"name": "gRPC APIs",
+			"item": [
+				{
+					"name": "Search Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"module\": \"{{module}}\",\n    \"locale\": \"{{locale}}\",\n    \"codes\": [\"example.code\"]\n}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/SearchMessages",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "SearchMessages"]
+						},
+						"description": "Search for localization messages using gRPC"
+					}
+				},
+				{
+					"name": "Create Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/CreateMessages",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "CreateMessages"]
+						},
+						"description": "Create new localization messages using gRPC"
+					}
+				},
+				{
+					"name": "Update Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"locale\": \"{{locale}}\",\n    \"module\": \"{{module}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Updated Message\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/UpdateMessages",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "UpdateMessages"]
+						},
+						"description": "Update existing localization messages using gRPC"
+					}
+				},
+				{
+					"name": "Upsert Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/UpsertMessages",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "UpsertMessages"]
+						},
+						"description": "Create or update localization messages using gRPC"
+					}
+				},
+				{
+					"name": "Delete Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\",\n            \"code\": \"example.code\"\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/DeleteMessages",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "DeleteMessages"]
+						},
+						"description": "Delete localization messages using gRPC"
+					}
+				},
+				{
+					"name": "Bust Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/BustCache",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "BustCache"]
+						},
+						"description": "Clear the entire message cache using gRPC"
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8088",
+			"type": "string"
+		},
+		{
+			"key": "grpc_url",
+			"value": "http://localhost:8089",
+			"type": "string"
+		},
+		{
+			"key": "tenant_id",
+			"value": "DEFAULT",
+			"type": "string"
+		},
+		{
+			"key": "module",
+			"value": "test-module",
+			"type": "string"
+		},
+		{
+			"key": "locale",
+			"value": "en_IN",
+			"type": "string"
+		},
+		{
+			"key": "codes",
+			"value": "example.code",
+			"type": "string"
+		}
+	]
+} 
