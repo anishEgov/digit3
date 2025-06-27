@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 	"strings"
 	"time"
 
@@ -12,16 +13,103 @@ import (
 
 // MessageServiceImpl is the implementation of MessageService
 type MessageServiceImpl struct {
-	repository ports.MessageRepository
-	cache      ports.MessageCache
+	repository        ports.MessageRepository
+	cache             ports.MessageCache
+	messageLocalesMap map[string]map[string][]string // tenantID -> code -> []locale
 }
 
 // NewMessageService creates a new message service
 func NewMessageService(repository ports.MessageRepository, cache ports.MessageCache) ports.MessageService {
 	return &MessageServiceImpl{
-		repository: repository,
-		cache:      cache,
+		repository:        repository,
+		cache:             cache,
+		messageLocalesMap: make(map[string]map[string][]string),
 	}
+}
+
+// LoadAllMessages loads all messages from the repository and builds the tenant-to-code-to-locales map
+func (s *MessageServiceImpl) LoadAllMessages(ctx context.Context) error {
+	log.Println("Loading all messages into cache...")
+	messages, err := s.repository.FindAllMessages(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Clear the existing map
+	s.messageLocalesMap = make(map[string]map[string][]string)
+
+	for _, msg := range messages {
+		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
+			s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+		}
+		s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+	}
+	log.Println("Finished loading all messages into cache.")
+	return nil
+}
+
+// FindMissingMessages finds the missing messages for a given tenant.
+// The response can be filtered by providing a list of locales.
+func (s *MessageServiceImpl) FindMissingMessages(ctx context.Context, tenantID string, requestedLocales []string) (map[string][]string, error) {
+	tenantMessages, ok := s.messageLocalesMap[tenantID]
+	if !ok {
+		return nil, nil // Or an error indicating tenant not found
+	}
+
+	// Determine the set of all unique codes for the tenant.
+	allCodesForTenant := make(map[string]struct{})
+	for code := range tenantMessages {
+		allCodesForTenant[code] = struct{}{}
+	}
+
+	// Determine the set of all unique locales for the tenant.
+	allLocalesForTenant := make(map[string]struct{})
+	for _, msgLocales := range tenantMessages {
+		for _, l := range msgLocales {
+			allLocalesForTenant[l] = struct{}{}
+		}
+	}
+
+	// Calculate all missing messages for ALL locales.
+	allMissingMessages := make(map[string][]string)
+	for locale := range allLocalesForTenant {
+		// Create a set of codes that exist for the current locale
+		localeCodes := make(map[string]struct{})
+		for code, msgLocales := range tenantMessages {
+			for _, l := range msgLocales {
+				if l == locale {
+					localeCodes[code] = struct{}{}
+					break
+				}
+			}
+		}
+
+		// Find the codes that are in allCodesForTenant but not in localeCodes
+		var missing []string
+		for code := range allCodesForTenant {
+			if _, exists := localeCodes[code]; !exists {
+				missing = append(missing, code)
+			}
+		}
+		if len(missing) > 0 {
+			allMissingMessages[locale] = missing
+		}
+	}
+
+	// If no locales were requested, return all missing messages.
+	if len(requestedLocales) == 0 {
+		return allMissingMessages, nil
+	}
+
+	// Otherwise, filter the results based on the requested locales.
+	filteredMissingMessages := make(map[string][]string)
+	for _, requestedLocale := range requestedLocales {
+		if missingCodes, found := allMissingMessages[requestedLocale]; found {
+			filteredMissingMessages[requestedLocale] = missingCodes
+		}
+	}
+
+	return filteredMissingMessages, nil
 }
 
 // UpsertMessages creates or updates localization messages

@@ -22,4 +22,13 @@ type MessageRepository interface {
 
 	// DeleteMessages deletes messages by tenantID, locale, module and codes
 	DeleteMessages(ctx context.Context, tenantID, locale, module string, codes []string) error
+
+	// FindAllMessages fetches all messages from the database
+	FindAllMessages(ctx context.Context) ([]domain.Message, error)
+}
+
+// HealthRepository defines the interface for health checks
+type HealthRepository interface {
+	// CheckHealth checks the health of the system
+	CheckHealth() error
 }

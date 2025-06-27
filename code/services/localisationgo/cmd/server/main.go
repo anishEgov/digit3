@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -64,10 +65,15 @@ func main() {
 	messageCache := cache.NewRedisCache(redisClient)
 	messageService := services.NewMessageService(messageRepo, messageCache)
 
+	// Load all messages into the cache
+	if err := messageService.LoadAllMessages(context.Background()); err != nil {
+		log.Fatalf("Failed to load messages into cache: %v", err)
+	}
+
 	// Create and start the server
 	srv := server.NewServer(
-		config.RESTPort,  // Use RESTPort from config
-		config.GRPCPort,  // Use GRPCPort from config
+		config.RESTPort, // Use RESTPort from config
+		config.GRPCPort, // Use GRPCPort from config
 		messageService,
 	)
 

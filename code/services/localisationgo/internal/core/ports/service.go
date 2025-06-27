@@ -29,4 +29,10 @@ type MessageService interface {
 
 	// BustCache clears the entire cache
 	BustCache(ctx context.Context) error
+
+	// LoadAllMessages loads all messages from the repository and builds the tenant-to-code-to-locales map
+	LoadAllMessages(ctx context.Context) error
+
+	// FindMissingMessages finds the missing messages for a given tenant and a list of locales.
+	FindMissingMessages(ctx context.Context, tenantID string, locales []string) (map[string][]string, error)
 }

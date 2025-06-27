@@ -64,3 +64,8 @@ type MessageIdentity struct {
 	Locale   string `json:"locale"`
 	Code     string `json:"code"`
 }
+
+// FindMissingMessagesRequest represents the request to find missing messages
+type FindMissingMessagesRequest struct {
+	Locales []string `json:"locales"`
+}

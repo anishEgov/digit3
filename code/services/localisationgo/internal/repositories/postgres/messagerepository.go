@@ -351,3 +351,43 @@ func (r *MessageRepositoryImpl) FindMessagesByCode(ctx context.Context, tenantID
 
 	return messages, nil
 }
+
+// FindAllMessages fetches all messages from the database
+func (r *MessageRepositoryImpl) FindAllMessages(ctx context.Context) ([]domain.Message, error) {
+	query := `
+		SELECT id, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+		FROM localisation
+		ORDER BY tenant_id, module, locale, code
+	`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query all messages: %w", err)
+	}
+	defer rows.Close()
+
+	var messages []domain.Message
+	for rows.Next() {
+		var msg domain.Message
+		if err := rows.Scan(
+			&msg.ID,
+			&msg.TenantID,
+			&msg.Module,
+			&msg.Locale,
+			&msg.Code,
+			&msg.Message,
+			&msg.CreatedBy,
+			&msg.CreatedDate,
+			&msg.LastModifiedBy,
+			&msg.LastModifiedDate,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", err)
+		}
+		messages = append(messages, msg)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+
+	return messages, nil
+}

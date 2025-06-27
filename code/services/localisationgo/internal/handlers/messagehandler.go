@@ -248,6 +248,33 @@ func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 	})
 }
 
+// FindMissingMessages handles the API endpoint for finding missing messages
+func (h *MessageHandler) FindMissingMessages(c *gin.Context) {
+	tenantID := c.Param("tenantId")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
+		return
+	}
+
+	var req dtos.FindMissingMessagesRequest
+	// It's a POST request, so we can bind JSON.
+	// We don't require the body, so we ignore the error if it's empty.
+	_ = c.ShouldBindJSON(&req)
+
+	missingMessages, err := h.service.FindMissingMessages(c.Request.Context(), tenantID, req.Locales)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if missingMessages == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "tenant not found or no messages for tenant"})
+		return
+	}
+
+	c.JSON(http.StatusOK, missingMessages)
+}
+
 // BustCache handles the cache bust API endpoint
 func (h *MessageHandler) BustCache(c *gin.Context) {
 	// Call the service
@@ -335,18 +362,30 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 
 // RegisterRoutes registers the API routes on the given router group
 func (h *MessageHandler) RegisterRoutes(router *gin.RouterGroup) {
-	// Search/Read operations - use GET
+	v1 := router.Group("/v1")
+	{
+		messages := v1.Group("/messages")
+		{
+			messages.POST("/upsert", h.UpsertMessages)
+			messages.POST("/create", h.CreateMessages)
+			messages.POST("/update", h.UpdateMessages)
+			messages.POST("/delete", h.DeleteMessages)
+			messages.GET("/search", h.SearchMessages)
+			messages.POST("/missing/:tenantId", h.FindMissingMessages)
+		}
+		cache := v1.Group("/cache")
+		{
+			cache.DELETE("/bust", h.BustCache)
+		}
+	}
+
+	// Deprecated routes - to be removed in a future version
+	// These routes are kept for backward compatibility
 	router.GET("/localization/messages/v1/_search", h.SearchMessages)
 	router.GET("/localization/messages", h.SearchMessages) // URL parameter-based search
-
-	// Create operation - use POST
 	router.POST("/localization/messages/v1/_create", h.CreateMessages)
-
-	// Update operations - use PUT
 	router.PUT("/localization/messages/v1/_upsert", h.UpsertMessages)
 	router.PUT("/localization/messages/v1/_update", h.UpdateMessages)
-
-	// Delete operations - use DELETE
 	router.DELETE("/localization/messages/v1/_delete", h.DeleteMessages)
 	router.DELETE("/localization/messages/cache-bust", h.BustCache)
 }
