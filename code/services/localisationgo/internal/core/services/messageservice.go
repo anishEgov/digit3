@@ -132,16 +132,23 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 	}
 
 	// Invalidate cache for affected tenant+module+locale combinations
-	cacheKeys := make(map[string]struct{})
-	for _, msg := range messages {
-		key := msg.TenantID + ":" + msg.Module + ":" + msg.Locale
-		cacheKeys[key] = struct{}{}
-	}
+	s.invalidateCacheForMessages(ctx, messages)
 
-	for key := range cacheKeys {
-		parts := strings.Split(key, ":")
-		if len(parts) == 3 {
-			_ = s.cache.Invalidate(ctx, parts[0], parts[1], parts[2])
+	// Update the in-memory map
+	for _, msg := range messages {
+		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
+			s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+		}
+		// Avoid adding duplicate locales for a code
+		found := false
+		for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+			if locale == msg.Locale {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
 		}
 	}
 
@@ -167,6 +174,24 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 	// Invalidate cache for affected tenant+module+locale combinations
 	s.invalidateCacheForMessages(ctx, messages)
 
+	// Update the in-memory map
+	for _, msg := range messages {
+		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
+			s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+		}
+		// Avoid adding duplicate locales for a code
+		found := false
+		for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+			if locale == msg.Locale {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+		}
+	}
+
 	return messages, nil
 }
 
@@ -189,6 +214,9 @@ func (s *MessageServiceImpl) UpdateMessagesForModule(ctx context.Context, tenant
 
 	// Invalidate cache
 	_ = s.cache.Invalidate(ctx, tenantID, module, locale)
+
+	// We don't need to update the in-memory map here, because the locales don't change on update.
+	// The message content changes, but the missing messages logic only cares about the presence of a (code, locale) pair.
 
 	return messages, nil
 }
@@ -226,6 +254,13 @@ func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, messageIdentiti
 
 				// Invalidate cache
 				_ = s.cache.Invalidate(ctx, tenantID, module, locale)
+
+				// Update the in-memory map by reloading all messages.
+				// This is a simple approach. A more optimized approach would be to remove the specific entries.
+				if err := s.LoadAllMessages(ctx); err != nil {
+					log.Printf("Error reloading messages into cache after deletion: %v", err)
+					// Decide if we should return this error or just log it
+				}
 			}
 		}
 	}

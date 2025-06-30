@@ -9,8 +9,8 @@ import (
 // Config represents the application configuration
 type Config struct {
 	// Server configuration
-	RESTPort  int
-	GRPCPort  int
+	RESTPort int
+	GRPCPort int
 
 	// Database configuration
 	DBHost     string
@@ -34,15 +34,15 @@ type Config struct {
 func LoadConfig() *Config {
 	return &Config{
 		// Server configuration
-		RESTPort:  getEnvAsInt("REST_PORT", 8088),
-		GRPCPort:  getEnvAsInt("GRPC_PORT", 8089),
+		RESTPort: getEnvAsInt("REST_PORT", 8088),
+		GRPCPort: getEnvAsInt("GRPC_PORT", 8089),
 
 		// Database configuration
 		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
+		DBPort:     getEnv("DB_PORT", "5433"),
 		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "1234"),
-		DBName:     getEnv("DB_NAME", "keycloak"),
+		DBPassword: getEnv("DB_PASSWORD", "postgres"),
+		DBName:     getEnv("DB_NAME", "postgres"),
 		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
 
 		// Redis configuration
