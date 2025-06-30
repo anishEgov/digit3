@@ -25,6 +25,9 @@ service LocalizationService {
   
   // Bust cache
   rpc BustCache(BustCacheRequest) returns (BustCacheResponse) {}
+
+  // Find missing messages
+  rpc FindMissingMessages(FindMissingMessagesRequest) returns (FindMissingMessagesResponse) {}
 }
 
 // Common message types
@@ -97,4 +100,18 @@ message BustCacheRequest {}
 message BustCacheResponse {
   string message = 1;
   bool success = 2;
+}
+
+// Request/Response for FindMissingMessages
+message FindMissingMessagesRequest {
+  string tenant_id = 1;
+  repeated string locales = 2;
+}
+
+message FindMissingMessagesResponse {
+  map<string, MissingCodes> missing_messages = 1;
+}
+
+message MissingCodes {
+  repeated string codes = 1;
 } 

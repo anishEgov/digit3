@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"localisationgo/api/proto/localization/v1"
+	localizationv1 "localisationgo/api/proto/localization/v1"
 	"localisationgo/internal/core/domain"
 	"localisationgo/internal/core/ports"
 	"localisationgo/pkg/dtos"
@@ -237,4 +237,30 @@ func (s *GRPCServer) BustCache(ctx context.Context, req *localizationv1.BustCach
 		Message: "Cache cleared successfully",
 		Success: true,
 	}, nil
-} 
+}
+
+// FindMissingMessages implements the FindMissingMessages gRPC endpoint
+func (s *GRPCServer) FindMissingMessages(ctx context.Context, req *localizationv1.FindMissingMessagesRequest) (*localizationv1.FindMissingMessagesResponse, error) {
+	if req.TenantId == "" {
+		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	}
+
+	missingMessages, err := s.service.FindMissingMessages(ctx, req.TenantId, req.Locales)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to find missing messages: %v", err))
+	}
+
+	if missingMessages == nil {
+		return nil, status.Error(codes.NotFound, "tenant not found or no messages for tenant")
+	}
+
+	// Convert the map to the gRPC response format
+	responseMap := make(map[string]*localizationv1.MissingCodes)
+	for locale, codes := range missingMessages {
+		responseMap[locale] = &localizationv1.MissingCodes{Codes: codes}
+	}
+
+	return &localizationv1.FindMissingMessagesResponse{
+		MissingMessages: responseMap,
+	}, nil
+}
