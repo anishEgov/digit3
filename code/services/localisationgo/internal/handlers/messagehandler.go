@@ -30,6 +30,12 @@ func NewMessageHandler(service ports.MessageService) *MessageHandler {
 
 // UpsertMessages handles the messages upsert API endpoint
 func (h *MessageHandler) UpsertMessages(c *gin.Context) {
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
 	var req dtos.UpsertMessagesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -37,10 +43,6 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 	}
 
 	// Validate the request
-	if req.TenantId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
-		return
-	}
 	if len(req.Messages) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one message is required"})
 		return
@@ -49,7 +51,7 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 	// Check for duplicate messages within the request
 	messageKeys := make(map[string]bool)
 	for i, msg := range req.Messages {
-		key := fmt.Sprintf("%s:%s:%s:%s", req.TenantId, msg.Module, msg.Locale, msg.Code)
+		key := fmt.Sprintf("%s:%s:%s:%s", tenantID, msg.Module, msg.Locale, msg.Code)
 		if _, exists := messageKeys[key]; exists {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("duplicate message at index %d with code '%s', module '%s', locale '%s'", i, msg.Code, msg.Module, msg.Locale)})
 			return
@@ -58,7 +60,7 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 	}
 
 	// Call the service
-	messages, err := h.service.UpsertMessages(c.Request.Context(), req.TenantId, req.Messages)
+	messages, err := h.service.UpsertMessages(c.Request.Context(), tenantID, req.Messages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -83,6 +85,12 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 
 // CreateMessages handles the messages create API endpoint
 func (h *MessageHandler) CreateMessages(c *gin.Context) {
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
 	var req dtos.CreateMessagesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -90,10 +98,6 @@ func (h *MessageHandler) CreateMessages(c *gin.Context) {
 	}
 
 	// Validate the request
-	if req.TenantId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
-		return
-	}
 	if len(req.Messages) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one message is required"})
 		return
@@ -103,7 +107,7 @@ func (h *MessageHandler) CreateMessages(c *gin.Context) {
 	messageKeys := make(map[string]bool)
 	for i, msg := range req.Messages {
 		// Create a unique key for each message
-		key := fmt.Sprintf("%s:%s:%s:%s", req.TenantId, msg.Module, msg.Locale, msg.Code)
+		key := fmt.Sprintf("%s:%s:%s:%s", tenantID, msg.Module, msg.Locale, msg.Code)
 		if _, exists := messageKeys[key]; exists {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("duplicate message at index %d with code '%s', module '%s', locale '%s'", i, msg.Code, msg.Module, msg.Locale)})
 			return
@@ -112,7 +116,7 @@ func (h *MessageHandler) CreateMessages(c *gin.Context) {
 	}
 
 	// Call the service
-	messages, err := h.service.CreateMessages(c.Request.Context(), req.TenantId, req.Messages)
+	messages, err := h.service.CreateMessages(c.Request.Context(), tenantID, req.Messages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -137,6 +141,12 @@ func (h *MessageHandler) CreateMessages(c *gin.Context) {
 
 // UpdateMessages handles the messages update API endpoint
 func (h *MessageHandler) UpdateMessages(c *gin.Context) {
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
 	var req dtos.UpdateMessagesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -144,10 +154,6 @@ func (h *MessageHandler) UpdateMessages(c *gin.Context) {
 	}
 
 	// Validate the request
-	if req.TenantId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
-		return
-	}
 	if req.Locale == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "locale is required"})
 		return
@@ -183,7 +189,7 @@ func (h *MessageHandler) UpdateMessages(c *gin.Context) {
 	}
 
 	// Call the service
-	messages, err := h.service.UpdateMessagesForModule(c.Request.Context(), req.TenantId, req.Locale, req.Module, domainMessages)
+	messages, err := h.service.UpdateMessagesForModule(c.Request.Context(), tenantID, req.Locale, req.Module, domainMessages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -208,6 +214,12 @@ func (h *MessageHandler) UpdateMessages(c *gin.Context) {
 
 // DeleteMessages handles the messages delete API endpoint
 func (h *MessageHandler) DeleteMessages(c *gin.Context) {
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
 	var req dtos.DeleteMessagesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -215,10 +227,6 @@ func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 	}
 
 	// Validate the request
-	if req.TenantId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
-		return
-	}
 	if len(req.Messages) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one message is required"})
 		return
@@ -228,7 +236,7 @@ func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 	messageIdentities := make([]dtos.MessageIdentity, len(req.Messages))
 	for i, msg := range req.Messages {
 		messageIdentities[i] = dtos.MessageIdentity{
-			TenantId: req.TenantId,
+			TenantId: tenantID,
 			Module:   msg.Module,
 			Locale:   msg.Locale,
 			Code:     msg.Code,
@@ -250,9 +258,9 @@ func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 
 // FindMissingMessages handles the API endpoint for finding missing messages
 func (h *MessageHandler) FindMissingMessages(c *gin.Context) {
-	tenantID := c.Param("tenantId")
+	tenantID := c.GetHeader("X-Tenant-ID")
 	if tenantID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
 		return
 	}
 
@@ -293,10 +301,15 @@ func (h *MessageHandler) BustCache(c *gin.Context) {
 
 // SearchMessages handles the messages search API endpoint
 func (h *MessageHandler) SearchMessages(c *gin.Context) {
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
 	var req dtos.SearchMessagesRequest
 
 	// For GET requests, get parameters from URL query
-	tenantID := c.Query("tenantId")
 	module := c.Query("module")
 	locale := c.Query("locale")
 	codeStr := c.Query("codes")
@@ -310,7 +323,6 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 	}
 
 	// Update request with query parameters
-	req.TenantId = tenantID
 	req.Module = module
 	req.Locale = locale
 	if codeStr != "" {
@@ -318,23 +330,18 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 	}
 
 	// Validate the request
-	if req.TenantId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tenantId is required"})
-		return
-	}
-
 	log.Printf("Searching messages with tenantId=%s, module=%s, locale=%s, codes=%v",
-		req.TenantId, req.Module, req.Locale, req.Codes)
+		tenantID, req.Module, req.Locale, req.Codes)
 
 	var messages []domain.Message
 	var err error
 
 	// If codes are provided, search by codes
 	if len(req.Codes) > 0 {
-		messages, err = h.service.SearchMessagesByCodes(c.Request.Context(), req.TenantId, req.Locale, req.Codes)
+		messages, err = h.service.SearchMessagesByCodes(c.Request.Context(), tenantID, req.Locale, req.Codes)
 	} else {
 		// Otherwise search by module and locale
-		messages, err = h.service.SearchMessages(c.Request.Context(), req.TenantId, req.Module, req.Locale)
+		messages, err = h.service.SearchMessages(c.Request.Context(), tenantID, req.Module, req.Locale)
 	}
 
 	if err != nil {
@@ -362,30 +369,20 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 
 // RegisterRoutes registers the API routes on the given router group
 func (h *MessageHandler) RegisterRoutes(router *gin.RouterGroup) {
-	v1 := router.Group("/v1")
+	// v1 routes
+	v1 := router.Group("/localization/messages/v1")
 	{
-		messages := v1.Group("/messages")
-		{
-			messages.POST("/upsert", h.UpsertMessages)
-			messages.POST("/create", h.CreateMessages)
-			messages.POST("/update", h.UpdateMessages)
-			messages.POST("/delete", h.DeleteMessages)
-			messages.GET("/search", h.SearchMessages)
-			messages.POST("/missing/:tenantId", h.FindMissingMessages)
-		}
-		cache := v1.Group("/cache")
-		{
-			cache.DELETE("/bust", h.BustCache)
-		}
+		v1.GET("/_search", h.SearchMessages)
+		v1.POST("/_create", h.CreateMessages)
+		v1.PUT("/_update", h.UpdateMessages)
+		v1.PUT("/_upsert", h.UpsertMessages)
+		v1.DELETE("/_delete", h.DeleteMessages)
+		v1.POST("/_missing", h.FindMissingMessages)
 	}
 
-	// Deprecated routes - to be removed in a future version
-	// These routes are kept for backward compatibility
-	router.GET("/localization/messages/v1/_search", h.SearchMessages)
-	router.GET("/localization/messages", h.SearchMessages) // URL parameter-based search
-	router.POST("/localization/messages/v1/_create", h.CreateMessages)
-	router.PUT("/localization/messages/v1/_upsert", h.UpsertMessages)
-	router.PUT("/localization/messages/v1/_update", h.UpdateMessages)
-	router.DELETE("/localization/messages/v1/_delete", h.DeleteMessages)
-	router.DELETE("/localization/messages/cache-bust", h.BustCache)
+	// Cache bust route
+	cacheBustV1 := router.Group("/localization/cache/v1")
+	{
+		cacheBustV1.DELETE("/_bust", h.BustCache)
+	}
 }

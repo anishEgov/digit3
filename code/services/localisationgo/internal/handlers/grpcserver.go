@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	localizationv1 "localisationgo/api/proto/localization/v1"
@@ -26,19 +27,33 @@ func NewGRPCServer(service ports.MessageService) *GRPCServer {
 	}
 }
 
+// getTenantIDFromContext extracts the tenant ID from the gRPC context metadata.
+func getTenantIDFromContext(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", status.Error(codes.InvalidArgument, "missing metadata")
+	}
+
+	tenantID := md.Get("x-tenant-id")
+	if len(tenantID) == 0 || tenantID[0] == "" {
+		return "", status.Error(codes.InvalidArgument, "x-tenant-id header is required")
+	}
+
+	return tenantID[0], nil
+}
+
 // SearchMessages implements the SearchMessages gRPC endpoint
 func (s *GRPCServer) SearchMessages(ctx context.Context, req *localizationv1.SearchMessagesRequest) (*localizationv1.SearchMessagesResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	var messages []domain.Message
-	var err error
-
 	if len(req.Codes) > 0 {
-		messages, err = s.service.SearchMessagesByCodes(ctx, req.TenantId, req.Locale, req.Codes)
+		messages, err = s.service.SearchMessagesByCodes(ctx, tenantID, req.Locale, req.Codes)
 	} else {
-		messages, err = s.service.SearchMessages(ctx, req.TenantId, req.Module, req.Locale)
+		messages, err = s.service.SearchMessages(ctx, tenantID, req.Module, req.Locale)
 	}
 
 	if err != nil {
@@ -63,8 +78,9 @@ func (s *GRPCServer) SearchMessages(ctx context.Context, req *localizationv1.Sea
 
 // CreateMessages implements the CreateMessages gRPC endpoint
 func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.CreateMessagesRequest) (*localizationv1.CreateMessagesResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(req.Messages) == 0 {
@@ -82,7 +98,7 @@ func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.Cre
 		}
 	}
 
-	messages, err := s.service.CreateMessages(ctx, req.TenantId, domainMessages)
+	messages, err := s.service.CreateMessages(ctx, tenantID, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to create messages: %v", err))
 	}
@@ -105,8 +121,9 @@ func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.Cre
 
 // UpdateMessages implements the UpdateMessages gRPC endpoint
 func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.UpdateMessagesRequest) (*localizationv1.UpdateMessagesResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	if req.Locale == "" {
@@ -132,7 +149,7 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 		}
 	}
 
-	messages, err := s.service.UpdateMessagesForModule(ctx, req.TenantId, req.Locale, req.Module, domainMessages)
+	messages, err := s.service.UpdateMessagesForModule(ctx, tenantID, req.Locale, req.Module, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update messages: %v", err))
 	}
@@ -155,8 +172,9 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 
 // UpsertMessages implements the UpsertMessages gRPC endpoint
 func (s *GRPCServer) UpsertMessages(ctx context.Context, req *localizationv1.UpsertMessagesRequest) (*localizationv1.UpsertMessagesResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(req.Messages) == 0 {
@@ -174,7 +192,7 @@ func (s *GRPCServer) UpsertMessages(ctx context.Context, req *localizationv1.Ups
 		}
 	}
 
-	messages, err := s.service.UpsertMessages(ctx, req.TenantId, domainMessages)
+	messages, err := s.service.UpsertMessages(ctx, tenantID, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to upsert messages: %v", err))
 	}
@@ -197,8 +215,9 @@ func (s *GRPCServer) UpsertMessages(ctx context.Context, req *localizationv1.Ups
 
 // DeleteMessages implements the DeleteMessages gRPC endpoint
 func (s *GRPCServer) DeleteMessages(ctx context.Context, req *localizationv1.DeleteMessagesRequest) (*localizationv1.DeleteMessagesResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(req.Messages) == 0 {
@@ -209,14 +228,14 @@ func (s *GRPCServer) DeleteMessages(ctx context.Context, req *localizationv1.Del
 	messageIdentities := make([]dtos.MessageIdentity, len(req.Messages))
 	for i, msg := range req.Messages {
 		messageIdentities[i] = dtos.MessageIdentity{
-			TenantId: req.TenantId,
+			TenantId: tenantID,
 			Module:   msg.Module,
 			Locale:   msg.Locale,
 			Code:     msg.Code,
 		}
 	}
 
-	err := s.service.DeleteMessages(ctx, messageIdentities)
+	err = s.service.DeleteMessages(ctx, messageIdentities)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete messages: %v", err))
 	}
@@ -241,11 +260,12 @@ func (s *GRPCServer) BustCache(ctx context.Context, req *localizationv1.BustCach
 
 // FindMissingMessages implements the FindMissingMessages gRPC endpoint
 func (s *GRPCServer) FindMissingMessages(ctx context.Context, req *localizationv1.FindMissingMessagesRequest) (*localizationv1.FindMissingMessagesResponse, error) {
-	if req.TenantId == "" {
-		return nil, status.Error(codes.InvalidArgument, "tenant_id is required")
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	missingMessages, err := s.service.FindMissingMessages(ctx, req.TenantId, req.Locales)
+	missingMessages, err := s.service.FindMissingMessages(ctx, tenantID, req.Locales)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to find missing messages: %v", err))
 	}

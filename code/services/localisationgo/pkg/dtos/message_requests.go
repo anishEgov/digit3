@@ -8,14 +8,12 @@ import (
 // UpsertMessagesRequest represents the request for upserting localization messages
 type UpsertMessagesRequest struct {
 	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	TenantId    string             `json:"tenantId"`
 	Messages    []domain.Message   `json:"messages"`
 }
 
 // SearchMessagesRequest represents the request for searching localization messages
 type SearchMessagesRequest struct {
 	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	TenantId    string             `json:"tenantId"`
 	Module      string             `json:"module,omitempty"`
 	Locale      string             `json:"locale,omitempty"`
 	Codes       []string           `json:"codes,omitempty"`
@@ -24,14 +22,12 @@ type SearchMessagesRequest struct {
 // CreateMessagesRequest represents the request for creating new localization messages
 type CreateMessagesRequest struct {
 	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	TenantId    string             `json:"tenantId"`
 	Messages    []domain.Message   `json:"messages"`
 }
 
 // UpdateMessagesRequest represents the request for updating existing localization messages
 type UpdateMessagesRequest struct {
 	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	TenantId    string             `json:"tenantId"`
 	Locale      string             `json:"locale"`
 	Module      string             `json:"module"`
 	Messages    []UpdateMessage    `json:"messages"`
@@ -53,7 +49,6 @@ type DeleteMessage struct {
 // DeleteMessagesRequest represents the request for deleting localization messages
 type DeleteMessagesRequest struct {
 	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	TenantId    string             `json:"tenantId"`
 	Messages    []DeleteMessage    `json:"messages"`
 }
 

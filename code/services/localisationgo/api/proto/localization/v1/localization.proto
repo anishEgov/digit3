@@ -39,18 +39,16 @@ message Message {
 }
 
 message MessageIdentity {
-  string tenant_id = 1;
-  string module = 2;
-  string locale = 3;
-  string code = 4;
+  string module = 1;
+  string locale = 2;
+  string code = 3;
 }
 
 // Request/Response types
 message SearchMessagesRequest {
-  string tenant_id = 1;
-  string module = 2;
-  string locale = 3;
-  repeated string codes = 4;
+  string module = 1;
+  string locale = 2;
+  repeated string codes = 3;
 }
 
 message SearchMessagesResponse {
@@ -58,8 +56,7 @@ message SearchMessagesResponse {
 }
 
 message CreateMessagesRequest {
-  string tenant_id = 1;
-  repeated Message messages = 2;
+  repeated Message messages = 1;
 }
 
 message CreateMessagesResponse {
@@ -67,10 +64,9 @@ message CreateMessagesResponse {
 }
 
 message UpdateMessagesRequest {
-  string tenant_id = 1;
-  string locale = 2;
-  string module = 3;
-  repeated Message messages = 4;
+  string locale = 1;
+  string module = 2;
+  repeated Message messages = 3;
 }
 
 message UpdateMessagesResponse {
@@ -78,8 +74,7 @@ message UpdateMessagesResponse {
 }
 
 message UpsertMessagesRequest {
-  string tenant_id = 1;
-  repeated Message messages = 2;
+  repeated Message messages = 1;
 }
 
 message UpsertMessagesResponse {
@@ -87,8 +82,7 @@ message UpsertMessagesResponse {
 }
 
 message DeleteMessagesRequest {
-  string tenant_id = 1;
-  repeated MessageIdentity messages = 2;
+  repeated MessageIdentity messages = 1;
 }
 
 message DeleteMessagesResponse {
@@ -104,8 +98,7 @@ message BustCacheResponse {
 
 // Request/Response for FindMissingMessages
 message FindMissingMessagesRequest {
-  string tenant_id = 1;
-  repeated string locales = 2;
+  repeated string locales = 1;
 }
 
 message FindMissingMessagesResponse {
