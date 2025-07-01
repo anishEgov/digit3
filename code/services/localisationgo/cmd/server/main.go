@@ -9,6 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/golang-migrate/migrate/v4"
+	dbpostgres "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
@@ -39,19 +42,23 @@ func main() {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
 
-	// Execute database schema
-	if _, err := db.Exec(postgres.Schema); err != nil {
-		log.Fatalf("Failed to create database schema: %v", err)
+	// Run database migrations
+	driver, err := dbpostgres.WithInstance(db, &dbpostgres.Config{})
+	if err != nil {
+		log.Fatalf("Failed to create migration driver: %v", err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"postgres", driver)
+	if err != nil {
+		log.Fatalf("Failed to create migrate instance: %v", err)
 	}
 
-	// Seed initial data
-	seedSQL := postgres.GetSeedDataSQL()
-	if _, err := db.Exec(seedSQL); err != nil {
-		log.Printf("Note: Failed to seed initial data: %v", err)
-		// Don't fail the application if seeding fails
-	} else {
-		log.Printf("Successfully seeded initial data")
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Failed to apply migrations: %v", err)
 	}
+
+	log.Println("Database migrations applied successfully")
 
 	// Setup Redis client
 	redisClient := redis.NewClient(&redis.Options{

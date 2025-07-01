@@ -141,10 +141,12 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 		}
 		// Avoid adding duplicate locales for a code
 		found := false
-		for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
-			if locale == msg.Locale {
-				found = true
-				break
+		if _, ok := s.messageLocalesMap[msg.TenantID][msg.Code]; ok {
+			for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+				if locale == msg.Locale {
+					found = true
+					break
+				}
 			}
 		}
 		if !found {
@@ -181,10 +183,12 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 		}
 		// Avoid adding duplicate locales for a code
 		found := false
-		for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
-			if locale == msg.Locale {
-				found = true
-				break
+		if _, ok := s.messageLocalesMap[msg.TenantID][msg.Code]; ok {
+			for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+				if locale == msg.Locale {
+					found = true
+					break
+				}
 			}
 		}
 		if !found {
@@ -273,41 +277,34 @@ func (s *MessageServiceImpl) BustCache(ctx context.Context) error {
 	return s.cache.BustCache(ctx)
 }
 
-// SearchMessages retrieves messages based on search criteria
+// SearchMessages searches for messages, checking the cache first
 func (s *MessageServiceImpl) SearchMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error) {
-	// When module is empty, we're searching across all modules - bypass cache
-	// to ensure we get all results from the database
-	if module == "" {
-		return s.repository.FindMessages(ctx, tenantID, module, locale)
-	}
-
-	// For module-specific queries, try to get from cache first
-	cachedMessages, err := s.cache.GetMessages(ctx, tenantID, module, locale)
-	if err == nil && len(cachedMessages) > 0 {
+	// Try to get from cache first
+	if cachedMessages, err := s.cache.GetMessages(ctx, tenantID, module, locale); err == nil && len(cachedMessages) > 0 {
 		return cachedMessages, nil
 	}
 
-	// If not in cache or there was an error, get from database
+	// If not in cache, get from repository
 	messages, err := s.repository.FindMessages(ctx, tenantID, module, locale)
 	if err != nil {
 		return nil, err
 	}
 
-	// Update cache with new results
-	if len(messages) > 0 {
-		_ = s.cache.SetMessages(ctx, tenantID, module, locale, messages)
-	}
+	// Store in cache
+	_ = s.cache.SetMessages(ctx, tenantID, module, locale, messages)
 
 	return messages, nil
 }
 
-// SearchMessagesByCodes retrieves messages for specific codes
+// SearchMessagesByCodes searches for messages by specific codes, checking the cache first
 func (s *MessageServiceImpl) SearchMessagesByCodes(ctx context.Context, tenantID, locale string, codes []string) ([]domain.Message, error) {
-	// For code-specific searches, we don't use cache to ensure accuracy
+	// For searching by codes, it is complex to implement a partial cache read.
+	// For now, we will bypass the cache and go straight to the repository.
+	// A more advanced caching strategy could be implemented here in the future.
 	return s.repository.FindMessagesByCode(ctx, tenantID, locale, codes)
 }
 
-// invalidateCacheForMessages invalidates cache entries for the given messages
+// invalidateCacheForMessages invalidates the cache for the given messages
 func (s *MessageServiceImpl) invalidateCacheForMessages(ctx context.Context, messages []domain.Message) {
 	cacheKeys := make(map[string]struct{})
 	for _, msg := range messages {
