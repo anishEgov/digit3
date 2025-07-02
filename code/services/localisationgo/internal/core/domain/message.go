@@ -12,8 +12,8 @@ type Message struct {
 	Locale           string    `json:"locale"`
 	Code             string    `json:"code"`
 	Message          string    `json:"message"`
-	CreatedBy        int64     `json:"createdBy,omitempty"`
-	CreatedDate      time.Time `json:"createdDate,omitempty"`
-	LastModifiedBy   int64     `json:"lastModifiedBy,omitempty"`
-	LastModifiedDate time.Time `json:"lastModifiedDate,omitempty"`
+	CreatedBy        string    `json:"created_by,omitempty"`
+	CreatedDate      time.Time `json:"created_date,omitempty"`
+	LastModifiedBy   string    `json:"last_modified_by,omitempty"`
+	LastModifiedDate time.Time `json:"last_modified_date,omitempty"`
 }

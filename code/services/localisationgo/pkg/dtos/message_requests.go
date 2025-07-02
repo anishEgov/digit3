@@ -1,36 +1,47 @@
 package dtos
 
-import (
-	"localisationgo/internal/common/models"
-	"localisationgo/internal/core/domain"
-)
-
-// UpsertMessagesRequest represents the request for upserting localization messages
-type UpsertMessagesRequest struct {
-	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	Messages    []domain.Message   `json:"messages"`
-}
-
-// SearchMessagesRequest represents the request for searching localization messages
+// SearchMessagesRequest defines the request body for searching messages
 type SearchMessagesRequest struct {
-	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	Module      string             `json:"module,omitempty"`
-	Locale      string             `json:"locale,omitempty"`
-	Codes       []string           `json:"codes,omitempty"`
+	Module string   `json:"module,omitempty"`
+	Locale string   `json:"locale,omitempty"`
+	Codes  []string `json:"codes,omitempty"`
 }
 
-// CreateMessagesRequest represents the request for creating new localization messages
+// CreateMessagesRequest defines the request body for creating multiple messages
 type CreateMessagesRequest struct {
-	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	Messages    []domain.Message   `json:"messages"`
+	Messages []Message `json:"messages"`
 }
 
-// UpdateMessagesRequest represents the request for updating existing localization messages
+// UpdateMessagesRequest defines the request body for updating messages for a specific module
 type UpdateMessagesRequest struct {
-	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	Locale      string             `json:"locale"`
-	Module      string             `json:"module"`
-	Messages    []UpdateMessage    `json:"messages"`
+	Locale   string    `json:"locale"`
+	Module   string    `json:"module"`
+	Messages []Message `json:"messages"`
+}
+
+// UpsertMessagesRequest defines the request body for upserting multiple messages
+type UpsertMessagesRequest struct {
+	Messages []Message `json:"messages"`
+}
+
+// DeleteMessagesRequest defines the request body for deleting multiple messages
+type DeleteMessagesRequest struct {
+	Messages []MessageIdentity `json:"messages"`
+}
+
+// Message represents a single localization message
+type Message struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Module  string `json:"module"`
+	Locale  string `json:"locale"`
+}
+
+// MessageIdentity uniquely identifies a message to be deleted
+type MessageIdentity struct {
+	Module string `json:"module"`
+	Locale string `json:"locale"`
+	Code   string `json:"code"`
 }
 
 // UpdateMessage represents a message to be updated
@@ -44,20 +55,6 @@ type DeleteMessage struct {
 	Code   string `json:"code"`
 	Module string `json:"module"`
 	Locale string `json:"locale"`
-}
-
-// DeleteMessagesRequest represents the request for deleting localization messages
-type DeleteMessagesRequest struct {
-	RequestInfo models.RequestInfo `json:"RequestInfo"`
-	Messages    []DeleteMessage    `json:"messages"`
-}
-
-// MessageIdentity represents the unique identity of a message
-type MessageIdentity struct {
-	TenantId string `json:"tenantId"`
-	Module   string `json:"module"`
-	Locale   string `json:"locale"`
-	Code     string `json:"code"`
 }
 
 // FindMissingMessagesRequest represents the request to find missing messages

@@ -10,7 +10,7 @@ import (
 // MessageService defines the business operations for localization messages
 type MessageService interface {
 	// UpsertMessages creates or updates localization messages
-	UpsertMessages(ctx context.Context, tenantID string, messages []domain.Message) ([]domain.Message, error)
+	UpsertMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error)
 
 	// SearchMessages retrieves messages based on search criteria
 	SearchMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error)
@@ -19,13 +19,13 @@ type MessageService interface {
 	SearchMessagesByCodes(ctx context.Context, tenantID, locale string, codes []string) ([]domain.Message, error)
 
 	// CreateMessages creates new localization messages
-	CreateMessages(ctx context.Context, tenantID string, messages []domain.Message) ([]domain.Message, error)
+	CreateMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error)
 
 	// UpdateMessagesForModule updates existing messages for a specific module
-	UpdateMessagesForModule(ctx context.Context, tenantID, locale, module string, messages []domain.Message) ([]domain.Message, error)
+	UpdateMessagesForModule(ctx context.Context, tenantID string, userID string, locale, module string, messages []domain.Message) ([]domain.Message, error)
 
 	// DeleteMessages deletes messages matching the given identities
-	DeleteMessages(ctx context.Context, messageIdentities []dtos.MessageIdentity) error
+	DeleteMessages(ctx context.Context, tenantID string, messageIdentities []dtos.MessageIdentity) error
 
 	// BustCache clears the entire cache
 	BustCache(ctx context.Context) error

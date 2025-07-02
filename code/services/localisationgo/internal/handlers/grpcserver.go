@@ -42,6 +42,19 @@ func getTenantIDFromContext(ctx context.Context) (string, error) {
 	return tenantID[0], nil
 }
 
+// getUserIDFromContext extracts the user ID from the gRPC context metadata.
+func getUserIDFromContext(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	userID := md.Get("x-user-id")
+	if len(userID) == 0 {
+		return ""
+	}
+	return userID[0]
+}
+
 // SearchMessages implements the SearchMessages gRPC endpoint
 func (s *GRPCServer) SearchMessages(ctx context.Context, req *localizationv1.SearchMessagesRequest) (*localizationv1.SearchMessagesResponse, error) {
 	tenantID, err := getTenantIDFromContext(ctx)
@@ -83,6 +96,8 @@ func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.Cre
 		return nil, err
 	}
 
+	userID := getUserIDFromContext(ctx)
+
 	if len(req.Messages) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "at least one message is required")
 	}
@@ -98,7 +113,7 @@ func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.Cre
 		}
 	}
 
-	messages, err := s.service.CreateMessages(ctx, tenantID, domainMessages)
+	messages, err := s.service.CreateMessages(ctx, tenantID, userID, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to create messages: %v", err))
 	}
@@ -126,6 +141,8 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 		return nil, err
 	}
 
+	userID := getUserIDFromContext(ctx)
+
 	if req.Locale == "" {
 		return nil, status.Error(codes.InvalidArgument, "locale is required")
 	}
@@ -149,7 +166,7 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 		}
 	}
 
-	messages, err := s.service.UpdateMessagesForModule(ctx, tenantID, req.Locale, req.Module, domainMessages)
+	messages, err := s.service.UpdateMessagesForModule(ctx, tenantID, userID, req.Locale, req.Module, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update messages: %v", err))
 	}
@@ -177,6 +194,8 @@ func (s *GRPCServer) UpsertMessages(ctx context.Context, req *localizationv1.Ups
 		return nil, err
 	}
 
+	userID := getUserIDFromContext(ctx)
+
 	if len(req.Messages) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "at least one message is required")
 	}
@@ -192,7 +211,7 @@ func (s *GRPCServer) UpsertMessages(ctx context.Context, req *localizationv1.Ups
 		}
 	}
 
-	messages, err := s.service.UpsertMessages(ctx, tenantID, domainMessages)
+	messages, err := s.service.UpsertMessages(ctx, tenantID, userID, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to upsert messages: %v", err))
 	}
@@ -228,14 +247,13 @@ func (s *GRPCServer) DeleteMessages(ctx context.Context, req *localizationv1.Del
 	messageIdentities := make([]dtos.MessageIdentity, len(req.Messages))
 	for i, msg := range req.Messages {
 		messageIdentities[i] = dtos.MessageIdentity{
-			TenantId: tenantID,
-			Module:   msg.Module,
-			Locale:   msg.Locale,
-			Code:     msg.Code,
+			Module: msg.Module,
+			Locale: msg.Locale,
+			Code:   msg.Code,
 		}
 	}
 
-	err = s.service.DeleteMessages(ctx, messageIdentities)
+	err = s.service.DeleteMessages(ctx, tenantID, messageIdentities)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete messages: %v", err))
 	}

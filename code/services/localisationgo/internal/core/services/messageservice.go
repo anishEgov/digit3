@@ -113,16 +113,18 @@ func (s *MessageServiceImpl) FindMissingMessages(ctx context.Context, tenantID s
 }
 
 // UpsertMessages creates or updates localization messages
-func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string, messages []domain.Message) ([]domain.Message, error) {
+func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error) {
 	// Enrich messages with tenant ID and timestamps
 	now := time.Now()
 	for i := range messages {
 		messages[i].TenantID = tenantID
-		// Only set created date for new messages (ID == 0)
+		// Only set created date and user for new messages (ID == 0)
 		if messages[i].ID == 0 {
 			messages[i].CreatedDate = now
+			messages[i].CreatedBy = userID
 		}
 		messages[i].LastModifiedDate = now
+		messages[i].LastModifiedBy = userID
 	}
 
 	// Save to database
@@ -158,13 +160,15 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 }
 
 // CreateMessages creates new localization messages
-func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string, messages []domain.Message) ([]domain.Message, error) {
+func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error) {
 	// Enrich messages with tenant ID and timestamps
 	now := time.Now()
 	for i := range messages {
 		messages[i].TenantID = tenantID
 		messages[i].CreatedDate = now
 		messages[i].LastModifiedDate = now
+		messages[i].CreatedBy = userID
+		messages[i].LastModifiedBy = userID
 	}
 
 	// Save to database
@@ -200,7 +204,7 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 }
 
 // UpdateMessagesForModule updates existing messages for a specific module
-func (s *MessageServiceImpl) UpdateMessagesForModule(ctx context.Context, tenantID, locale, module string, messages []domain.Message) ([]domain.Message, error) {
+func (s *MessageServiceImpl) UpdateMessagesForModule(ctx context.Context, tenantID string, userID string, locale, module string, messages []domain.Message) ([]domain.Message, error) {
 	// Enrich messages with tenant ID, locale, module and timestamp
 	now := time.Now()
 	for i := range messages {
@@ -208,6 +212,7 @@ func (s *MessageServiceImpl) UpdateMessagesForModule(ctx context.Context, tenant
 		messages[i].Locale = locale
 		messages[i].Module = module
 		messages[i].LastModifiedDate = now
+		messages[i].LastModifiedBy = userID
 	}
 
 	// Update in database
@@ -226,45 +231,40 @@ func (s *MessageServiceImpl) UpdateMessagesForModule(ctx context.Context, tenant
 }
 
 // DeleteMessages deletes messages matching the given identities
-func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, messageIdentities []dtos.MessageIdentity) error {
+func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, tenantID string, messageIdentities []dtos.MessageIdentity) error {
 	// Group message identities by tenant+locale+module for efficient deletion
-	tenantLocaleModuleMap := make(map[string]map[string]map[string][]string)
+	tenantLocaleModuleMap := make(map[string]map[string][]string)
 
 	for _, identity := range messageIdentities {
 		// Initialize maps if they don't exist
-		if _, ok := tenantLocaleModuleMap[identity.TenantId]; !ok {
-			tenantLocaleModuleMap[identity.TenantId] = make(map[string]map[string][]string)
+		if _, ok := tenantLocaleModuleMap[identity.Locale]; !ok {
+			tenantLocaleModuleMap[identity.Locale] = make(map[string][]string)
 		}
-		if _, ok := tenantLocaleModuleMap[identity.TenantId][identity.Locale]; !ok {
-			tenantLocaleModuleMap[identity.TenantId][identity.Locale] = make(map[string][]string)
-		}
-		if _, ok := tenantLocaleModuleMap[identity.TenantId][identity.Locale][identity.Module]; !ok {
-			tenantLocaleModuleMap[identity.TenantId][identity.Locale][identity.Module] = []string{}
+		if _, ok := tenantLocaleModuleMap[identity.Locale][identity.Module]; !ok {
+			tenantLocaleModuleMap[identity.Locale][identity.Module] = []string{}
 		}
 
 		// Add code to the list
-		tenantLocaleModuleMap[identity.TenantId][identity.Locale][identity.Module] =
-			append(tenantLocaleModuleMap[identity.TenantId][identity.Locale][identity.Module], identity.Code)
+		tenantLocaleModuleMap[identity.Locale][identity.Module] =
+			append(tenantLocaleModuleMap[identity.Locale][identity.Module], identity.Code)
 	}
 
 	// Delete messages for each tenant+locale+module combination
-	for tenantID, localeMap := range tenantLocaleModuleMap {
-		for locale, moduleMap := range localeMap {
-			for module, codes := range moduleMap {
-				err := s.repository.DeleteMessages(ctx, tenantID, locale, module, codes)
-				if err != nil {
-					return err
-				}
+	for locale, moduleMap := range tenantLocaleModuleMap {
+		for module, codes := range moduleMap {
+			err := s.repository.DeleteMessages(ctx, tenantID, locale, module, codes)
+			if err != nil {
+				return err
+			}
 
-				// Invalidate cache
-				_ = s.cache.Invalidate(ctx, tenantID, module, locale)
+			// Invalidate cache
+			_ = s.cache.Invalidate(ctx, tenantID, module, locale)
 
-				// Update the in-memory map by reloading all messages.
-				// This is a simple approach. A more optimized approach would be to remove the specific entries.
-				if err := s.LoadAllMessages(ctx); err != nil {
-					log.Printf("Error reloading messages into cache after deletion: %v", err)
-					// Decide if we should return this error or just log it
-				}
+			// Update the in-memory map by reloading all messages.
+			// This is a simple approach. A more optimized approach would be to remove the specific entries.
+			if err := s.LoadAllMessages(ctx); err != nil {
+				log.Printf("Error reloading messages into cache after deletion: %v", err)
+				// Decide if we should return this error or just log it
 			}
 		}
 	}
