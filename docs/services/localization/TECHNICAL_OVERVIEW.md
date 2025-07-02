@@ -6,7 +6,7 @@ The Localization Service API provides endpoints to manage and retrieve localizat
 #### Description
 When the client requests messages (search), the service prioritizes performance and low latency by first checking a Redis cache.
 
-### Detailed Steps
+#### Detailed Steps
 1. Client sends a search request (optionally with filters: module, locale, codes) to the Gateway.
 2. Gateway forwards the request to the Localization Service.
 3. The Localization Service checks Redis cache using the tenant, module, and locale keys.
