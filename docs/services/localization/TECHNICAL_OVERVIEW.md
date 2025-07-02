@@ -2,7 +2,7 @@
 ## Overview
 The Localization Service API provides endpoints to manage and retrieve localization messages for applications. It supports creating, updating, deleting, searching, and identifying missing message keys per tenant and locale.
 
-## Search Flow
+### Search Flow
 #### Description
 When the client requests messages (search), the service prioritizes performance and low latency by first checking a Redis cache.
 
