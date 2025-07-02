@@ -13,7 +13,7 @@ When the client requests messages (search), the service prioritizes performance 
 4. Cache hit: Messages are fetched directly from Redis and returned.
 5. Cache miss: Messages are fetched from Postgres DB, stored back in Redis, and then returned to the client.
 6. Gateway enriches the response with rate-limiting headers (e.g., X-Rate-Limit, X-Rate-Limit-Remaining, etc.) before returning to the client.
-
+   
 ### Create, Update, Upsert, Delete Flows
 #### Description
 Whenever messages are created, updated, upserted, or deleted, the cache must be invalidated to ensure consistency.
