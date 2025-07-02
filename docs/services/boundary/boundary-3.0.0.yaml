@@ -61,6 +61,75 @@ paths:
               schema:
                 $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
       x-codegen-request-body-name: requestInfo
+  /shapefile/boundary/create:
+    post:
+      tags:
+        - Shapefile
+      summary: Create boundaries from shapefile
+      description: |
+        Creates boundaries in the system using shapefile data. Takes a list of file store IDs representing uploaded shapefiles along with code field configuration.
+      parameters: 
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fileStoreIds:
+                  type: array
+                  description: List of file store IDs for the uploaded shapefiles.
+                  items:
+                    type: string
+                  example:
+                    - 59e61130-fddf-4fc0-8373-841be3ed1ae5
+                    - 4b95642b-d14f-49ad-bc1b-de9ba35b29fe
+                    - a69f6c45-d0da-4ca0-8da9-c8cd8bc87dfe
+                    - 862b2ef1-0820-4ad6-bbd1-59fe75824e7f
+                uniqueCodeField:
+                  type: string
+                  description: Name of the field in the shapefile used as the unique code for each boundary.
+                  example: admin
+              required:
+                - fileStoreIds
+                - codeField
+            example:
+              tenantId: qwert4
+              fileStoreIds:
+                - 59e61130-fddf-4fc0-8373-841be3ed1ae5
+                - 4b95642b-d14f-49ad-bc1b-de9ba35b29fe
+                - a69f6c45-d0da-4ca0-8da9-c8cd8bc87dfe
+                - 862b2ef1-0820-4ad6-bbd1-59fe75824e7f
+              codeField: admin
+              requestInfo:
+                ts: "2024-06-18T14:00:00Z"
+                userInfo:
+                  userName: test
+      responses:
+        '200':
+          description: Boundaries created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Boundaries created successfully
+        '400':
+          description: Invalid request payload.
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
   /_search:
     get:
       tags:
@@ -533,6 +602,7 @@ components:
           enum:
             - Polygon
             - Point
+            - MultiPolygon
         coordinates:
           type: array
           items:
@@ -742,4 +812,3 @@ components:
           $ref: 'https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-0-0.yml#/definitions/RequestInfo'
         BoundaryTypeHierarchySearchCriteria:
           $ref: '#/components/schemas/BoundaryTypeHierarchySearchCriteria'
-          
