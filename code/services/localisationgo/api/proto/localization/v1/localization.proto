@@ -89,8 +89,15 @@ message DeleteMessagesResponse {
   bool success = 1;
 }
 
-message BustCacheRequest {}
+// Request to clear the cache
+message BustCacheRequest {
+  // Optional: The module to clear the cache for.
+  string module = 1;
+  // Optional: The locale to clear the cache for.
+  string locale = 2;
+}
 
+// Response after clearing the cache
 message BustCacheResponse {
   string message = 1;
   bool success = 2;

@@ -272,9 +272,9 @@ func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, tenantID string
 	return nil
 }
 
-// BustCache clears the entire cache
-func (s *MessageServiceImpl) BustCache(ctx context.Context) error {
-	return s.cache.BustCache(ctx)
+// BustCache clears the cache based on tenant, and optionally module and locale
+func (s *MessageServiceImpl) BustCache(ctx context.Context, tenantID, module, locale string) error {
+	return s.cache.BustCache(ctx, tenantID, module, locale)
 }
 
 // SearchMessages searches for messages, checking the cache first

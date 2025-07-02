@@ -27,8 +27,8 @@ type MessageService interface {
 	// DeleteMessages deletes messages matching the given identities
 	DeleteMessages(ctx context.Context, tenantID string, messageIdentities []dtos.MessageIdentity) error
 
-	// BustCache clears the entire cache
-	BustCache(ctx context.Context) error
+	// BustCache clears the cache based on tenant, and optionally module and locale
+	BustCache(ctx context.Context, tenantID, module, locale string) error
 
 	// LoadAllMessages loads all messages from the repository and builds the tenant-to-code-to-locales map
 	LoadAllMessages(ctx context.Context) error

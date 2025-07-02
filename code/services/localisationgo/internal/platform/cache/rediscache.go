@@ -29,10 +29,6 @@ func NewRedisCache(client *redis.Client) ports.MessageCache {
 
 // buildKey creates a cache key from tenant, module, and locale
 func buildKey(tenantID, module, locale string) string {
-	// For empty module queries, use a special prefix to avoid conflicts
-	if module == "" {
-		return fmt.Sprintf("messages:all:%s:%s", tenantID, locale)
-	}
 	return fmt.Sprintf("messages:%s:%s:%s", tenantID, module, locale)
 }
 
@@ -83,31 +79,45 @@ func (c *RedisCacheImpl) Invalidate(ctx context.Context, tenantID, module, local
 	return c.client.Del(ctx, key).Err()
 }
 
-// BustCache clears the entire cache by deleting all message keys
-func (c *RedisCacheImpl) BustCache(ctx context.Context) error {
-	// Use SCAN to find all message keys
+// BustCache clears the cache based on the provided tenant, module, and locale.
+// Module and locale are optional. If not provided, all entries for the tenant will be cleared.
+func (c *RedisCacheImpl) BustCache(ctx context.Context, tenantID, module, locale string) error {
+	if tenantID == "" {
+		return fmt.Errorf("tenantID is required to bust cache")
+	}
+
+	modulePattern := module
+	if modulePattern == "" {
+		modulePattern = "*"
+	}
+
+	localePattern := locale
+	if localePattern == "" {
+		localePattern = "*"
+	}
+
+	pattern := buildKey(tenantID, modulePattern, localePattern)
+
 	var cursor uint64
 	var keys []string
-
 	for {
 		var batch []string
 		var err error
 
-		// Scan for keys with the pattern 'messages:*'
-		batch, cursor, err = c.client.Scan(ctx, cursor, "messages:*", 100).Result()
+		// Scan for keys matching the pattern
+		batch, cursor, err = c.client.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
 			return err
 		}
 
 		keys = append(keys, batch...)
 
-		// If cursor is 0, we've scanned all keys
 		if cursor == 0 {
 			break
 		}
 	}
 
-	// Delete the keys if any found
+	// Delete the keys if any are found
 	if len(keys) > 0 {
 		return c.client.Del(ctx, keys...).Err()
 	}

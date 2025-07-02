@@ -14,9 +14,9 @@ type MessageCache interface {
 	// GetMessages retrieves messages from the cache
 	GetMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error)
 
-	// Invalidate removes cached messages for a specific tenant+module+locale
+	// Invalidate removes a specific message set from the cache
 	Invalidate(ctx context.Context, tenantID, module, locale string) error
 
-	// BustCache clears the entire cache
-	BustCache(ctx context.Context) error
+	// BustCache clears the cache for a given tenant, and optionally module and locale
+	BustCache(ctx context.Context, tenantID, module, locale string) error
 }

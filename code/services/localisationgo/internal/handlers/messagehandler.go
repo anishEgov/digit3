@@ -205,14 +205,24 @@ func (h *MessageHandler) FindMissingMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, missingMessages)
 }
 
-// BustCache handles clearing the cache
+// BustCache handles clearing the cache for a tenant, with optional module and locale
 func (h *MessageHandler) BustCache(c *gin.Context) {
-	err := h.service.BustCache(c.Request.Context())
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
+	module := c.Query("module")
+	locale := c.Query("locale")
+
+	err := h.service.BustCache(c.Request.Context(), tenantID, module, locale)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Cache cleared successfully", "success": true})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Cache bust operation completed successfully", "success": true})
 }
 
 // RegisterRoutes registers the API routes on the given router group

@@ -265,13 +265,18 @@ func (s *GRPCServer) DeleteMessages(ctx context.Context, req *localizationv1.Del
 
 // BustCache implements the BustCache gRPC endpoint
 func (s *GRPCServer) BustCache(ctx context.Context, req *localizationv1.BustCacheRequest) (*localizationv1.BustCacheResponse, error) {
-	err := s.service.BustCache(ctx)
+	tenantID, err := getTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.service.BustCache(ctx, tenantID, req.Module, req.Locale)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to bust cache: %v", err))
 	}
 
 	return &localizationv1.BustCacheResponse{
-		Message: "Cache cleared successfully",
+		Message: "Cache bust operation completed successfully",
 		Success: true,
 	}, nil
 }
