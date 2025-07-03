@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"localisationgo/internal/core/domain"
 	"localisationgo/internal/core/ports"
-	"localisationgo/pkg/dtos"
 )
 
 // MessageServiceImpl is the implementation of MessageService
@@ -114,49 +115,55 @@ func (s *MessageServiceImpl) FindMissingMessages(ctx context.Context, tenantID s
 
 // UpsertMessages creates or updates localization messages
 func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error) {
-	// Enrich messages with tenant ID and timestamps
-	now := time.Now()
-	for i := range messages {
-		messages[i].TenantID = tenantID
-		// Only set created date and user for new messages (ID == 0)
-		if messages[i].ID == 0 {
-			messages[i].CreatedDate = now
-			messages[i].CreatedBy = userID
-		}
-		messages[i].LastModifiedDate = now
-		messages[i].LastModifiedBy = userID
-	}
+	messagesToCreate := []domain.Message{}
+	messagesToUpdate := []domain.Message{}
 
-	// Save to database
-	err := s.repository.SaveMessages(ctx, messages)
-	if err != nil {
-		return nil, err
-	}
-
-	// Invalidate cache for affected tenant+module+locale combinations
-	s.invalidateCacheForMessages(ctx, messages)
-
-	// Update the in-memory map
 	for _, msg := range messages {
-		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
-			s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
-		}
-		// Avoid adding duplicate locales for a code
-		found := false
-		if _, ok := s.messageLocalesMap[msg.TenantID][msg.Code]; ok {
-			for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
-				if locale == msg.Locale {
-					found = true
-					break
-				}
-			}
-		}
-		if !found {
-			s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+		if msg.UUID == "" {
+			messagesToCreate = append(messagesToCreate, msg)
+		} else {
+			messagesToUpdate = append(messagesToUpdate, msg)
 		}
 	}
 
-	return messages, nil
+	now := time.Now()
+	var finalMessages []domain.Message
+
+	// Handle creations
+	if len(messagesToCreate) > 0 {
+		for i := range messagesToCreate {
+			messagesToCreate[i].UUID = uuid.New().String()
+			messagesToCreate[i].TenantID = tenantID
+			messagesToCreate[i].CreatedDate = now
+			messagesToCreate[i].LastModifiedDate = now
+			messagesToCreate[i].CreatedBy = userID
+			messagesToCreate[i].LastModifiedBy = userID
+		}
+		err := s.repository.SaveMessages(ctx, messagesToCreate)
+		if err != nil {
+			return nil, err
+		}
+		finalMessages = append(finalMessages, messagesToCreate...)
+	}
+
+	// Handle updates
+	if len(messagesToUpdate) > 0 {
+		for i := range messagesToUpdate {
+			messagesToUpdate[i].TenantID = tenantID
+			messagesToUpdate[i].LastModifiedDate = now
+			messagesToUpdate[i].LastModifiedBy = userID
+		}
+		updatedMessages, err := s.repository.UpdateMessages(ctx, tenantID, messagesToUpdate)
+		if err != nil {
+			return nil, err
+		}
+		finalMessages = append(finalMessages, updatedMessages...)
+	}
+
+	// Invalidate cache
+	s.invalidateCacheForMessages(ctx, finalMessages)
+
+	return finalMessages, nil
 }
 
 // CreateMessages creates new localization messages
@@ -164,6 +171,7 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 	// Enrich messages with tenant ID and timestamps
 	now := time.Now()
 	for i := range messages {
+		messages[i].UUID = uuid.New().String()
 		messages[i].TenantID = tenantID
 		messages[i].CreatedDate = now
 		messages[i].LastModifiedDate = now
@@ -203,73 +211,39 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 	return messages, nil
 }
 
-// UpdateMessagesForModule updates existing messages for a specific module
-func (s *MessageServiceImpl) UpdateMessagesForModule(ctx context.Context, tenantID string, userID string, locale, module string, messages []domain.Message) ([]domain.Message, error) {
-	// Enrich messages with tenant ID, locale, module and timestamp
+// UpdateMessages updates existing messages by their UUIDs
+func (s *MessageServiceImpl) UpdateMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error) {
+	// Enrich messages with timestamp
 	now := time.Now()
 	for i := range messages {
 		messages[i].TenantID = tenantID
-		messages[i].Locale = locale
-		messages[i].Module = module
 		messages[i].LastModifiedDate = now
 		messages[i].LastModifiedBy = userID
 	}
 
 	// Update in database
-	err := s.repository.UpdateMessages(ctx, tenantID, locale, module, messages)
+	updatedMessages, err := s.repository.UpdateMessages(ctx, tenantID, messages)
 	if err != nil {
 		return nil, err
 	}
 
-	// Invalidate cache
-	_ = s.cache.Invalidate(ctx, tenantID, module, locale)
+	// Invalidate cache for affected tenant+module+locale combinations
+	s.invalidateCacheForMessages(ctx, updatedMessages)
 
-	// We don't need to update the in-memory map here, because the locales don't change on update.
-	// The message content changes, but the missing messages logic only cares about the presence of a (code, locale) pair.
-
-	return messages, nil
+	return updatedMessages, nil
 }
 
-// DeleteMessages deletes messages matching the given identities
-func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, tenantID string, messageIdentities []dtos.MessageIdentity) error {
-	// Group message identities by tenant+locale+module for efficient deletion
-	tenantLocaleModuleMap := make(map[string]map[string][]string)
-
-	for _, identity := range messageIdentities {
-		// Initialize maps if they don't exist
-		if _, ok := tenantLocaleModuleMap[identity.Locale]; !ok {
-			tenantLocaleModuleMap[identity.Locale] = make(map[string][]string)
-		}
-		if _, ok := tenantLocaleModuleMap[identity.Locale][identity.Module]; !ok {
-			tenantLocaleModuleMap[identity.Locale][identity.Module] = []string{}
-		}
-
-		// Add code to the list
-		tenantLocaleModuleMap[identity.Locale][identity.Module] =
-			append(tenantLocaleModuleMap[identity.Locale][identity.Module], identity.Code)
+// DeleteMessages deletes messages by their UUIDs
+func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, tenantID string, uuids []string) error {
+	// Note: To invalidate the cache correctly, we would first need to fetch the messages
+	// to get their module and locale. For simplicity in this example, we will
+	// bust the entire cache for the tenant. A more optimized approach would fetch
+	// the details before deleting.
+	if err := s.cache.BustCache(ctx, tenantID, "", ""); err != nil {
+		log.Printf("Failed to bust cache for tenant %s during delete, continuing...", tenantID)
 	}
 
-	// Delete messages for each tenant+locale+module combination
-	for locale, moduleMap := range tenantLocaleModuleMap {
-		for module, codes := range moduleMap {
-			err := s.repository.DeleteMessages(ctx, tenantID, locale, module, codes)
-			if err != nil {
-				return err
-			}
-
-			// Invalidate cache
-			_ = s.cache.Invalidate(ctx, tenantID, module, locale)
-
-			// Update the in-memory map by reloading all messages.
-			// This is a simple approach. A more optimized approach would be to remove the specific entries.
-			if err := s.LoadAllMessages(ctx); err != nil {
-				log.Printf("Error reloading messages into cache after deletion: %v", err)
-				// Decide if we should return this error or just log it
-			}
-		}
-	}
-
-	return nil
+	return s.repository.DeleteMessages(ctx, tenantID, uuids)
 }
 
 // BustCache clears the cache based on tenant, and optionally module and locale

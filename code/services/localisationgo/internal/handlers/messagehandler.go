@@ -110,12 +110,12 @@ func (h *MessageHandler) UpdateMessages(c *gin.Context) {
 	domainMessages := make([]domain.Message, len(req.Messages))
 	for i, msg := range req.Messages {
 		domainMessages[i] = domain.Message{
-			Code:    msg.Code,
+			UUID:    msg.UUID,
 			Message: msg.Message,
 		}
 	}
 
-	updatedMessages, err := h.service.UpdateMessagesForModule(c.Request.Context(), tenantID, userID, req.Locale, req.Module, domainMessages)
+	updatedMessages, err := h.service.UpdateMessages(c.Request.Context(), tenantID, userID, domainMessages)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -143,6 +143,7 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 	domainMessages := make([]domain.Message, len(req.Messages))
 	for i, msg := range req.Messages {
 		domainMessages[i] = domain.Message{
+			UUID:    msg.UUID,
 			Code:    msg.Code,
 			Message: msg.Message,
 			Module:  msg.Module,
@@ -159,7 +160,7 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": upsertedMessages})
 }
 
-// DeleteMessages handles the deletion of multiple localization messages
+// DeleteMessages handles the deletion of multiple localization messages by UUID
 func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 	tenantID := c.GetHeader("X-Tenant-ID")
 	if tenantID == "" {
@@ -167,13 +168,13 @@ func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 		return
 	}
 
-	var req dtos.DeleteMessagesRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	uuids := c.QueryArray("uuids")
+	if len(uuids) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one uuid is required in query params"})
 		return
 	}
 
-	err := h.service.DeleteMessages(c.Request.Context(), tenantID, req.Messages)
+	err := h.service.DeleteMessages(c.Request.Context(), tenantID, uuids)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

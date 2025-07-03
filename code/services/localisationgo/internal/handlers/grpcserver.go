@@ -11,7 +11,6 @@ import (
 	localizationv1 "localisationgo/api/proto/localization/v1"
 	"localisationgo/internal/core/domain"
 	"localisationgo/internal/core/ports"
-	"localisationgo/pkg/dtos"
 )
 
 // GRPCServer implements the gRPC server for the localization service
@@ -79,6 +78,7 @@ func (s *GRPCServer) SearchMessages(ctx context.Context, req *localizationv1.Sea
 
 	for i, msg := range messages {
 		response.Messages[i] = &localizationv1.Message{
+			Uuid:    msg.UUID,
 			Code:    msg.Code,
 			Message: msg.Message,
 			Module:  msg.Module,
@@ -106,6 +106,7 @@ func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.Cre
 	domainMessages := make([]domain.Message, len(req.Messages))
 	for i, msg := range req.Messages {
 		domainMessages[i] = domain.Message{
+			UUID:    msg.Uuid,
 			Code:    msg.Code,
 			Message: msg.Message,
 			Module:  msg.Module,
@@ -124,6 +125,7 @@ func (s *GRPCServer) CreateMessages(ctx context.Context, req *localizationv1.Cre
 
 	for i, msg := range messages {
 		response.Messages[i] = &localizationv1.Message{
+			Uuid:    msg.UUID,
 			Code:    msg.Code,
 			Message: msg.Message,
 			Module:  msg.Module,
@@ -143,14 +145,6 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 
 	userID := getUserIDFromContext(ctx)
 
-	if req.Locale == "" {
-		return nil, status.Error(codes.InvalidArgument, "locale is required")
-	}
-
-	if req.Module == "" {
-		return nil, status.Error(codes.InvalidArgument, "module is required")
-	}
-
 	if len(req.Messages) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "at least one message is required")
 	}
@@ -159,14 +153,12 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 	domainMessages := make([]domain.Message, len(req.Messages))
 	for i, msg := range req.Messages {
 		domainMessages[i] = domain.Message{
-			Code:    msg.Code,
+			UUID:    msg.Uuid,
 			Message: msg.Message,
-			Module:  req.Module,
-			Locale:  req.Locale,
 		}
 	}
 
-	messages, err := s.service.UpdateMessagesForModule(ctx, tenantID, userID, req.Locale, req.Module, domainMessages)
+	messages, err := s.service.UpdateMessages(ctx, tenantID, userID, domainMessages)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update messages: %v", err))
 	}
@@ -177,51 +169,7 @@ func (s *GRPCServer) UpdateMessages(ctx context.Context, req *localizationv1.Upd
 
 	for i, msg := range messages {
 		response.Messages[i] = &localizationv1.Message{
-			Code:    msg.Code,
-			Message: msg.Message,
-			Module:  msg.Module,
-			Locale:  msg.Locale,
-		}
-	}
-
-	return response, nil
-}
-
-// UpsertMessages implements the UpsertMessages gRPC endpoint
-func (s *GRPCServer) UpsertMessages(ctx context.Context, req *localizationv1.UpsertMessagesRequest) (*localizationv1.UpsertMessagesResponse, error) {
-	tenantID, err := getTenantIDFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	userID := getUserIDFromContext(ctx)
-
-	if len(req.Messages) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "at least one message is required")
-	}
-
-	// Convert proto messages to domain messages
-	domainMessages := make([]domain.Message, len(req.Messages))
-	for i, msg := range req.Messages {
-		domainMessages[i] = domain.Message{
-			Code:    msg.Code,
-			Message: msg.Message,
-			Module:  msg.Module,
-			Locale:  msg.Locale,
-		}
-	}
-
-	messages, err := s.service.UpsertMessages(ctx, tenantID, userID, domainMessages)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to upsert messages: %v", err))
-	}
-
-	response := &localizationv1.UpsertMessagesResponse{
-		Messages: make([]*localizationv1.Message, len(messages)),
-	}
-
-	for i, msg := range messages {
-		response.Messages[i] = &localizationv1.Message{
+			Uuid:    msg.UUID,
 			Code:    msg.Code,
 			Message: msg.Message,
 			Module:  msg.Module,
@@ -239,21 +187,11 @@ func (s *GRPCServer) DeleteMessages(ctx context.Context, req *localizationv1.Del
 		return nil, err
 	}
 
-	if len(req.Messages) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "at least one message is required")
+	if len(req.Uuids) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "at least one uuid is required")
 	}
 
-	// Convert proto message identities to domain message identities
-	messageIdentities := make([]dtos.MessageIdentity, len(req.Messages))
-	for i, msg := range req.Messages {
-		messageIdentities[i] = dtos.MessageIdentity{
-			Module: msg.Module,
-			Locale: msg.Locale,
-			Code:   msg.Code,
-		}
-	}
-
-	err = s.service.DeleteMessages(ctx, tenantID, messageIdentities)
+	err = s.service.DeleteMessages(ctx, tenantID, req.Uuids)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete messages: %v", err))
 	}

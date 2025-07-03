@@ -38,16 +38,12 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 		}
 	}()
 
-	// Use upsert (INSERT ... ON CONFLICT UPDATE) for each message
+	// Use simple INSERT ON CONFLICT DO NOTHING for each message.
+	// The service layer is responsible for generating UUIDs and handling conflicts.
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO localisation (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		ON CONFLICT (tenant_id, locale, module, code) 
-		DO UPDATE SET 
-			message = EXCLUDED.message,
-			last_modified_by = EXCLUDED.last_modified_by,
-			last_modified_date = EXCLUDED.last_modified_date
-		RETURNING id
+		INSERT INTO localisation (uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (tenant_id, locale, module, code) DO NOTHING
 	`)
 	if err != nil {
 		return err
@@ -55,8 +51,8 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 	defer stmt.Close()
 
 	for i := range messages {
-		var id int64
-		err = stmt.QueryRowContext(ctx,
+		_, err = stmt.ExecContext(ctx,
+			messages[i].UUID,
 			messages[i].TenantID,
 			messages[i].Module,
 			messages[i].Locale,
@@ -66,11 +62,10 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 			messages[i].CreatedDate,
 			messages[i].LastModifiedBy,
 			messages[i].LastModifiedDate,
-		).Scan(&id)
+		)
 		if err != nil {
 			return err
 		}
-		messages[i].ID = id
 	}
 
 	// Commit the transaction
@@ -81,12 +76,12 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 	return nil
 }
 
-// UpdateMessages updates existing messages
-func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID, locale, module string, messages []domain.Message) error {
+// UpdateMessages updates existing messages by their UUIDs
+func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID string, messages []domain.Message) ([]domain.Message, error) {
 	// Start a transaction
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer func() {
@@ -100,71 +95,59 @@ func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID, lo
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE localisation
 		SET message = $1, last_modified_by = $2, last_modified_date = $3
-		WHERE tenant_id = $4 AND locale = $5 AND module = $6 AND code = $7
-		RETURNING id
+		WHERE tenant_id = $4 AND uuid = $5
+		RETURNING id, uuid, module, locale, code, created_by, created_date
 	`)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer stmt.Close()
 
-	for i := range messages {
-		var id int64
+	updatedMessages := make([]domain.Message, 0, len(messages))
+	for _, msg := range messages {
+		var updatedMsg domain.Message
 		err = stmt.QueryRowContext(ctx,
-			messages[i].Message,
-			messages[i].LastModifiedBy,
-			messages[i].LastModifiedDate,
+			msg.Message,
+			msg.LastModifiedBy,
+			msg.LastModifiedDate,
 			tenantID,
-			locale,
-			module,
-			messages[i].Code,
-		).Scan(&id)
+			msg.UUID,
+		).Scan(
+			&updatedMsg.ID,
+			&updatedMsg.UUID,
+			&updatedMsg.Module,
+			&updatedMsg.Locale,
+			&updatedMsg.Code,
+			&updatedMsg.CreatedBy,
+			&updatedMsg.CreatedDate,
+		)
 		if err != nil {
-			// If no rows are affected, the message doesn't exist - create it
 			if err == sql.ErrNoRows {
-				insertStmt, err := tx.PrepareContext(ctx, `
-					INSERT INTO localisation (tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date)
-					VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-					RETURNING id
-				`)
-				if err != nil {
-					return err
-				}
-				defer insertStmt.Close()
-
-				err = insertStmt.QueryRowContext(ctx,
-					tenantID,
-					module,
-					locale,
-					messages[i].Code,
-					messages[i].Message,
-					messages[i].CreatedBy,
-					messages[i].CreatedDate,
-					messages[i].LastModifiedBy,
-					messages[i].LastModifiedDate,
-				).Scan(&id)
-				if err != nil {
-					return err
-				}
-			} else {
-				return err
+				log.Printf("No message found with UUID %s for tenant %s. Skipping update.", msg.UUID, tenantID)
+				continue
 			}
+			return nil, err
 		}
-		messages[i].ID = id
+		// Preserve the fields that are not returned from the DB
+		updatedMsg.Message = msg.Message
+		updatedMsg.LastModifiedBy = msg.LastModifiedBy
+		updatedMsg.LastModifiedDate = msg.LastModifiedDate
+		updatedMsg.TenantID = tenantID
+		updatedMessages = append(updatedMessages, updatedMsg)
 	}
 
 	// Commit the transaction
 	if err = tx.Commit(); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return updatedMessages, nil
 }
 
-// DeleteMessages deletes messages by tenantID, locale, module and codes
-func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID, locale, module string, codes []string) error {
-	// If no codes provided, return immediately
-	if len(codes) == 0 {
+// DeleteMessages deletes messages by their UUIDs for a given tenant
+func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID string, uuids []string) error {
+	// If no uuids provided, return immediately
+	if len(uuids) == 0 {
 		return nil
 	}
 
@@ -182,22 +165,20 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID, lo
 	}()
 
 	// Create a placeholder string for the IN clause
-	placeholders := make([]string, len(codes))
-	args := make([]interface{}, len(codes)+3)
+	placeholders := make([]string, len(uuids))
+	args := make([]interface{}, len(uuids)+1)
 	args[0] = tenantID
-	args[1] = locale
-	args[2] = module
 
 	// Build the query dynamically
-	for i, code := range codes {
-		placeholders[i] = fmt.Sprintf("$%d", i+4)
-		args[i+3] = code
+	for i, id := range uuids {
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
+		args[i+1] = id
 	}
 
 	// Create the delete query
 	query := fmt.Sprintf(`
 		DELETE FROM localisation
-		WHERE tenant_id = $1 AND locale = $2 AND module = $3 AND code IN (%s)
+		WHERE tenant_id = $1 AND uuid IN (%s)
 	`, strings.Join(placeholders, ","))
 
 	// Execute the delete query
@@ -212,8 +193,8 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID, lo
 		return err
 	}
 
-	log.Printf("Deleted %d messages with tenantID=%s, locale=%s, module=%s, codes=%v",
-		rowsAffected, tenantID, locale, module, codes)
+	log.Printf("Deleted %d messages with tenantID=%s, uuids=%v",
+		rowsAffected, tenantID, uuids)
 
 	// Commit the transaction
 	if err = tx.Commit(); err != nil {
@@ -225,38 +206,21 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID, lo
 
 // FindMessages finds messages based on the search criteria
 func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error) {
-	// Base query
 	query := `
-		SELECT id, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
-		FROM localisation 
-		WHERE tenant_id = $1
+		SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+		FROM localisation
+		WHERE tenant_id = $1 AND locale = $2
 	`
-	args := []interface{}{tenantID}
-	argCount := 1
+	args := []interface{}{tenantID, locale}
 
-	// Add optional filters
 	if module != "" {
-		argCount++
-		query += fmt.Sprintf(" AND module = $%d", argCount)
+		query += " AND module = $3"
 		args = append(args, module)
 	}
 
-	if locale != "" {
-		argCount++
-		query += fmt.Sprintf(" AND locale = $%d", argCount)
-		args = append(args, locale)
-	}
-
-	// Add order by
-	query += " ORDER BY module, code"
-
-	// Debug information
-	log.Printf("Executing query: %s with args: %v", query, args)
-
-	// Execute query
+	// Execute the query
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		log.Printf("Error executing query: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -266,6 +230,7 @@ func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, modu
 		var msg domain.Message
 		if err := rows.Scan(
 			&msg.ID,
+			&msg.UUID,
 			&msg.TenantID,
 			&msg.Module,
 			&msg.Locale,
@@ -276,18 +241,11 @@ func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, modu
 			&msg.LastModifiedBy,
 			&msg.LastModifiedDate,
 		); err != nil {
-			log.Printf("Error scanning row: %v", err)
 			return nil, err
 		}
 		messages = append(messages, msg)
 	}
 
-	if err = rows.Err(); err != nil {
-		log.Printf("Error after scanning rows: %v", err)
-		return nil, err
-	}
-
-	log.Printf("Found %d messages for tenantID=%s, module=%s, locale=%s", len(messages), tenantID, module, locale)
 	return messages, nil
 }
 
@@ -310,12 +268,11 @@ func (r *MessageRepositoryImpl) FindMessagesByCode(ctx context.Context, tenantID
 		args[i+2] = code
 	}
 
-	// Create the complete query
+	// Create the select query
 	query := fmt.Sprintf(`
-		SELECT id, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
-		FROM localisation 
+		SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+		FROM localisation
 		WHERE tenant_id = $1 AND locale = $2 AND code IN (%s)
-		ORDER BY id
 	`, strings.Join(placeholders, ","))
 
 	// Execute the query
@@ -330,6 +287,7 @@ func (r *MessageRepositoryImpl) FindMessagesByCode(ctx context.Context, tenantID
 		var msg domain.Message
 		if err := rows.Scan(
 			&msg.ID,
+			&msg.UUID,
 			&msg.TenantID,
 			&msg.Module,
 			&msg.Locale,
@@ -345,23 +303,17 @@ func (r *MessageRepositoryImpl) FindMessagesByCode(ctx context.Context, tenantID
 		messages = append(messages, msg)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
 	return messages, nil
 }
 
 // FindAllMessages fetches all messages from the database
 func (r *MessageRepositoryImpl) FindAllMessages(ctx context.Context) ([]domain.Message, error) {
-	query := `
-		SELECT id, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
 		FROM localisation
-		ORDER BY tenant_id, module, locale, code
-	`
-	rows, err := r.db.QueryContext(ctx, query)
+	`)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query all messages: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -370,6 +322,7 @@ func (r *MessageRepositoryImpl) FindAllMessages(ctx context.Context) ([]domain.M
 		var msg domain.Message
 		if err := rows.Scan(
 			&msg.ID,
+			&msg.UUID,
 			&msg.TenantID,
 			&msg.Module,
 			&msg.Locale,
@@ -380,13 +333,9 @@ func (r *MessageRepositoryImpl) FindAllMessages(ctx context.Context) ([]domain.M
 			&msg.LastModifiedBy,
 			&msg.LastModifiedDate,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan message row: %w", err)
+			return nil, err
 		}
 		messages = append(messages, msg)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
 	}
 
 	return messages, nil

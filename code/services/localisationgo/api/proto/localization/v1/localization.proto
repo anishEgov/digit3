@@ -32,10 +32,11 @@ service LocalizationService {
 
 // Common message types
 message Message {
-  string code = 1;
-  string message = 2;
-  string module = 3;
-  string locale = 4;
+  string uuid = 1;
+  string code = 2;
+  string message = 3;
+  string module = 4;
+  string locale = 5;
 }
 
 message MessageIdentity {
@@ -64,9 +65,7 @@ message CreateMessagesResponse {
 }
 
 message UpdateMessagesRequest {
-  string locale = 1;
-  string module = 2;
-  repeated Message messages = 3;
+  repeated Message messages = 1;
 }
 
 message UpdateMessagesResponse {
@@ -82,7 +81,7 @@ message UpsertMessagesResponse {
 }
 
 message DeleteMessagesRequest {
-  repeated MessageIdentity messages = 1;
+  repeated string uuids = 1;
 }
 
 message DeleteMessagesResponse {

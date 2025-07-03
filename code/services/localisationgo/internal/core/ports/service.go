@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"localisationgo/internal/core/domain"
-	"localisationgo/pkg/dtos"
 )
 
 // MessageService defines the business operations for localization messages
@@ -21,11 +20,11 @@ type MessageService interface {
 	// CreateMessages creates new localization messages
 	CreateMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error)
 
-	// UpdateMessagesForModule updates existing messages for a specific module
-	UpdateMessagesForModule(ctx context.Context, tenantID string, userID string, locale, module string, messages []domain.Message) ([]domain.Message, error)
+	// UpdateMessages updates existing messages by their UUIDs
+	UpdateMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error)
 
-	// DeleteMessages deletes messages matching the given identities
-	DeleteMessages(ctx context.Context, tenantID string, messageIdentities []dtos.MessageIdentity) error
+	// DeleteMessages deletes messages by their UUIDs
+	DeleteMessages(ctx context.Context, tenantID string, uuids []string) error
 
 	// BustCache clears the cache based on tenant, and optionally module and locale
 	BustCache(ctx context.Context, tenantID, module, locale string) error

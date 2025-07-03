@@ -14,8 +14,6 @@ type CreateMessagesRequest struct {
 
 // UpdateMessagesRequest defines the request body for updating messages for a specific module
 type UpdateMessagesRequest struct {
-	Locale   string    `json:"locale"`
-	Module   string    `json:"module"`
 	Messages []Message `json:"messages"`
 }
 
@@ -26,11 +24,12 @@ type UpsertMessagesRequest struct {
 
 // DeleteMessagesRequest defines the request body for deleting multiple messages
 type DeleteMessagesRequest struct {
-	Messages []MessageIdentity `json:"messages"`
+	UUIDs []string `json:"uuids"`
 }
 
 // Message represents a single localization message
 type Message struct {
+	UUID    string `json:"uuid,omitempty"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Module  string `json:"module"`

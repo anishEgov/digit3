@@ -6,7 +6,8 @@ import (
 
 // Message represents a localization message entry
 type Message struct {
-	ID               int64     `json:"id,omitempty"`
+	ID               int64     `json:"-"` // Internal DB ID, hidden from public response
+	UUID             string    `json:"uuid"`
 	TenantID         string    `json:"tenantId"`
 	Module           string    `json:"module"`
 	Locale           string    `json:"locale"`
