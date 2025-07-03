@@ -16,7 +16,7 @@ import (
 type MessageServiceImpl struct {
 	repository        ports.MessageRepository
 	cache             ports.MessageCache
-	messageLocalesMap map[string]map[string][]string // tenantID -> code -> []locale
+	messageLocalesMap map[string]map[string]map[string][]string // tenantID -> module -> code -> []locale
 }
 
 // NewMessageService creates a new message service
@@ -24,7 +24,7 @@ func NewMessageService(repository ports.MessageRepository, cache ports.MessageCa
 	return &MessageServiceImpl{
 		repository:        repository,
 		cache:             cache,
-		messageLocalesMap: make(map[string]map[string][]string),
+		messageLocalesMap: make(map[string]map[string]map[string][]string),
 	}
 }
 
@@ -37,80 +37,79 @@ func (s *MessageServiceImpl) LoadAllMessages(ctx context.Context) error {
 	}
 
 	// Clear the existing map
-	s.messageLocalesMap = make(map[string]map[string][]string)
+	s.messageLocalesMap = make(map[string]map[string]map[string][]string)
 
 	for _, msg := range messages {
 		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
-			s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+			s.messageLocalesMap[msg.TenantID] = make(map[string]map[string][]string)
 		}
-		s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+		if _, ok := s.messageLocalesMap[msg.TenantID][msg.Module]; !ok {
+			s.messageLocalesMap[msg.TenantID][msg.Module] = make(map[string][]string)
+		}
+		s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code], msg.Locale)
 	}
 	log.Println("Finished loading all messages into cache.")
 	return nil
 }
 
 // FindMissingMessages finds the missing messages for a given tenant.
-// The response can be filtered by providing a list of locales.
-func (s *MessageServiceImpl) FindMissingMessages(ctx context.Context, tenantID string, requestedLocales []string) (map[string][]string, error) {
-	tenantMessages, ok := s.messageLocalesMap[tenantID]
+// The response can be filtered by providing a module.
+func (s *MessageServiceImpl) FindMissingMessages(ctx context.Context, tenantID string, module string) (map[string]map[string][]string, error) {
+	tenantData, ok := s.messageLocalesMap[tenantID]
 	if !ok {
 		return nil, nil // Or an error indicating tenant not found
 	}
 
-	// Determine the set of all unique codes for the tenant.
-	allCodesForTenant := make(map[string]struct{})
-	for code := range tenantMessages {
-		allCodesForTenant[code] = struct{}{}
-	}
-
-	// Determine the set of all unique locales for the tenant.
-	allLocalesForTenant := make(map[string]struct{})
-	for _, msgLocales := range tenantMessages {
-		for _, l := range msgLocales {
-			allLocalesForTenant[l] = struct{}{}
+	modulesToProcess := make(map[string]map[string][]string)
+	if module != "" {
+		if moduleData, ok := tenantData[module]; ok {
+			modulesToProcess[module] = moduleData
 		}
+	} else {
+		modulesToProcess = tenantData
 	}
 
-	// Calculate all missing messages for ALL locales.
-	allMissingMessages := make(map[string][]string)
-	for locale := range allLocalesForTenant {
-		// Create a set of codes that exist for the current locale
-		localeCodes := make(map[string]struct{})
-		for code, msgLocales := range tenantMessages {
-			for _, l := range msgLocales {
-				if l == locale {
-					localeCodes[code] = struct{}{}
-					break
+	result := make(map[string]map[string][]string)
+
+	for moduleName, moduleData := range modulesToProcess {
+		// Determine the set of all unique codes and locales for the module.
+		allCodesForModule := make(map[string]struct{})
+		allLocalesForModule := make(map[string]struct{})
+		for code, locales := range moduleData {
+			allCodesForModule[code] = struct{}{}
+			for _, l := range locales {
+				allLocalesForModule[l] = struct{}{}
+			}
+		}
+
+		missingMessagesForModule := make(map[string][]string)
+		for locale := range allLocalesForModule {
+			var missingCodes []string
+			for code := range allCodesForModule {
+				// Check if the current code exists for the current locale in this module
+				found := false
+				if localesForCode, ok := moduleData[code]; ok {
+					for _, l := range localesForCode {
+						if l == locale {
+							found = true
+							break
+						}
+					}
+				}
+				if !found {
+					missingCodes = append(missingCodes, code)
 				}
 			}
-		}
-
-		// Find the codes that are in allCodesForTenant but not in localeCodes
-		var missing []string
-		for code := range allCodesForTenant {
-			if _, exists := localeCodes[code]; !exists {
-				missing = append(missing, code)
+			if len(missingCodes) > 0 {
+				missingMessagesForModule[locale] = missingCodes
 			}
 		}
-		if len(missing) > 0 {
-			allMissingMessages[locale] = missing
+		if len(missingMessagesForModule) > 0 {
+			result[moduleName] = missingMessagesForModule
 		}
 	}
 
-	// If no locales were requested, return all missing messages.
-	if len(requestedLocales) == 0 {
-		return allMissingMessages, nil
-	}
-
-	// Otherwise, filter the results based on the requested locales.
-	filteredMissingMessages := make(map[string][]string)
-	for _, requestedLocale := range requestedLocales {
-		if missingCodes, found := allMissingMessages[requestedLocale]; found {
-			filteredMissingMessages[requestedLocale] = missingCodes
-		}
-	}
-
-	return filteredMissingMessages, nil
+	return result, nil
 }
 
 // UpsertMessages creates or updates localization messages
@@ -148,12 +147,16 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 		// Update the in-memory map for created messages
 		for _, msg := range messagesToCreate {
 			if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
-				s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+				s.messageLocalesMap[msg.TenantID] = make(map[string]map[string][]string)
 			}
+			if _, ok := s.messageLocalesMap[msg.TenantID][msg.Module]; !ok {
+				s.messageLocalesMap[msg.TenantID][msg.Module] = make(map[string][]string)
+			}
+
 			// Avoid adding duplicate locales for a code
 			found := false
-			if _, ok := s.messageLocalesMap[msg.TenantID][msg.Code]; ok {
-				for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+			if locales, ok := s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code]; ok {
+				for _, locale := range locales {
 					if locale == msg.Locale {
 						found = true
 						break
@@ -161,7 +164,7 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 				}
 			}
 			if !found {
-				s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+				s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code], msg.Locale)
 			}
 		}
 	}
@@ -211,12 +214,15 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 	// Update the in-memory map
 	for _, msg := range messages {
 		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
-			s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+			s.messageLocalesMap[msg.TenantID] = make(map[string]map[string][]string)
+		}
+		if _, ok := s.messageLocalesMap[msg.TenantID][msg.Module]; !ok {
+			s.messageLocalesMap[msg.TenantID][msg.Module] = make(map[string][]string)
 		}
 		// Avoid adding duplicate locales for a code
 		found := false
-		if _, ok := s.messageLocalesMap[msg.TenantID][msg.Code]; ok {
-			for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+		if locales, ok := s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code]; ok {
+			for _, locale := range locales {
 				if locale == msg.Locale {
 					found = true
 					break
@@ -224,7 +230,7 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 			}
 		}
 		if !found {
-			s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+			s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code], msg.Locale)
 		}
 	}
 

@@ -32,6 +32,6 @@ type MessageService interface {
 	// LoadAllMessages loads all messages from the repository and builds the tenant-to-code-to-locales map
 	LoadAllMessages(ctx context.Context) error
 
-	// FindMissingMessages finds the missing messages for a given tenant and a list of locales.
-	FindMissingMessages(ctx context.Context, tenantID string, locales []string) (map[string][]string, error)
+	// FindMissingMessages finds the missing messages for a given tenant and an optional module.
+	FindMissingMessages(ctx context.Context, tenantID string, module string) (map[string]map[string][]string, error)
 }

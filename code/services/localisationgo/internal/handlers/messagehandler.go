@@ -190,9 +190,9 @@ func (h *MessageHandler) FindMissingMessages(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
 		return
 	}
-	locales := c.QueryArray("locales")
+	module := c.Query("module")
 
-	missingMessages, err := h.service.FindMissingMessages(c.Request.Context(), tenantID, locales)
+	missingMessages, err := h.service.FindMissingMessages(c.Request.Context(), tenantID, module)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -236,7 +236,7 @@ func (h *MessageHandler) RegisterRoutes(router *gin.RouterGroup) {
 		v1.PUT("/_update", h.UpdateMessages)
 		v1.PUT("/_upsert", h.UpsertMessages)
 		v1.DELETE("/_delete", h.DeleteMessages)
-		v1.POST("/_missing", h.FindMissingMessages)
+		v1.GET("/_missing", h.FindMissingMessages)
 	}
 
 	// Cache bust route

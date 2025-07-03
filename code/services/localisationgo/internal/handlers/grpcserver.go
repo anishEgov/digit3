@@ -226,22 +226,25 @@ func (s *GRPCServer) FindMissingMessages(ctx context.Context, req *localizationv
 		return nil, err
 	}
 
-	missingMessages, err := s.service.FindMissingMessages(ctx, tenantID, req.Locales)
+	missingMessages, err := s.service.FindMissingMessages(ctx, tenantID, req.Module)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to find missing messages: %v", err))
+		return nil, status.Errorf(codes.Internal, "failed to find missing messages: %v", err)
 	}
 
-	if missingMessages == nil {
-		return nil, status.Error(codes.NotFound, "tenant not found or no messages for tenant")
+	// Convert the service response to the gRPC response format
+	response := &localizationv1.FindMissingMessagesResponse{
+		MissingMessagesByModule: make(map[string]*localizationv1.LocaleToMissingCodes),
 	}
 
-	// Convert the map to the gRPC response format
-	responseMap := make(map[string]*localizationv1.MissingCodes)
-	for locale, codes := range missingMessages {
-		responseMap[locale] = &localizationv1.MissingCodes{Codes: codes}
+	for module, localeMap := range missingMessages {
+		grpcLocaleMap := &localizationv1.LocaleToMissingCodes{
+			Locales: make(map[string]*localizationv1.MissingCodes),
+		}
+		for locale, codes := range localeMap {
+			grpcLocaleMap.Locales[locale] = &localizationv1.MissingCodes{Codes: codes}
+		}
+		response.MissingMessagesByModule[module] = grpcLocaleMap
 	}
 
-	return &localizationv1.FindMissingMessagesResponse{
-		MissingMessages: responseMap,
-	}, nil
+	return response, nil
 }

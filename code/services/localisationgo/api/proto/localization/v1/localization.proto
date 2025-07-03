@@ -104,11 +104,17 @@ message BustCacheResponse {
 
 // Request/Response for FindMissingMessages
 message FindMissingMessagesRequest {
-  repeated string locales = 1;
+  // Optional: The module to find missing messages for.
+  // If not provided, finds for all modules.
+  string module = 1;
 }
 
 message FindMissingMessagesResponse {
-  map<string, MissingCodes> missing_messages = 1;
+  map<string, LocaleToMissingCodes> missing_messages_by_module = 1;
+}
+
+message LocaleToMissingCodes {
+  map<string, MissingCodes> locales = 1;
 }
 
 message MissingCodes {
