@@ -67,9 +67,9 @@ Controls behavior of the {RAND} token.
 
 ### Validation & Error Handling
 
-* Malformed date pattern → fail at config-load time.
-* Padding shorter than digits in start → validation error on startup.
-* Counter store unavailable → either block until recovery .
+* Malformed date pattern → fail while registering the template.
+* Padding shorter than digits in start → validation error while registering template.
+* Counter store unavailable → block until recovery.
 
 
 
