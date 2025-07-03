@@ -5,103 +5,130 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
-	dbpostgres "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/grpc"
 
+	localizationv1 "localisationgo/api/proto/localization/v1"
 	"localisationgo/configs"
+	"localisationgo/internal/cache"
+	"localisationgo/internal/core/ports"
 	"localisationgo/internal/core/services"
-	"localisationgo/internal/platform/cache"
-	"localisationgo/internal/repositories/postgres"
-	"localisationgo/internal/server"
+	"localisationgo/internal/handlers"
+	dbpostgres "localisationgo/internal/repositories/postgres"
 )
 
 func main() {
-	// Load configuration
+	// Load application configurations
 	config := configs.LoadConfig()
 
 	// Setup database connection
-	dbConnStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		config.DBHost, config.DBPort, config.DBUser, config.DBPassword, config.DBName, config.DBSSLMode,
-	)
-	db, err := sql.Open("postgres", dbConnStr)
+	db, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		config.DBHost, config.DBPort, config.DBUser, config.DBPassword, config.DBName))
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer db.Close()
-
-	// Test the database connection
-	if err := db.Ping(); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
+		log.Fatalf("could not connect to the database: %v", err)
 	}
 
-	// Run database migrations
-	driver, err := dbpostgres.WithInstance(db, &dbpostgres.Config{})
+	// Apply database migrations
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
-		log.Fatalf("Failed to create migration driver: %v", err)
+		log.Fatalf("could not create migrate driver: %v", err)
 	}
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		"postgres", driver)
+	m, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
 	if err != nil {
-		log.Fatalf("Failed to create migrate instance: %v", err)
+		log.Fatalf("could not create migrate instance: %v", err)
 	}
-
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("Failed to apply migrations: %v", err)
+		log.Fatalf("failed to apply migrations: %v", err)
 	}
-
 	log.Println("Database migrations applied successfully")
 
-	// Setup Redis client
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", config.RedisHost, config.RedisPort),
-		Password: config.RedisPassword,
-		DB:       config.RedisDB,
-	})
+	// Initialize Cache
+	var messageCache ports.MessageCache
+	cacheType := os.Getenv("CACHE_TYPE")
+	log.Printf("Using cache type: %s", cacheType)
 
-	// Initialize repository, cache, and service
-	messageRepo := postgres.NewMessageRepository(db)
-	messageCache := cache.NewRedisCache(redisClient)
+	if cacheType == "in-memory" {
+		messageCache = cache.NewInMemoryMessageCache()
+		log.Println("Initialized in-memory cache.")
+	} else {
+		// Default to Redis
+		redisClient := redis.NewClient(&redis.Options{
+			Addr:     fmt.Sprintf("%s:%s", config.RedisHost, config.RedisPort),
+			Password: config.RedisPassword,
+			DB:       config.RedisDB,
+		})
+		messageCache = cache.NewRedisMessageCache(redisClient)
+		log.Println("Initialized Redis cache.")
+	}
+
+	// Initialize repository and service
+	messageRepo := dbpostgres.NewMessageRepository(db)
 	messageService := services.NewMessageService(messageRepo, messageCache)
 
-	// Load all messages into the cache
+	// Load all messages into memory for the missing messages API
 	if err := messageService.LoadAllMessages(context.Background()); err != nil {
-		log.Fatalf("Failed to load messages into cache: %v", err)
+		log.Fatalf("Failed to load messages into memory map: %v", err)
 	}
 
-	// Create and start the server
-	srv := server.NewServer(
-		config.RESTPort, // Use RESTPort from config
-		config.GRPCPort, // Use GRPCPort from config
-		messageService,
-	)
+	// Setup HTTP server
+	httpRouter := gin.Default()
+	messageHandler := handlers.NewMessageHandler(messageService)
+	apiGroup := httpRouter.Group("/api")
+	messageHandler.RegisterRoutes(apiGroup)
 
-	// Start the server
-	if err := srv.Start(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	httpServer := &http.Server{
+		Addr:    fmt.Sprintf(":%d", config.RESTPort),
+		Handler: httpRouter,
 	}
 
-	log.Printf("Server started - REST on port %d, gRPC on port %d", config.RESTPort, config.GRPCPort)
+	// Setup gRPC server
+	grpcServer := grpc.NewServer()
+	localizationGRPCServer := handlers.NewGRPCServer(messageService)
+	localizationv1.RegisterLocalizationServiceServer(grpcServer, localizationGRPCServer)
 
-	// Wait for interrupt signal to gracefully shutdown the server
+	// Start servers
+	go func() {
+		log.Printf("HTTP server listening on :%d", config.RESTPort)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+
+	go func() {
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", config.GRPCPort))
+		if err != nil {
+			log.Fatalf("gRPC server failed to listen: %v", err)
+		}
+		log.Printf("gRPC server listening on :%d", config.GRPCPort)
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("gRPC server failed: %v", err)
+		}
+	}()
+
+	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+	log.Println("Shutting down servers...")
 
-	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	// Gracefully shutdown the server
-	if err := srv.Stop(); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+	if err := httpServer.Shutdown(ctx); err != nil {
+		log.Fatalf("HTTP server shutdown failed: %v", err)
 	}
-
-	log.Println("Server exited properly")
+	grpcServer.GracefulStop()
+	log.Println("Servers gracefully stopped")
 }

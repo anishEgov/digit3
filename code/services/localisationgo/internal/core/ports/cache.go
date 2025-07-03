@@ -2,9 +2,13 @@ package ports
 
 import (
 	"context"
+	"errors"
 
 	"localisationgo/internal/core/domain"
 )
+
+// ErrCacheMiss is returned when an item is not found in the cache
+var ErrCacheMiss = errors.New("item not found in cache")
 
 // MessageCache defines the caching operations for messages
 type MessageCache interface {
