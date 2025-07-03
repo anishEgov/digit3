@@ -144,6 +144,26 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 			return nil, err
 		}
 		finalMessages = append(finalMessages, messagesToCreate...)
+
+		// Update the in-memory map for created messages
+		for _, msg := range messagesToCreate {
+			if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
+				s.messageLocalesMap[msg.TenantID] = make(map[string][]string)
+			}
+			// Avoid adding duplicate locales for a code
+			found := false
+			if _, ok := s.messageLocalesMap[msg.TenantID][msg.Code]; ok {
+				for _, locale := range s.messageLocalesMap[msg.TenantID][msg.Code] {
+					if locale == msg.Locale {
+						found = true
+						break
+					}
+				}
+			}
+			if !found {
+				s.messageLocalesMap[msg.TenantID][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Code], msg.Locale)
+			}
+		}
 	}
 
 	// Handle updates
