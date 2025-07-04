@@ -29,11 +29,9 @@ func (c *InMemoryMessageCache) GetMessages(ctx context.Context, tenantID, module
 	key := buildCacheKey(tenantID, module, locale)
 	messages, found := c.cache[key]
 	if !found {
-		log.Printf("IN-MEMORY CACHE: MISS for key: %s", key)
 		return nil, ports.ErrCacheMiss
 	}
 
-	log.Printf("IN-MEMORY CACHE: HIT for key: %s", key)
 	return messages, nil
 }
 

@@ -57,7 +57,6 @@ func main() {
 	// Initialize Cache
 	var messageCache ports.MessageCache
 	cacheType := os.Getenv("CACHE_TYPE")
-	log.Printf("Using cache type: %s", cacheType)
 
 	if cacheType == "in-memory" {
 		messageCache = cache.NewInMemoryMessageCache()
