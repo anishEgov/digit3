@@ -65,7 +65,7 @@ func (s *GRPCServer) SearchMessages(ctx context.Context, req *localizationv1.Sea
 	if len(req.Codes) > 0 {
 		messages, err = s.service.SearchMessagesByCodes(ctx, tenantID, req.Locale, req.Codes)
 	} else {
-		messages, err = s.service.SearchMessages(ctx, tenantID, req.Module, req.Locale)
+		messages, err = s.service.SearchMessages(ctx, tenantID, req.Module, req.Locale, int(req.Limit), int(req.Offset))
 	}
 
 	if err != nil {

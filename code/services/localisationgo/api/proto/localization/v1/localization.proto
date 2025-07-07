@@ -50,6 +50,8 @@ message SearchMessagesRequest {
   string module = 1;
   string locale = 2;
   repeated string codes = 3;
+  int32 limit = 4;
+  int32 offset = 5;
 }
 
 message SearchMessagesResponse {
