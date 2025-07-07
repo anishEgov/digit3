@@ -12,7 +12,7 @@ type MessageService interface {
 	UpsertMessages(ctx context.Context, tenantID string, userID string, messages []domain.Message) ([]domain.Message, error)
 
 	// SearchMessages retrieves messages based on search criteria
-	SearchMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error)
+	SearchMessages(ctx context.Context, tenantID, module, locale string, limit, offset int) ([]domain.Message, error)
 
 	// SearchMessagesByCodes retrieves messages for specific codes
 	SearchMessagesByCodes(ctx context.Context, tenantID, locale string, codes []string) ([]domain.Message, error)

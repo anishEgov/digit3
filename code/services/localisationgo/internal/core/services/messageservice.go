@@ -278,14 +278,19 @@ func (s *MessageServiceImpl) BustCache(ctx context.Context, tenantID, module, lo
 }
 
 // SearchMessages searches for messages, checking the cache first
-func (s *MessageServiceImpl) SearchMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error) {
-	// Try to get from cache first
+func (s *MessageServiceImpl) SearchMessages(ctx context.Context, tenantID, module, locale string, limit, offset int) ([]domain.Message, error) {
+	// Bypass cache for paginated requests. Caching paginated results is complex.
+	if limit > 0 {
+		return s.repository.FindMessages(ctx, tenantID, module, locale, limit, offset)
+	}
+
+	// Try to get from cache first for non-paginated requests
 	if cachedMessages, err := s.cache.GetMessages(ctx, tenantID, module, locale); err == nil && len(cachedMessages) > 0 {
 		return cachedMessages, nil
 	}
 
-	// If not in cache, get from repository
-	messages, err := s.repository.FindMessages(ctx, tenantID, module, locale)
+	// If not in cache, get from repository (non-paginated)
+	messages, err := s.repository.FindMessages(ctx, tenantID, module, locale, 0, 0) // limit=0 means no limit
 	if err != nil {
 		return nil, err
 	}

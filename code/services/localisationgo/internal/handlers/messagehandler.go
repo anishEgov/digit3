@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -42,10 +43,14 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 	var messages []domain.Message
 	var err error
 
+	// Handle pagination parameters
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
 	if len(codes) > 0 {
 		messages, err = h.service.SearchMessagesByCodes(c.Request.Context(), tenantID, locale, codes)
 	} else {
-		messages, err = h.service.SearchMessages(c.Request.Context(), tenantID, module, locale)
+		messages, err = h.service.SearchMessages(c.Request.Context(), tenantID, module, locale, limit, offset)
 	}
 
 	if err != nil {

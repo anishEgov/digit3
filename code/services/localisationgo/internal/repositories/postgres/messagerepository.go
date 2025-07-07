@@ -204,32 +204,25 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID str
 	return nil
 }
 
-// FindMessages finds messages based on the search criteria
-func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, module, locale string) ([]domain.Message, error) {
+// FindMessages finds messages based on the search criteria, with pagination and sorting
+func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, module, locale string, limit, offset int) ([]domain.Message, error) {
 	query := `
-		SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
-		FROM localisation
-		WHERE tenant_id = $1 AND locale = $2
-	`
-	args := []interface{}{tenantID, locale}
-
-	if module != "" {
-		query += " AND module = $3"
-		args = append(args, module)
-	}
-
-	// Execute the query
-	rows, err := r.db.QueryContext(ctx, query, args...)
+        SELECT uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+        FROM localisation
+        WHERE tenant_id = $1 AND module = $2 AND locale = $3
+        ORDER BY code ASC
+        LIMIT $4 OFFSET $5
+    `
+	rows, err := r.db.QueryContext(ctx, query, tenantID, module, locale, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var messages []domain.Message
+	messages := []domain.Message{}
 	for rows.Next() {
 		var msg domain.Message
 		if err := rows.Scan(
-			&msg.ID,
 			&msg.UUID,
 			&msg.TenantID,
 			&msg.Module,
