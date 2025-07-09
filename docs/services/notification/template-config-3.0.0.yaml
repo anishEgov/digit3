@@ -1,0 +1,550 @@
+openapi: 3.0.0
+info:
+  title: Template Config
+  version: 1.0.0
+  description: |
+    API to manage data transformation configs.
+    It lets you define mappings, enrich data via external API calls,
+    and merge everything with incoming payloads to generate a fully rendered content object.
+  contact:
+    name: eGovernments Foundation
+
+servers:
+  - url: https://prod-api.example.com
+    description: Production server
+  - url: https://staging-api.example.com
+    description: Staging server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Template Config Management
+    description: Endpoints for managing template configs
+  - name: Template Config Render
+    description: Endpoints for rendering template configs
+
+paths:
+  /template-config:
+    post:
+      tags:
+        - Template Config Management
+      summary: Create template config
+      description: API to register and verify a template config.
+      requestBody:
+        required: true
+        description: Details of template config registration
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/TemplateConfig'
+      parameters: 
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+      responses:
+        '201':
+          description: Created
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/TemplateConfig'
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
+        '400':
+          description: Bad Request
+          content:
+            'application/json':
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Template Config Management
+      summary: Update template Config
+      description: API to update a registered template config
+      requestBody:
+        required: true
+        description: Details of registered template config
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/TemplateConfig'
+      parameters: 
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+      responses:
+        '200':
+          description: OK
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/TemplateConfig'
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
+        '400':
+          description: Bad Request
+          content:
+            'application/json':
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags:
+        - Template Config Management
+      summary: Search template configs
+      parameters:
+       - name: uuids
+         in: query
+         description: Comma-separated list of uuids
+         schema:
+          type: string
+       - name: templateId
+         in: query
+         schema:
+          type: string
+       - name: tenantId
+         in: query
+         required: true
+         schema:
+          type: string
+       - name: version
+         in: query
+         schema:
+          type: string
+       - $ref: '#/components/parameters/RequestIdHeader'
+       - $ref: '#/components/parameters/CorrelationIdHeader'
+       - $ref: '#/components/parameters/UserAgentHeader'
+       - $ref: '#/components/parameters/TenantIdHeader'
+       - $ref: '#/components/parameters/ForwardedForHeader'
+       - $ref: '#/components/parameters/ClientId'
+       - $ref: '#/components/parameters/ClientSecret'
+       - $ref: '#/components/parameters/TimeStamp'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemplateConfig'
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad Request
+          content:
+            'application/json':
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Template Config Management
+      summary: Delete template config
+      parameters:
+        - name: templateId
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: tenantId
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: version
+          in: query
+          schema:
+            type: string
+          required: true
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+      responses:
+        '200':
+          description: OK
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad Request
+          content:
+            'application/json':
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /template-config/render:
+    post:
+      tags:
+        - Template Config Render
+      summary: Fetch rendered data after enrichment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderRequest'
+      parameters: 
+        - $ref: '#/components/parameters/RequestIdHeader'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/UserAgentHeader'
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/ForwardedForHeader'
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/ClientSecret'
+        - $ref: '#/components/parameters/TimeStamp'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderResponse'
+          headers:
+            X-Response-Time:
+              $ref: '#/components/headers/X-Response-Time'
+            X-Response-Timestamp:
+              $ref: '#/components/headers/X-Response-Timestamp'
+            X-Request-ID:
+              $ref: '#/components/headers/X-Request-ID'
+            X-Correlation-ID:
+              $ref: '#/components/headers/X-Correlation-ID'
+            X-Tenant-ID:
+              $ref: '#/components/headers/X-Tenant-ID'
+            X-Rate-Limit:
+              $ref: '#/components/headers/X-Rate-Limit'
+            X-Rate-Limit-Remaining:
+              $ref: '#/components/headers/X-Rate-Limit-Remaining'
+            X-Rate-Limit-Reset:
+              $ref: '#/components/headers/X-Rate-Limit-Reset'
+        '400':
+          description: IBad Request
+          content:
+            'application/json':
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Error'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-3.0/master/common-3.0.0.yaml#/components/securitySchemes/BearerAuth'
+
+  parameters:
+    RequestIdHeader:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/RequestIdHeader'
+    CorrelationIdHeader:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/CorrelationIdHeader'
+    UserAgentHeader:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/UserAgentHeader'
+    TenantIdHeader:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/TenantIdHeader'
+    ForwardedForHeader:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/ForwardedForHeader'
+    ClientId:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/ClientId'
+    ClientSecret:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/ClientSecret'
+    TimeStamp:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/parameters/TimeStamp'
+  
+  headers:
+    X-Response-Time:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Response-Time'
+    X-Response-Timestamp:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Response-Timestamp'
+    X-Request-ID:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Request-ID'
+    X-Correlation-ID:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Correlation-ID'
+    X-Tenant-ID:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Tenant-ID'
+    X-Rate-Limit:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Rate-Limit'
+    X-Rate-Limit-Remaining:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Rate-Limit-Remaining'
+    X-Rate-Limit-Reset:
+        $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/headers/X-Rate-Limit-Reset'
+
+  schemas:
+    TemplateConfig:
+      type: object
+      required:
+        - templateId
+        - version
+        - tenantId
+        - fieldMapping
+        - apiMapping
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for the template config
+        templateId:
+          type: string
+          description: Unique ID or code for the template
+          example: "user-notify"
+        version:
+          type: string
+          description: Semantic version of the template config
+          example: "1.0.0"
+        tenantId:
+          type: string
+          description: Identifier for tenant or client
+          example: "pg"
+        fieldMapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of render data field → JSONPath in payload
+          example:
+            name: $.payload.name
+            age: $.payload.age
+        apiMapping:
+          type: array
+          description: List of API enrichment rules
+          items:
+            $ref: '#/components/schemas/ApiMapping'
+        auditDetails:
+          $ref: '#/components/schemas/AuditDetail'
+
+    ApiMapping:
+      type: object
+      required:
+        - method
+        - endpoint
+        - responseMapping
+      properties:
+        method:
+          type: string
+          enum: [GET]
+          description: HTTP method used for external API call
+        endpoint:
+          $ref: '#/components/schemas/EndpointConfig'
+        responseMapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: JSONPath mappings from API response to render fields
+          example:
+            userStatus: $.response.status
+            userExperience: $.response.user.experience
+
+    EndpointConfig:
+      type: object
+      required:
+        - base
+        - path
+      properties:
+        base:
+          type: string
+          format: uri
+          description: Base URL of the external API
+          example: https://api.example.com
+        path:
+          type: string
+          description: Path template using placeholders (e.g., /users/{{userId}})
+          example: /orgs/{{orgId}}/users/{{userId}}/status
+        pathParams:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of placeholder → JSONPath in payload
+          example:
+            orgId: $.payload.organization.id
+            userId: $.payload.user.id
+        queryParams:
+          type: object
+          additionalProperties:
+            type: string
+          description: Map of query param name → JSONPath in payload
+          example:
+            role: $.payload.user.role
+            active: $.payload.user.active
+
+    RenderRequest:
+      type: object
+      required: [templateId, tenantId, version, payload]
+      properties:
+        templateId:
+          type: string
+        tenantId:
+          type: string
+        version:
+          type: string
+        payload:
+          type: object
+          additionalProperties:
+            type: string
+          description: Raw input payload used for rendering
+
+    RenderResponse:
+      type: object
+      properties:
+        templateId:
+          type: string
+        tenantId:
+          type: string
+        version:
+          type: string
+        data:
+          type: object
+          additionalProperties:
+            type: string
+
+    Error:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/schemas/Error'
+    
+    AuditDetail:
+      $ref: 'https://raw.githubusercontent.com/digitnxt/digit3/refs/heads/master/docs/services/common/Common-3.0.0.yaml#/components/schemas/AuditDetail'
