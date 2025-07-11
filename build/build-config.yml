@@ -1,0 +1,136 @@
+config:
+  - name: "builds/digit3/code/services/mdms-v2"
+    build:
+      - work-dir: "code/services/mdms-v2"
+        image-name: "mdms-v2"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/mdms-v2/src/main/resources/db"
+        image-name: "mdms-v2-db"
+
+  - name: "builds/digit3/code/services/audit-service"
+    build:
+      - work-dir: "code/services/audit-service"
+        image-name: "audit-service"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/audit-service/src/main/resources/db"
+        image-name: "audit-service-db"
+
+  - name: "builds/digit3/code/services/boundary-service"
+    build:
+      - work-dir: "code/services/boundary-service"
+        image-name: "boundary-service"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/boundary-service/src/main/resources/db"
+        image-name: "boundary-service-db"
+
+  - name: "builds/digit3/code/services/filestore"
+    build:
+      - work-dir: "code/services/filestore"
+        image-name: "filestore"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/filestore/src/main/resources/db"
+        image-name: "filestore-db"
+
+  - name: "builds/digit3/code/services/idgen"
+    build:
+      - work-dir: "code/services/idgen"
+        image-name: "idgen"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/idgen/src/main/resources/db"
+        image-name: "idgen-db"
+
+  - name: "builds/digit3/code/services/localization"
+    build:
+      - work-dir: "code/services/localization"
+        image-name: "localization"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/localization/src/main/resources/db"
+        image-name: "localization-db"
+
+  - name: "builds/digit3/code/services/notification"
+    build:
+      - work-dir: "code/services/notification"
+        image-name: "notification"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/notification/src/main/resources/db"
+        image-name: "notification-db"
+
+  - name: "builds/digit3/code/services/url-shortening"
+    build:
+      - work-dir: "code/services/url-shortening"
+        image-name: "url-shortening"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/url-shortening/src/main/resources/db"
+        image-name: "url-shortening-db"
+
+  - name: "builds/digit3/code/services/user"
+    build:
+      - work-dir: "code/services/user"
+        image-name: "user"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/user/src/main/resources/db"
+        image-name: "user-db"
+
+  - name: "builds/digit3/code/services/workflow"
+    build:
+      - work-dir: "code/services/workflow"
+        image-name: "workflow"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/workflow/src/main/resources/db"
+        image-name: "workflow-db"
+
+  - name: "builds/digit3/code/services/gateway"
+    build:
+      - work-dir: "code/services/gateway"
+        image-name: "gateway"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/gateway/src/main/resources/db"
+        image-name: "gateway-db"
+
+  - name: "builds/digit3/code/services/libraries"
+    build:
+      - work-dir: "code/services/libraries"
+        image-name: "libraries"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/libraries/src/main/resources/db"
+        image-name: "libraries-db"
+
+  - name: "builds/digit3/code/services/nlp-engine"
+    build:
+      - work-dir: "code/services/nlp-engine"
+        image-name: "nlp-engine"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/nlp-engine/src/main/resources/db"
+        image-name: "nlp-engine-db"
+
+  - name: "builds/digit3/code/services/pdf-service"
+    build:
+      - work-dir: "code/services/pdf-service"
+        image-name: "pdf-service"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/pdf-service/src/main/resources/db"
+        image-name: "pdf-service-db"
+
+  - name: "builds/digit3/code/services/report"
+    build:
+      - work-dir: "code/services/report"
+        image-name: "report"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/report/src/main/resources/db"
+        image-name: "report-db"
+
+  - name: "builds/digit3/code/services/service-request"
+    build:
+      - work-dir: "code/services/service-request"
+        image-name: "service-request"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/service-request/src/main/resources/db"
+        image-name: "service-request-db"
+
+  - name: "builds/digit3/code/services/tenant"
+    build:
+      - work-dir: "code/services/tenant"
+        image-name: "tenant"
+        dockerfile: "build/maven/Dockerfile"
+      - work-dir: "code/services/tenant/src/main/resources/db"
+        image-name: "tenant-db"
