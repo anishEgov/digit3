@@ -84,7 +84,7 @@ func main() {
 	// Setup HTTP server
 	httpRouter := gin.Default()
 	messageHandler := handlers.NewMessageHandler(messageService)
-	apiGroup := httpRouter.Group("/api")
+	apiGroup := httpRouter.Group("/localization")
 	messageHandler.RegisterRoutes(apiGroup)
 
 	httpServer := &http.Server{

@@ -164,17 +164,35 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID str
 		}
 	}()
 
-	// Create a placeholder string for the IN clause
+	// First, validate that all UUIDs exist for the given tenant
+	// Create a placeholder string for the IN clause for validation
 	placeholders := make([]string, len(uuids))
 	args := make([]interface{}, len(uuids)+1)
 	args[0] = tenantID
 
-	// Build the query dynamically
 	for i, id := range uuids {
 		placeholders[i] = fmt.Sprintf("$%d", i+2)
 		args[i+1] = id
 	}
 
+	// Check how many records exist with the given UUIDs and tenant
+	checkQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM localisation
+		WHERE tenant_id = $1 AND uuid IN (%s)
+	`, strings.Join(placeholders, ","))
+
+	var count int64
+	err = tx.QueryRowContext(ctx, checkQuery, args...).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to validate UUIDs: %w", err)
+	}
+
+	// If the count doesn't match the number of UUIDs provided, some UUIDs are missing
+	if count != int64(len(uuids)) {
+		return fmt.Errorf("one or more UUIDs not found for tenant %s. Expected %d, found %d", tenantID, len(uuids), count)
+	}
+
+	// All UUIDs exist, proceed with deletion
 	// Create the delete query
 	query := fmt.Sprintf(`
 		DELETE FROM localisation
@@ -206,14 +224,43 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID str
 
 // FindMessages finds messages based on the search criteria, with pagination and sorting
 func (r *MessageRepositoryImpl) FindMessages(ctx context.Context, tenantID, module, locale string, limit, offset int) ([]domain.Message, error) {
+	// Build dynamic query based on provided parameters
 	query := `
         SELECT uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
         FROM localisation
-        WHERE tenant_id = $1 AND module = $2 AND locale = $3
-        ORDER BY code ASC
-        LIMIT $4 OFFSET $5
-    `
-	rows, err := r.db.QueryContext(ctx, query, tenantID, module, locale, limit, offset)
+        WHERE tenant_id = $1`
+
+	args := []interface{}{tenantID}
+	paramCount := 1
+
+	// Add module filter if provided
+	if module != "" {
+		paramCount++
+		query += fmt.Sprintf(" AND module = $%d", paramCount)
+		args = append(args, module)
+	}
+
+	// Add locale filter if provided
+	if locale != "" {
+		paramCount++
+		query += fmt.Sprintf(" AND locale = $%d", paramCount)
+		args = append(args, locale)
+	}
+
+	query += " ORDER BY code ASC"
+
+	// Add pagination if limit is specified
+	if limit > 0 {
+		paramCount++
+		query += fmt.Sprintf(" LIMIT $%d", paramCount)
+		args = append(args, limit)
+
+		paramCount++
+		query += fmt.Sprintf(" OFFSET $%d", paramCount)
+		args = append(args, offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

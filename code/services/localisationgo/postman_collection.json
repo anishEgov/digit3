@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "localization-service",
 		"name": "Localization Service",
-		"description": "Collection for Localization Service REST and gRPC APIs",
+		"description": "Collection for Localization Service REST and gRPC APIs - Updated for OpenAPI Contract Compliance",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -15,34 +15,46 @@
 						"method": "GET",
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json"
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/localization/messages?tenantId={{tenant_id}}&module={{module}}&locale={{locale}}&codes={{codes}}",
+							"raw": "{{base_url}}/localization/messages?module={{module}}&locale={{locale}}&codes={{codes}}",
 							"host": ["{{base_url}}"],
-							"path": ["api", "localization", "messages"],
+							"path": ["localization", "messages"],
 							"query": [
 								{
-									"key": "tenantId",
-									"value": "{{tenant_id}}"
-								},
-								{
 									"key": "module",
-									"value": "{{module}}"
+									"value": "{{module}}",
+									"description": "Filter by module (optional)"
 								},
 								{
 									"key": "locale",
-									"value": "{{locale}}"
+									"value": "{{locale}}",
+									"description": "Filter by locale (optional)"
 								},
 								{
 									"key": "codes",
-									"value": "{{codes}}"
+									"value": "{{codes}}",
+									"description": "Filter by specific codes (optional)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Pagination limit (optional)",
+									"disabled": true
+								},
+								{
+									"key": "offset",
+									"value": "0",
+									"description": "Pagination offset (optional)",
+									"disabled": true
 								}
 							]
 						},
-						"description": "Search for localization messages using URL query parameters"
+						"description": "Search for localization messages. Returns only 5 fields: uuid, code, message, module, locale"
 					}
 				},
 				{
@@ -51,20 +63,30 @@
 						"method": "POST",
 						"header": [
 							{
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
+							},
+							{
+								"key": "X-User-ID",
+								"value": "{{user_id}}",
+								"description": "User creating the messages"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"code\": \"welcome.msg\",\n            \"message\": \"Welcome to our application\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        },\n        {\n            \"code\": \"goodbye.msg\",\n            \"message\": \"Thank you for using our app\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/localization/messages/v1/_create",
+							"raw": "{{base_url}}/localization/messages",
 							"host": ["{{base_url}}"],
-							"path": ["api", "localization", "messages", "v1", "_create"]
+							"path": ["localization", "messages"]
 						},
-						"description": "Create new localization messages"
+						"description": "Create new localization messages. UUIDs are auto-generated."
 					}
 				},
 				{
@@ -73,20 +95,30 @@
 						"method": "PUT",
 						"header": [
 							{
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
+							},
+							{
+								"key": "X-User-ID",
+								"value": "{{user_id}}",
+								"description": "User updating the messages"
+							},
+							{
 								"key": "Content-Type",
 								"value": "application/json"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"locale\": \"{{locale}}\",\n    \"module\": \"{{module}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Updated Message\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"message\": \"Updated welcome message\"\n        }\n    ]\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/localization/messages/v1/_update",
+							"raw": "{{base_url}}/localization/messages",
 							"host": ["{{base_url}}"],
-							"path": ["api", "localization", "messages", "v1", "_update"]
+							"path": ["localization", "messages"]
 						},
-						"description": "Update existing localization messages for a specific module"
+						"description": "Update existing localization messages by UUID"
 					}
 				},
 				{
@@ -95,27 +127,15 @@
 						"method": "PUT",
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
-						},
-						"url": {
-							"raw": "{{base_url}}/api/localization/messages/v1/_upsert",
-							"host": ["{{base_url}}"],
-							"path": ["api", "localization", "messages", "v1", "_upsert"]
-						},
-						"description": "Create or update localization messages"
-					}
-				},
-				{
-					"name": "Delete Messages",
-					"request": {
-						"method": "DELETE",
-						"header": [
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
+							},
+							{
+								"key": "X-User-ID",
+								"value": "{{user_id}}",
+								"description": "User upserting the messages"
+							},
 							{
 								"key": "Content-Type",
 								"value": "application/json"
@@ -123,14 +143,111 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestInfo\": {\n        \"apiId\": \"api.localization\",\n        \"ver\": \"1.0\",\n        \"ts\": \"2024-03-20T10:00:00Z\",\n        \"msgId\": \"{{$guid}}\"\n    },\n    \"tenantId\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\",\n            \"code\": \"example.code\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"code\": \"welcome.msg\",\n            \"message\": \"Updated Welcome Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        },\n        {\n            \"code\": \"new.msg\",\n            \"message\": \"New Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/api/localization/messages/v1/_delete",
+							"raw": "{{base_url}}/localization/messages/_upsert",
 							"host": ["{{base_url}}"],
-							"path": ["api", "localization", "messages", "v1", "_delete"]
+							"path": ["localization", "messages", "_upsert"]
 						},
-						"description": "Delete localization messages"
+						"description": "Create or update localization messages. Include UUID to update, omit UUID to create."
+					}
+				},
+				{
+					"name": "Delete Messages - Single UUID",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/localization/messages?uuid={{message_uuid}}",
+							"host": ["{{base_url}}"],
+							"path": ["localization", "messages"],
+							"query": [
+								{
+									"key": "uuid",
+									"value": "{{message_uuid}}",
+									"description": "UUID of message to delete"
+								}
+							]
+						},
+						"description": "Delete a single localization message by UUID. Includes transaction rollback if UUID not found."
+					}
+				},
+				{
+					"name": "Delete Messages - Multiple UUIDs",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/localization/messages?uuids=uuid1&uuids=uuid2&uuids=uuid3",
+							"host": ["{{base_url}}"],
+							"path": ["localization", "messages"],
+							"query": [
+								{
+									"key": "uuids",
+									"value": "uuid1",
+									"description": "First UUID to delete"
+								},
+								{
+									"key": "uuids",
+									"value": "uuid2",
+									"description": "Second UUID to delete"
+								},
+								{
+									"key": "uuids",
+									"value": "uuid3",
+									"description": "Third UUID to delete"
+								}
+							]
+						},
+						"description": "Delete multiple localization messages by UUIDs. All UUIDs must exist or transaction will rollback."
+					}
+				},
+				{
+					"name": "Find Missing Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_url}}/localization/messages/_missing?module={{module}}",
+							"host": ["{{base_url}}"],
+							"path": ["localization", "messages", "_missing"],
+							"query": [
+								{
+									"key": "module",
+									"value": "{{module}}",
+									"description": "Filter by specific module (optional)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Find missing localization codes. Returns {module: {locale: [missing_codes]}}"
 					}
 				},
 				{
@@ -139,16 +256,31 @@
 						"method": "DELETE",
 						"header": [
 							{
-								"key": "Content-Type",
-								"value": "application/json"
+								"key": "X-Tenant-ID",
+								"value": "{{tenant_id}}",
+								"description": "Required tenant identifier"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/localization/messages/cache-bust",
+							"raw": "{{base_url}}/localization/cache/_bust?module={{module}}&locale={{locale}}",
 							"host": ["{{base_url}}"],
-							"path": ["api", "localization", "messages", "cache-bust"]
+							"path": ["localization", "cache", "_bust"],
+							"query": [
+								{
+									"key": "module",
+									"value": "{{module}}",
+									"description": "Module to bust cache for (optional)",
+									"disabled": true
+								},
+								{
+									"key": "locale",
+									"value": "{{locale}}",
+									"description": "Locale to bust cache for (optional)",
+									"disabled": true
+								}
+							]
 						},
-						"description": "Clear the entire message cache"
+						"description": "Clear the cache. If no parameters provided, clears entire tenant cache."
 					}
 				}
 			]
@@ -164,11 +296,15 @@
 							{
 								"key": "Content-Type",
 								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"module\": \"{{module}}\",\n    \"locale\": \"{{locale}}\",\n    \"codes\": [\"example.code\"]\n}"
+							"raw": "{\n    \"module\": \"{{module}}\",\n    \"locale\": \"{{locale}}\",\n    \"codes\": [\"welcome.msg\"],\n    \"limit\": 20,\n    \"offset\": 0\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/SearchMessages",
@@ -186,11 +322,19 @@
 							{
 								"key": "Content-Type",
 								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
+							},
+							{
+								"key": "x-user-id",
+								"value": "{{user_id}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"code\": \"welcome.msg\",\n            \"message\": \"Welcome Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/CreateMessages",
@@ -208,11 +352,19 @@
 							{
 								"key": "Content-Type",
 								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
+							},
+							{
+								"key": "x-user-id",
+								"value": "{{user_id}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"locale\": \"{{locale}}\",\n    \"module\": \"{{module}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Updated Message\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"message\": \"Updated Message\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/UpdateMessages",
@@ -230,11 +382,19 @@
 							{
 								"key": "Content-Type",
 								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
+							},
+							{
+								"key": "x-user-id",
+								"value": "{{user_id}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"code\": \"example.code\",\n            \"message\": \"Example Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"code\": \"welcome.msg\",\n            \"message\": \"Updated Welcome\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/UpsertMessages",
@@ -252,18 +412,48 @@
 							{
 								"key": "Content-Type",
 								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"tenant_id\": \"{{tenant_id}}\",\n    \"messages\": [\n        {\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\",\n            \"code\": \"example.code\"\n        }\n    ]\n}"
+							"raw": "{\n    \"uuids\": [\n        \"{{message_uuid}}\",\n        \"uuid2\",\n        \"uuid3\"\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/DeleteMessages",
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "DeleteMessages"]
 						},
-						"description": "Delete localization messages using gRPC"
+						"description": "Delete localization messages by UUIDs using gRPC"
+					}
+				},
+				{
+					"name": "Find Missing Messages",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"module\": \"{{module}}\"\n}"
+						},
+						"url": {
+							"raw": "{{grpc_url}}/localization.v1.LocalizationService/FindMissingMessages",
+							"host": ["{{grpc_url}}"],
+							"path": ["localization.v1.LocalizationService", "FindMissingMessages"]
+						},
+						"description": "Find missing localization messages using gRPC"
 					}
 				},
 				{
@@ -274,18 +464,22 @@
 							{
 								"key": "Content-Type",
 								"value": "application/grpc"
+							},
+							{
+								"key": "x-tenant-id",
+								"value": "{{tenant_id}}"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{}"
+							"raw": "{\n    \"module\": \"{{module}}\",\n    \"locale\": \"{{locale}}\"\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/BustCache",
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "BustCache"]
 						},
-						"description": "Clear the entire message cache using gRPC"
+						"description": "Clear the cache using gRPC"
 					}
 				}
 			]
@@ -295,32 +489,50 @@
 		{
 			"key": "base_url",
 			"value": "http://localhost:8088",
-			"type": "string"
+			"type": "string",
+			"description": "Base URL for REST API"
 		},
 		{
 			"key": "grpc_url",
 			"value": "http://localhost:8089",
-			"type": "string"
+			"type": "string",
+			"description": "Base URL for gRPC API"
 		},
 		{
 			"key": "tenant_id",
-			"value": "DEFAULT",
-			"type": "string"
+			"value": "test-tenant",
+			"type": "string",
+			"description": "Tenant identifier"
+		},
+		{
+			"key": "user_id",
+			"value": "test-user",
+			"type": "string",
+			"description": "User identifier for audit trail"
 		},
 		{
 			"key": "module",
-			"value": "test-module",
-			"type": "string"
+			"value": "common",
+			"type": "string",
+			"description": "Module name for grouping messages"
 		},
 		{
 			"key": "locale",
-			"value": "en_IN",
-			"type": "string"
+			"value": "en",
+			"type": "string",
+			"description": "Locale identifier (e.g., en, fr, en_US)"
 		},
 		{
 			"key": "codes",
-			"value": "example.code",
-			"type": "string"
+			"value": "welcome.msg,goodbye.msg",
+			"type": "string",
+			"description": "Comma-separated list of message codes"
+		},
+		{
+			"key": "message_uuid",
+			"value": "35f792e5-2983-4d94-9d14-8bdec6006e58",
+			"type": "string",
+			"description": "Example UUID for testing update/delete operations"
 		}
 	]
 } 

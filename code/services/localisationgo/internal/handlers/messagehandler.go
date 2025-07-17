@@ -58,7 +58,19 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"messages": messages})
+	// Convert domain messages to response DTOs
+	responseMessages := make([]dtos.MessageResponse, len(messages))
+	for i, msg := range messages {
+		responseMessages[i] = dtos.MessageResponse{
+			UUID:    msg.UUID,
+			Code:    msg.Code,
+			Message: msg.Message,
+			Module:  msg.Module,
+			Locale:  msg.Locale,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messages": responseMessages})
 }
 
 // CreateMessages handles the creation of multiple new localization messages
@@ -93,7 +105,19 @@ func (h *MessageHandler) CreateMessages(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"messages": createdMessages})
+	// Convert domain messages to response DTOs
+	responseMessages := make([]dtos.MessageResponse, len(createdMessages))
+	for i, msg := range createdMessages {
+		responseMessages[i] = dtos.MessageResponse{
+			UUID:    msg.UUID,
+			Code:    msg.Code,
+			Message: msg.Message,
+			Module:  msg.Module,
+			Locale:  msg.Locale,
+		}
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"messages": responseMessages})
 }
 
 // UpdateMessages handles the update of multiple existing localization messages
@@ -126,7 +150,19 @@ func (h *MessageHandler) UpdateMessages(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"messages": updatedMessages})
+	// Convert domain messages to response DTOs
+	responseMessages := make([]dtos.MessageResponse, len(updatedMessages))
+	for i, msg := range updatedMessages {
+		responseMessages[i] = dtos.MessageResponse{
+			UUID:    msg.UUID,
+			Code:    msg.Code,
+			Message: msg.Message,
+			Module:  msg.Module,
+			Locale:  msg.Locale,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messages": responseMessages})
 }
 
 // UpsertMessages handles the upsert of multiple localization messages
@@ -162,7 +198,19 @@ func (h *MessageHandler) UpsertMessages(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"messages": upsertedMessages})
+	// Convert domain messages to response DTOs
+	responseMessages := make([]dtos.MessageResponse, len(upsertedMessages))
+	for i, msg := range upsertedMessages {
+		responseMessages[i] = dtos.MessageResponse{
+			UUID:    msg.UUID,
+			Code:    msg.Code,
+			Message: msg.Message,
+			Module:  msg.Module,
+			Locale:  msg.Locale,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"messages": responseMessages})
 }
 
 // DeleteMessages handles the deletion of multiple localization messages by UUID
@@ -173,13 +221,34 @@ func (h *MessageHandler) DeleteMessages(c *gin.Context) {
 		return
 	}
 
-	uuids := c.QueryArray("uuids")
-	if len(uuids) == 0 {
+	// Support both single 'uuid' and multiple 'uuids' parameters
+	var uuids []string
+
+	// Check for single uuid parameter
+	if uuid := c.Query("uuid"); uuid != "" {
+		uuids = append(uuids, uuid)
+	}
+
+	// Check for multiple uuids parameters (array form)
+	uuidsArray := c.QueryArray("uuids")
+	uuids = append(uuids, uuidsArray...)
+
+	// Remove duplicates if both forms are used
+	uniqueUUIDs := make(map[string]bool)
+	var finalUUIDs []string
+	for _, uuid := range uuids {
+		if uuid != "" && !uniqueUUIDs[uuid] {
+			uniqueUUIDs[uuid] = true
+			finalUUIDs = append(finalUUIDs, uuid)
+		}
+	}
+
+	if len(finalUUIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one uuid is required in query params"})
 		return
 	}
 
-	err := h.service.DeleteMessages(c.Request.Context(), tenantID, uuids)
+	err := h.service.DeleteMessages(c.Request.Context(), tenantID, finalUUIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -233,20 +302,20 @@ func (h *MessageHandler) BustCache(c *gin.Context) {
 
 // RegisterRoutes registers the API routes on the given router group
 func (h *MessageHandler) RegisterRoutes(router *gin.RouterGroup) {
-	// v1 routes
-	v1 := router.Group("/localization/messages/v1")
+	// Main messages routes
+	messagesGroup := router.Group("/messages")
 	{
-		v1.GET("/_search", h.SearchMessages)
-		v1.POST("/_create", h.CreateMessages)
-		v1.PUT("/_update", h.UpdateMessages)
-		v1.PUT("/_upsert", h.UpsertMessages)
-		v1.DELETE("/_delete", h.DeleteMessages)
-		v1.GET("/_missing", h.FindMissingMessages)
+		messagesGroup.GET("", h.SearchMessages)                // GET /messages
+		messagesGroup.POST("", h.CreateMessages)               // POST /messages
+		messagesGroup.PUT("", h.UpdateMessages)                // PUT /messages
+		messagesGroup.DELETE("", h.DeleteMessages)             // DELETE /messages
+		messagesGroup.PUT("/_upsert", h.UpsertMessages)        // PUT /messages/_upsert
+		messagesGroup.POST("/_missing", h.FindMissingMessages) // POST /messages/_missing
 	}
 
 	// Cache bust route
-	cacheBustV1 := router.Group("/localization/cache/v1")
+	cacheGroup := router.Group("/cache")
 	{
-		cacheBustV1.DELETE("/_bust", h.BustCache)
+		cacheGroup.DELETE("/_bust", h.BustCache) // DELETE /cache/_bust
 	}
 }

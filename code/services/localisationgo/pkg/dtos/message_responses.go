@@ -2,6 +2,7 @@ package dtos
 
 // MessageResponse is a simplified message structure for responses
 type MessageResponse struct {
+	UUID    string `json:"uuid"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Module  string `json:"module"`
