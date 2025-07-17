@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"localisationgo/internal/core/domain"
@@ -16,11 +17,17 @@ type MessageRepositoryImpl struct {
 	db *sql.DB
 }
 
-// NewMessageRepository creates a new PostgreSQL message repository
+// NewMessageRepository creates a new instance of MessageRepositoryImpl
 func NewMessageRepository(db *sql.DB) ports.MessageRepository {
 	return &MessageRepositoryImpl{
 		db: db,
 	}
+}
+
+// isValidUUID checks if a string is a valid UUID format
+func isValidUUID(u string) bool {
+	uuidRegex := regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	return uuidRegex.MatchString(u)
 }
 
 // SaveMessages persists messages to the database
@@ -51,7 +58,7 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 	defer stmt.Close()
 
 	for i := range messages {
-		_, err = stmt.ExecContext(ctx,
+		result, err := stmt.ExecContext(ctx,
 			messages[i].UUID,
 			messages[i].TenantID,
 			messages[i].Module,
@@ -66,6 +73,16 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 		if err != nil {
 			return err
 		}
+
+		// Check if the row was actually inserted (not ignored due to conflict)
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("message with code '%s' already exists for module '%s' and locale '%s'. Duplicate codes are not allowed",
+				messages[i].Code, messages[i].Module, messages[i].Locale)
+		}
 	}
 
 	// Commit the transaction
@@ -78,6 +95,10 @@ func (r *MessageRepositoryImpl) SaveMessages(ctx context.Context, messages []dom
 
 // UpdateMessages updates existing messages by their UUIDs
 func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID string, messages []domain.Message) ([]domain.Message, error) {
+	if len(messages) == 0 {
+		return nil, nil
+	}
+
 	// Start a transaction
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -91,6 +112,44 @@ func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID str
 		}
 	}()
 
+	// First, validate UUID formats
+	uuids := make([]string, len(messages))
+	for i, msg := range messages {
+		uuids[i] = msg.UUID
+		if !isValidUUID(msg.UUID) {
+			return nil, fmt.Errorf("invalid UUID format: '%s'. UUID must be in format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", msg.UUID)
+		}
+	}
+
+	// Create placeholders for the IN clause for validation
+	placeholders := make([]string, len(uuids))
+	args := make([]interface{}, len(uuids)+1)
+	args[0] = tenantID
+
+	for i, id := range uuids {
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
+		args[i+1] = id
+	}
+
+	// Check how many records exist with the given UUIDs and tenant
+	checkQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM localisation
+		WHERE tenant_id = $1 AND uuid IN (%s)
+	`, strings.Join(placeholders, ","))
+
+	var count int64
+	err = tx.QueryRowContext(ctx, checkQuery, args...).Scan(&count)
+	if err != nil {
+		return nil, fmt.Errorf("database error while validating UUIDs: %w", err)
+	}
+
+	// If the count doesn't match the number of UUIDs provided, some UUIDs are missing
+	if count != int64(len(uuids)) {
+		missingCount := int64(len(uuids)) - count
+		return nil, fmt.Errorf("update failed: %d UUID(s) not found in database. All UUIDs must exist to perform atomic update", missingCount)
+	}
+
+	// All UUIDs exist, proceed with updates
 	// Prepare statement for updating messages
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE localisation
@@ -122,11 +181,8 @@ func (r *MessageRepositoryImpl) UpdateMessages(ctx context.Context, tenantID str
 			&updatedMsg.CreatedDate,
 		)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				log.Printf("No message found with UUID %s for tenant %s. Skipping update.", msg.UUID, tenantID)
-				continue
-			}
-			return nil, err
+			// This should not happen since we validated all UUIDs exist above
+			return nil, fmt.Errorf("unexpected error updating UUID %s: %w", msg.UUID, err)
 		}
 		// Preserve the fields that are not returned from the DB
 		updatedMsg.Message = msg.Message
@@ -164,7 +220,13 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID str
 		}
 	}()
 
-	// First, validate that all UUIDs exist for the given tenant
+	// First, validate UUID formats
+	for _, uuid := range uuids {
+		if !isValidUUID(uuid) {
+			return fmt.Errorf("invalid UUID format: '%s'. UUID must be in format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", uuid)
+		}
+	}
+
 	// Create a placeholder string for the IN clause for validation
 	placeholders := make([]string, len(uuids))
 	args := make([]interface{}, len(uuids)+1)
@@ -184,12 +246,13 @@ func (r *MessageRepositoryImpl) DeleteMessages(ctx context.Context, tenantID str
 	var count int64
 	err = tx.QueryRowContext(ctx, checkQuery, args...).Scan(&count)
 	if err != nil {
-		return fmt.Errorf("failed to validate UUIDs: %w", err)
+		return fmt.Errorf("database error while validating UUIDs: %w", err)
 	}
 
 	// If the count doesn't match the number of UUIDs provided, some UUIDs are missing
 	if count != int64(len(uuids)) {
-		return fmt.Errorf("one or more UUIDs not found for tenant %s. Expected %d, found %d", tenantID, len(uuids), count)
+		missingCount := int64(len(uuids)) - count
+		return fmt.Errorf("delete failed: %d UUID(s) not found in database. All UUIDs must exist to perform atomic deletion", missingCount)
 	}
 
 	// All UUIDs exist, proceed with deletion
