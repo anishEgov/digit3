@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"digit.org/workflow/api"
@@ -21,48 +20,48 @@ func main() {
 	}
 
 	// Initialize database connection
-	db, err := postgres.NewDB(cfg)
+	db, err := postgres.NewDB(cfg.DB)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// Set up Gin engine
-	gin.SetMode(cfg.GinMode)
-	router := gin.Default()
-
-	// Simple health check route
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "UP",
-		})
-	})
-
-	// Initialize components
+	// Initialize repositories
 	processRepo := postgres.NewProcessRepository(db)
 	stateRepo := postgres.NewStateRepository(db)
-	actionRepo := postgres.NewActionRepository(db)
+	attributeValidationRepo := postgres.NewAttributeValidationRepository(db)
+	actionRepo := postgres.NewActionRepository(db, attributeValidationRepo)
 	instanceRepo := postgres.NewProcessInstanceRepository(db)
 
-	processSvc := service.NewProcessService(processRepo, stateRepo, actionRepo)
-	stateSvc := service.NewStateService(stateRepo)
-	actionSvc := service.NewActionService(actionRepo)
+	// Initialize configurable guard with enabled validators
+	guard, err := security.NewConfigurableGuard(cfg.Validators.EnabledValidators)
+	if err != nil {
+		log.Fatalf("Failed to initialize guard: %v", err)
+	}
 
-	guard := security.NewRBACGuard()
-	transitionSvc := service.NewTransitionService(instanceRepo, stateRepo, actionRepo, guard)
+	// Initialize services
+	processService := service.NewProcessService(processRepo, stateRepo, actionRepo)
+	stateService := service.NewStateService(stateRepo)
+	actionService := service.NewActionService(actionRepo)
+	transitionService := service.NewTransitionService(instanceRepo, stateRepo, actionRepo, processRepo, guard)
 
-	processHandler := handlers.NewProcessHandler(processSvc)
-	stateHandler := handlers.NewStateHandler(stateSvc)
-	actionHandler := handlers.NewActionHandler(actionSvc)
-	transitionHandler := handlers.NewTransitionHandler(transitionSvc)
+	// Initialize handlers
+	processHandler := handlers.NewProcessHandler(processService)
+	stateHandler := handlers.NewStateHandler(stateService)
+	actionHandler := handlers.NewActionHandler(actionService)
+	transitionHandler := handlers.NewTransitionHandler(transitionService)
 
-	// Register routes
+	// Initialize Gin router
+	router := gin.Default()
+
+	// Register all routes
 	api.RegisterAllRoutes(router, processHandler, stateHandler, actionHandler, transitionHandler)
 
 	// Start server
-	addr := fmt.Sprintf(":%s", cfg.ServerPort)
-	log.Printf("Server starting on %s", addr)
-	if err := router.Run(addr); err != nil {
+	serverPort := ":" + cfg.Server.Port
+	log.Printf("Server starting on port %s", serverPort)
+	log.Printf("Enabled validators: %v", cfg.Validators.EnabledValidators)
+	if err := router.Run(serverPort); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

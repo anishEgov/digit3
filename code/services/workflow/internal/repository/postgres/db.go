@@ -9,15 +9,14 @@ import (
 )
 
 // NewDB creates a new database connection pool.
-func NewDB(cfg *config.Config) (*sqlx.DB, error) {
+func NewDB(cfg config.DBConfig) (*sqlx.DB, error) {
 	// Construct the connection string from the configuration.
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.DB.Host,
-		cfg.DB.Port,
-		cfg.DB.User,
-		cfg.DB.Password,
-		cfg.DB.Name,
-		cfg.DB.SSLMode,
+	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Host,
+		cfg.Port,
+		cfg.User,
+		cfg.Password,
+		cfg.Name,
 	)
 
 	// Open a connection to the database.
@@ -28,7 +27,6 @@ func NewDB(cfg *config.Config) (*sqlx.DB, error) {
 
 	// Ping the database to verify the connection is alive.
 	if err := db.Ping(); err != nil {
-		db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 

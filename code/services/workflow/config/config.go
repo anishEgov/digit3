@@ -2,40 +2,84 @@ package config
 
 import (
 	"log"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/kelseyhightower/envconfig"
 )
 
-// Config holds the application configuration
 type Config struct {
-	ServerPort string `envconfig:"SERVER_PORT" default:"8080"`
-	GinMode    string `envconfig:"GIN_MODE" default:"debug"`
+	Server     ServerConfig
 	DB         DBConfig
+	Validators ValidatorConfig
 }
 
-// DBConfig holds the database configuration
+type ServerConfig struct {
+	Port string
+}
+
 type DBConfig struct {
-	Host     string `envconfig:"DB_HOST" default:"localhost"`
-	Port     string `envconfig:"DB_PORT" default:"5433"`
-	User     string `envconfig:"DB_USER" required:"true"`
-	Password string `envconfig:"DB_PASSWORD" required:"true"`
-	Name     string `envconfig:"DB_NAME" required:"true"`
-	SSLMode  string `envconfig:"DB_SSL_MODE" default:"disable"`
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Name     string
 }
 
-// LoadConfig loads configuration from .env file and environment variables
+type ValidatorConfig struct {
+	EnabledValidators []string
+}
+
 func LoadConfig() (*Config, error) {
-	// Load .env file, log if it's not found but don't fail
+	// Try to load .env file (optional)
 	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: .env file not found, loading config from environment variables.")
+		log.Println("Warning: .env file not found, using environment variables")
 	}
 
-	var cfg Config
-	err := envconfig.Process("", &cfg)
+	dbPort, err := strconv.Atoi(getEnv("DB_PORT", "5432"))
 	if err != nil {
 		return nil, err
 	}
 
-	return &cfg, nil
+	// Parse VALIDATORS environment variable
+	validatorsEnv := getEnv("VALIDATORS", "roles") // Default to "roles" only
+	enabledValidators := parseValidators(validatorsEnv)
+
+	return &Config{
+		Server: ServerConfig{
+			Port: getEnv("SERVER_PORT", "8080"),
+		},
+		DB: DBConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     dbPort,
+			User:     getEnv("DB_USER", ""),
+			Password: getEnv("DB_PASSWORD", ""),
+			Name:     getEnv("DB_NAME", ""),
+		},
+		Validators: ValidatorConfig{
+			EnabledValidators: enabledValidators,
+		},
+	}, nil
+}
+
+func parseValidators(validatorsStr string) []string {
+	if validatorsStr == "" {
+		return []string{"roles"} // Default fallback
+	}
+
+	validators := strings.Split(validatorsStr, ",")
+	// Trim whitespace from each validator name
+	for i, validator := range validators {
+		validators[i] = strings.TrimSpace(validator)
+	}
+
+	return validators
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

@@ -12,12 +12,16 @@ import (
 )
 
 type actionRepository struct {
-	db *sqlx.DB
+	db                      *sqlx.DB
+	attributeValidationRepo repository.AttributeValidationRepository
 }
 
 // NewActionRepository creates a new instance of ActionRepository.
-func NewActionRepository(db *sqlx.DB) repository.ActionRepository {
-	return &actionRepository{db: db}
+func NewActionRepository(db *sqlx.DB, attributeValidationRepo repository.AttributeValidationRepository) repository.ActionRepository {
+	return &actionRepository{
+		db:                      db,
+		attributeValidationRepo: attributeValidationRepo,
+	}
 }
 
 // CreateAction inserts a new action record.
@@ -30,6 +34,16 @@ func (r *actionRepository) CreateAction(ctx context.Context, action *models.Acti
 	rolesJSON, err := json.Marshal(action.Roles)
 	if err != nil {
 		return err
+	}
+
+	// Handle AttributeValidation if provided
+	if action.AttributeValidation != nil {
+		action.AttributeValidation.TenantID = action.TenantID
+		err := r.attributeValidationRepo.CreateAttributeValidation(ctx, action.AttributeValidation)
+		if err != nil {
+			return err
+		}
+		action.AttributeValidationID = &action.AttributeValidation.ID
 	}
 
 	query := `INSERT INTO actions (id, tenant_id, name, label, current_state_id, next_state_id, roles, attribute_validation_id, created_by, created_at, modified_by, modified_at)
@@ -102,6 +116,15 @@ func (r *actionRepository) GetActionsByStateID(ctx context.Context, tenantID, st
 				ModifiedTime: row.ModifiedAt,
 			},
 		}
+
+		// Load AttributeValidation if ID exists
+		if row.AttributeValidationID != nil {
+			attributeValidation, err := r.attributeValidationRepo.GetAttributeValidationByID(ctx, tenantID, *row.AttributeValidationID)
+			if err == nil {
+				action.AttributeValidation = attributeValidation
+			}
+		}
+
 		actions = append(actions, action)
 	}
 	return actions, nil
@@ -155,6 +178,15 @@ func (r *actionRepository) GetActionByID(ctx context.Context, tenantID, id strin
 			ModifiedTime: row.ModifiedAt,
 		},
 	}
+
+	// Load AttributeValidation if ID exists
+	if row.AttributeValidationID != nil {
+		attributeValidation, err := r.attributeValidationRepo.GetAttributeValidationByID(ctx, tenantID, *row.AttributeValidationID)
+		if err == nil {
+			action.AttributeValidation = attributeValidation
+		}
+	}
+
 	return action, nil
 }
 

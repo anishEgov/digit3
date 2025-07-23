@@ -56,6 +56,16 @@ func (r *processRepository) GetProcessByID(ctx context.Context, tenantID, id str
 	return &process, err
 }
 
+// GetProcessByCode retrieves a single process by its code.
+func (r *processRepository) GetProcessByCode(ctx context.Context, tenantID, code string) (*models.Process, error) {
+	var process models.Process
+	query := `SELECT id, tenant_id, name, code, description, version, sla, 
+	                 created_by, created_at, modified_by, modified_at 
+	          FROM processes WHERE tenant_id = $1 AND code = $2`
+	err := r.db.GetContext(ctx, &process, query, tenantID, code)
+	return &process, err
+}
+
 // GetProcesses retrieves a list of processes based on filter criteria.
 func (r *processRepository) GetProcesses(ctx context.Context, tenantID string, ids []string, names []string) ([]*models.Process, error) {
 	query := `SELECT id, tenant_id, name, code, description, version, sla, 

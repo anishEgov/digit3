@@ -15,6 +15,7 @@ type transitionService struct {
 	instanceRepo repository.ProcessInstanceRepository
 	stateRepo    repository.StateRepository
 	actionRepo   repository.ActionRepository
+	processRepo  repository.ProcessRepository
 	guard        security.Guard
 }
 
@@ -23,25 +24,35 @@ func NewTransitionService(
 	instanceRepo repository.ProcessInstanceRepository,
 	stateRepo repository.StateRepository,
 	actionRepo repository.ActionRepository,
+	processRepo repository.ProcessRepository,
 	guard security.Guard,
 ) TransitionService {
 	return &transitionService{
 		instanceRepo: instanceRepo,
 		stateRepo:    stateRepo,
 		actionRepo:   actionRepo,
+		processRepo:  processRepo,
 		guard:        guard,
 	}
 }
 
-func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, entityID, processCode, action string, comment *string, documents []models.Document, assignees *[]string, tenantID string) (*models.ProcessInstance, error) {
+func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, entityID, processCode, action string, comment *string, documents []models.Document, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error) {
+	// First, find the actual process ID by process code
+	process, err := s.processRepo.GetProcessByCode(ctx, tenantID, processCode)
+	if err != nil {
+		return nil, fmt.Errorf("process with code '%s' not found: %w", processCode, err)
+	}
+	actualProcessID := process.ID
+
 	// Build ProcessInstance from parameters
 	instance := &models.ProcessInstance{
-		ProcessID: processCode, // processCode parameter maps to ProcessID field
-		EntityID:  entityID,
-		Action:    action,
-		Comment:   comment,
-		Documents: documents,
-		TenantID:  tenantID,
+		ProcessID:  actualProcessID, // Use actual process ID, not code
+		EntityID:   entityID,
+		Action:     action,
+		Comment:    comment,
+		Documents:  documents,
+		TenantID:   tenantID,
+		Attributes: attributes, // User attributes for validation
 	}
 
 	if processInstanceID != nil {

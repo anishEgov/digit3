@@ -10,6 +10,7 @@ import (
 type ProcessRepository interface {
 	CreateProcess(ctx context.Context, process *models.Process) error
 	GetProcessByID(ctx context.Context, tenantID, id string) (*models.Process, error)
+	GetProcessByCode(ctx context.Context, tenantID, code string) (*models.Process, error)
 	GetProcesses(ctx context.Context, tenantID string, ids []string, names []string) ([]*models.Process, error)
 	UpdateProcess(ctx context.Context, process *models.Process) error
 	DeleteProcess(ctx context.Context, tenantID, id string) error
@@ -31,6 +32,12 @@ type ActionRepository interface {
 	GetActionByID(ctx context.Context, tenantID, id string) (*models.Action, error)
 	UpdateAction(ctx context.Context, action *models.Action) error
 	DeleteAction(ctx context.Context, tenantID, id string) error
+}
+
+// AttributeValidationRepository defines the interface for attribute validation data operations.
+type AttributeValidationRepository interface {
+	CreateAttributeValidation(ctx context.Context, validation *models.AttributeValidation) error
+	GetAttributeValidationByID(ctx context.Context, tenantID, id string) (*models.AttributeValidation, error)
 }
 
 // ProcessInstanceRepository defines the interface for process instance data operations.
