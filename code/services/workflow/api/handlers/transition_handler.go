@@ -21,8 +21,8 @@ func NewTransitionHandler(transitionService service.TransitionService) *Transiti
 
 type TransitionRequest struct {
 	ProcessInstanceID *string             `json:"processInstanceId,omitempty"`
+	ProcessID         string              `json:"processId" binding:"required"`
 	EntityID          string              `json:"entityId" binding:"required"`
-	ProcessCode       string              `json:"processCode" binding:"required"`
 	Action            string              `json:"action" binding:"required"`
 	Comment           *string             `json:"comment,omitempty"`
 	Documents         []models.Document   `json:"documents,omitempty"`
@@ -61,7 +61,7 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 	ctx = context.WithValue(ctx, "tenantID", tenantID)
 
 	// Call the transition service
-	result, err := h.transitionService.Transition(ctx, req.ProcessInstanceID, req.EntityID, req.ProcessCode, req.Action, req.Comment, req.Documents, req.Assignees, req.Attributes, tenantID)
+	result, err := h.transitionService.Transition(ctx, req.ProcessInstanceID, req.ProcessID, req.EntityID, req.Action, req.Comment, req.Documents, req.Assignees, req.Attributes, tenantID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -36,17 +36,10 @@ func NewTransitionService(
 	}
 }
 
-func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, entityID, processCode, action string, comment *string, documents []models.Document, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error) {
-	// First, find the actual process ID by process code
-	process, err := s.processRepo.GetProcessByCode(ctx, tenantID, processCode)
-	if err != nil {
-		return nil, fmt.Errorf("process with code '%s' not found: %w", processCode, err)
-	}
-	actualProcessID := process.ID
-
+func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, processID, entityID, action string, comment *string, documents []models.Document, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error) {
 	// Build ProcessInstance from parameters
 	instance := &models.ProcessInstance{
-		ProcessID:  actualProcessID, // Use actual process ID, not code
+		ProcessID:  processID, // Use provided process ID directly
 		EntityID:   entityID,
 		Action:     action,
 		Comment:    comment,
@@ -126,40 +119,50 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 		return nil, fmt.Errorf("invalid state transition: %w", err)
 	}
 
-	// 5. Persist updated state
-	existingInstance.CurrentState = fsm.Current()
-	if err := s.instanceRepo.UpdateProcessInstance(ctx, existingInstance); err != nil {
-		return nil, err
+	// 5. Create new process instance record for this transition (instead of updating)
+	newInstance := &models.ProcessInstance{
+		ProcessID:    existingInstance.ProcessID,
+		EntityID:     existingInstance.EntityID,
+		Action:       instance.Action,
+		Status:       existingInstance.Status,
+		Comment:      instance.Comment,
+		Documents:    instance.Documents,
+		Assignees:    instance.Assignees,
+		CurrentState: fsm.Current(), // New state after transition
+		StateSLA:     existingInstance.StateSLA,
+		ProcessSLA:   existingInstance.ProcessSLA,
+		Attributes:   instance.Attributes,
+		TenantID:     tenantID,
+	}
+
+	if err := s.instanceRepo.CreateProcessInstance(ctx, newInstance); err != nil {
+		return nil, fmt.Errorf("failed to create new process instance record: %w", err)
 	}
 
 	// 6. Populate NextActions with available actions from the current state
-	nextActions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, existingInstance.CurrentState)
+	nextActions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, newInstance.CurrentState)
 	if err != nil {
 		// Log warning but don't fail the transition
-		existingInstance.NextActions = []string{}
+		newInstance.NextActions = []string{}
 	} else {
-		existingInstance.NextActions = make([]string, len(nextActions))
+		newInstance.NextActions = make([]string, len(nextActions))
 		for i, action := range nextActions {
-			existingInstance.NextActions[i] = action.Name
+			newInstance.NextActions[i] = action.Name
 		}
 	}
 
-	return existingInstance, nil
+	return newInstance, nil
 }
 
 func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID string, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
-	// Try to find existing instance
-	existingInstance, err := s.instanceRepo.GetProcessInstanceByEntityID(ctx, tenantID, instance.EntityID, instance.ProcessID)
+	// Try to find latest existing instance
+	existingInstance, err := s.instanceRepo.GetLatestProcessInstanceByEntityID(ctx, tenantID, instance.EntityID, instance.ProcessID)
 	if err == nil {
-		// Found it, update with new data from request
-		existingInstance.Comment = instance.Comment
-		existingInstance.Documents = instance.Documents
-		existingInstance.Assignees = instance.Assignees
-		existingInstance.Attributes = instance.Attributes
+		// Found latest instance, return it as-is (we'll create new record for transition)
 		return existingInstance, nil
 	}
 
-	// Not found, create a new one
+	// Not found, create the first instance (initial state)
 	states, err := s.stateRepo.GetStatesByProcessID(ctx, tenantID, instance.ProcessID)
 	if err != nil || len(states) == 0 {
 		return nil, errors.New("cannot find any states for this process definition")

@@ -45,6 +45,7 @@ type ProcessInstanceRepository interface {
 	CreateProcessInstance(ctx context.Context, instance *models.ProcessInstance) error
 	GetProcessInstanceByID(ctx context.Context, tenantID, id string) (*models.ProcessInstance, error)
 	GetProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error)
+	GetLatestProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error)
 	UpdateProcessInstance(ctx context.Context, instance *models.ProcessInstance) error
 }
 

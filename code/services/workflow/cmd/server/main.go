@@ -33,11 +33,8 @@ func main() {
 	actionRepo := postgres.NewActionRepository(db, attributeValidationRepo)
 	instanceRepo := postgres.NewProcessInstanceRepository(db)
 
-	// Initialize configurable guard with enabled validators
-	guard, err := security.NewConfigurableGuard(cfg.Validators.EnabledValidators)
-	if err != nil {
-		log.Fatalf("Failed to initialize guard: %v", err)
-	}
+	// Initialize attribute guard for simple key-value validation
+	guard := security.NewAttributeGuard()
 
 	// Initialize services
 	processService := service.NewProcessService(processRepo, stateRepo, actionRepo)
@@ -60,7 +57,6 @@ func main() {
 	// Start server
 	serverPort := ":" + cfg.Server.Port
 	log.Printf("Server starting on port %s", serverPort)
-	log.Printf("Enabled validators: %v", cfg.Validators.EnabledValidators)
 	if err := router.Run(serverPort); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

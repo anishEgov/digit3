@@ -84,6 +84,13 @@ func (r *processInstanceRepository) GetProcessInstanceByEntityID(ctx context.Con
 	return &instance, err
 }
 
+func (r *processInstanceRepository) GetLatestProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error) {
+	var instance models.ProcessInstance
+	query := `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at DESC LIMIT 1`
+	err := r.db.GetContext(ctx, &instance, query, tenantID, entityID, processID)
+	return &instance, err
+}
+
 func (r *processInstanceRepository) UpdateProcessInstance(ctx context.Context, instance *models.ProcessInstance) error {
 	// Marshal JSON fields
 	documentsJSON, _ := json.Marshal(instance.Documents)

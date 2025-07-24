@@ -4,15 +4,13 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Server     ServerConfig
-	DB         DBConfig
-	Validators ValidatorConfig
+	Server ServerConfig
+	DB     DBConfig
 }
 
 type ServerConfig struct {
@@ -27,10 +25,6 @@ type DBConfig struct {
 	Name     string
 }
 
-type ValidatorConfig struct {
-	EnabledValidators []string
-}
-
 func LoadConfig() (*Config, error) {
 	// Try to load .env file (optional)
 	if err := godotenv.Load(); err != nil {
@@ -41,10 +35,6 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Parse VALIDATORS environment variable
-	validatorsEnv := getEnv("VALIDATORS", "roles") // Default to "roles" only
-	enabledValidators := parseValidators(validatorsEnv)
 
 	return &Config{
 		Server: ServerConfig{
@@ -57,24 +47,7 @@ func LoadConfig() (*Config, error) {
 			Password: getEnv("DB_PASSWORD", ""),
 			Name:     getEnv("DB_NAME", ""),
 		},
-		Validators: ValidatorConfig{
-			EnabledValidators: enabledValidators,
-		},
 	}, nil
-}
-
-func parseValidators(validatorsStr string) []string {
-	if validatorsStr == "" {
-		return []string{"roles"} // Default fallback
-	}
-
-	validators := strings.Split(validatorsStr, ",")
-	// Trim whitespace from each validator name
-	for i, validator := range validators {
-		validators[i] = strings.TrimSpace(validator)
-	}
-
-	return validators
 }
 
 func getEnv(key, defaultValue string) string {

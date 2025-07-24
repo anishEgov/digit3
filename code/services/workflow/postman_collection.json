@@ -1,0 +1,845 @@
+{
+  "info": {
+    "name": "Workflow Service API Tests",
+    "description": "Comprehensive test collection for Workflow Service APIs with attribute-based validation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/workflow/v3"
+    },
+    {
+      "key": "tenantId",
+      "value": "tenant-test"
+    },
+    {
+      "key": "processId",
+      "value": ""
+    },
+    {
+      "key": "stateId",
+      "value": ""
+    },
+    {
+      "key": "actionId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Process Management",
+      "item": [
+        {
+          "name": "Create Process",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('processId', response.id);",
+                  "    pm.test('Process created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.name).to.equal('Test Process');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Process\",\n  \"code\": \"TEST_PROCESS\",\n  \"description\": \"A test process for API validation\",\n  \"version\": \"1.0\",\n  \"sla\": 86400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Processes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Process",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{processId}}\",\n  \"name\": \"Updated Test Process\",\n  \"code\": \"TEST_PROCESS\",\n  \"description\": \"Updated description for test process\",\n  \"version\": \"1.1\",\n  \"sla\": 72000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Definitions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/definition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "definition"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "State Management",
+      "item": [
+        {
+          "name": "Create Initial State",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('stateId', response.id);",
+                  "    pm.test('State created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.code).to.equal('initial');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"initial\",\n  \"name\": \"Initial State\",\n  \"description\": \"The starting state of the process\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 120,\n  \"isInitial\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Review State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"review\",\n  \"name\": \"Under Review\",\n  \"description\": \"State when document is under review\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 240,\n  \"isInitial\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get States for Process",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get State by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update State",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{stateId}}\",\n  \"code\": \"initial\",\n  \"name\": \"Updated Initial State\",\n  \"description\": \"Updated description for initial state\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 180,\n  \"isInitial\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Action Management",
+      "item": [
+        {
+          "name": "Create Action with Attribute Validation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('actionId', response.id);",
+                  "    pm.test('Action created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.name).to.equal('Submit for Review');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Submit for Review\",\n  \"label\": \"Submit for Review\",\n  \"currentState\": \"{{stateId}}\",\n  \"nextState\": \"review\",\n  \"attributeValidation\": {\n    \"attributes\": {\n      \"roles\": [\"user\", \"admin\"],\n      \"department\": [\"hr\", \"finance\"],\n      \"clearance\": [\"level1\", \"level2\"]\n    },\n    \"assigneeCheck\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}",
+                "action"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Actions for State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}",
+                "action"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Action by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/action/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "action",
+                "{{actionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Action",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{actionId}}\",\n  \"name\": \"Submit for Review\",\n  \"label\": \"Submit for Review (Updated)\",\n  \"currentState\": \"{{stateId}}\",\n  \"nextState\": \"review\",\n  \"attributeValidation\": {\n    \"id\": \"existing-validation-id\",\n    \"attributes\": {\n      \"roles\": [\"user\", \"admin\", \"manager\"],\n      \"department\": [\"hr\", \"finance\", \"legal\"],\n      \"clearance\": [\"level1\", \"level2\", \"level3\"]\n    },\n    \"assigneeCheck\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "action",
+                "{{actionId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transition Management",
+      "item": [
+        {
+          "name": "Valid Transition - All Attributes Match",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-001\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"All required attributes provided\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"user\"],\n    \"department\": [\"hr\"],\n    \"clearance\": [\"level1\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Valid Transition - Multiple Values Match",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-002\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Multiple values provided, one should match\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"guest\", \"user\", \"visitor\"],\n    \"department\": [\"marketing\", \"hr\"],\n    \"clearance\": [\"level2\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid Transition - Missing Required Attribute",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-003\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Missing clearance attribute - should fail\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"user\"],\n    \"department\": [\"hr\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid Transition - Wrong Attribute Values",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-004\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Wrong attribute values - should fail\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"guest\"],\n    \"department\": [\"marketing\"],\n    \"clearance\": [\"level5\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid Transition - Wrong Assignee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-005\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Wrong assignee - should fail\",\n  \"assignees\": [\"wrong-user\"],\n  \"attributes\": {\n    \"roles\": [\"user\"],\n    \"department\": [\"hr\"],\n    \"clearance\": [\"level1\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multiple Transitions Same Entity (Audit Trail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-001\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Second transition for same entity - should create new record\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"admin\"],\n    \"department\": [\"finance\"],\n    \"clearance\": [\"level2\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Existing Process Tests (Employee Onboarding)",
+      "item": [
+        {
+          "name": "Get Employee Onboarding Process",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/d7d6273a-505e-43e0-9a73-d5281d2ed976",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "d7d6273a-505e-43e0-9a73-d5281d2ed976"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Employee Onboarding States",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/d7d6273a-505e-43e0-9a73-d5281d2ed976/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "d7d6273a-505e-43e0-9a73-d5281d2ed976",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Actions for Draft State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/e5778977-dc2d-49e6-85a2-230783e1b5e5/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "e5778977-dc2d-49e6-85a2-230783e1b5e5",
+                "action"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Employee Onboarding - Valid Transition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"d7d6273a-505e-43e0-9a73-d5281d2ed976\",\n  \"entityId\": \"EMP-POSTMAN-001\",\n  \"action\": \"Submit for HR Review\",\n  \"comment\": \"Testing via Postman collection\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"employee\"],\n    \"jurisdiction\": [\"bangalore\"],\n    \"boundary\": [\"zone1\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Employee Onboarding - Invalid (Missing Boundary)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"d7d6273a-505e-43e0-9a73-d5281d2ed976\",\n  \"entityId\": \"EMP-POSTMAN-002\",\n  \"action\": \"Submit for HR Review\",\n  \"comment\": \"Should fail - missing boundary\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"employee\"],\n    \"jurisdiction\": [\"bangalore\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "Delete Action",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/action/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "action",
+                "{{actionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete State",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Process",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 
