@@ -50,6 +50,7 @@ func RegisterAllRoutes(
 		actionGroup.DELETE("/:id", actionHandler.DeleteAction)
 	}
 
-	// Transition route
+	// Transition routes
 	v3.POST("/transition", transitionHandler.Transition)
+	v3.GET("/transition", transitionHandler.GetTransitions)
 }

@@ -77,3 +77,46 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+func (h *TransitionHandler) GetTransitions(c *gin.Context) {
+	// Extract tenant ID from header (required for multi-tenancy)
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
+	// Get query parameters
+	entityID := c.Query("entityId")
+	processID := c.Query("processId")
+	historyParam := c.DefaultQuery("history", "false")
+
+	// Validate required parameters
+	if entityID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "entityId query parameter is required"})
+		return
+	}
+	if processID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "processId query parameter is required"})
+		return
+	}
+
+	// Parse history parameter
+	history := historyParam == "true"
+
+	// Add tenant information to context
+	ctx := context.WithValue(c.Request.Context(), "tenantID", tenantID)
+
+	// Call the service
+	instances, err := h.transitionService.GetTransitions(ctx, tenantID, entityID, processID, history)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return the response
+	c.JSON(http.StatusOK, gin.H{
+		"processInstances": instances,
+		"totalCount":       len(instances),
+	})
+}

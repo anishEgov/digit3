@@ -154,6 +154,10 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 	return newInstance, nil
 }
 
+func (s *transitionService) GetTransitions(ctx context.Context, tenantID, entityID, processID string, history bool) ([]*models.ProcessInstance, error) {
+	return s.instanceRepo.GetProcessInstancesByEntityID(ctx, tenantID, entityID, processID, history)
+}
+
 func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID string, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
 	// Try to find latest existing instance
 	existingInstance, err := s.instanceRepo.GetLatestProcessInstanceByEntityID(ctx, tenantID, instance.EntityID, instance.ProcessID)

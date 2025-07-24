@@ -91,6 +91,69 @@ func (r *processInstanceRepository) GetLatestProcessInstanceByEntityID(ctx conte
 	return &instance, err
 }
 
+func (r *processInstanceRepository) GetProcessInstancesByEntityID(ctx context.Context, tenantID, entityID, processID string, history bool) ([]*models.ProcessInstance, error) {
+	var query string
+
+	if history {
+		// Return all records ordered by created_at (oldest first for chronological order)
+		query = `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at ASC`
+	} else {
+		// Return only the latest record
+		query = `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at DESC LIMIT 1`
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, tenantID, entityID, processID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*models.ProcessInstance
+	for rows.Next() {
+		var instance models.ProcessInstance
+		var documentsJSON, assigneesJSON, attributesJSON []byte
+
+		err := rows.Scan(
+			&instance.ID,
+			&instance.TenantID,
+			&instance.ProcessID,
+			&instance.EntityID,
+			&instance.Action,
+			&instance.Status,
+			&instance.Comment,
+			&documentsJSON,
+			&instance.Assigner,
+			&assigneesJSON,
+			&instance.CurrentState,
+			&instance.StateSLA,
+			&instance.ProcessSLA,
+			&attributesJSON,
+			&instance.AuditDetails.CreatedBy,
+			&instance.AuditDetails.CreatedTime,
+			&instance.AuditDetails.ModifiedBy,
+			&instance.AuditDetails.ModifiedTime,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal JSON fields
+		if len(documentsJSON) > 0 {
+			json.Unmarshal(documentsJSON, &instance.Documents)
+		}
+		if len(assigneesJSON) > 0 {
+			json.Unmarshal(assigneesJSON, &instance.Assignees)
+		}
+		if len(attributesJSON) > 0 {
+			json.Unmarshal(attributesJSON, &instance.Attributes)
+		}
+
+		instances = append(instances, &instance)
+	}
+
+	return instances, rows.Err()
+}
+
 func (r *processInstanceRepository) UpdateProcessInstance(ctx context.Context, instance *models.ProcessInstance) error {
 	// Marshal JSON fields
 	documentsJSON, _ := json.Marshal(instance.Documents)

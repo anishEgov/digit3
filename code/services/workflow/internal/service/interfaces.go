@@ -37,6 +37,7 @@ type ActionService interface {
 // TransitionService defines the interface for handling state transitions.
 type TransitionService interface {
 	Transition(ctx context.Context, processInstanceID *string, processID, entityID, action string, comment *string, documents []models.Document, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error)
+	GetTransitions(ctx context.Context, tenantID, entityID, processID string, history bool) ([]*models.ProcessInstance, error)
 }
 
 // More service interfaces will be added here later.

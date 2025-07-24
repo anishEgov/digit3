@@ -636,6 +636,130 @@
               ]
             }
           }
+        },
+        {
+          "name": "Get Latest Transition (history=false)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=ENTITY-001&processId={{processId}}&history=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "ENTITY-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                },
+                {
+                  "key": "history",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Full Transition History (history=true)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=ENTITY-001&processId={{processId}}&history=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "ENTITY-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                },
+                {
+                  "key": "history",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Transitions - Missing EntityId (Error)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?processId={{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Transitions - Missing ProcessId (Error)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=ENTITY-001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "ENTITY-001"
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -764,6 +888,76 @@
               ],
               "path": [
                 "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Employee Onboarding - Latest Transition",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=EMP-POSTMAN-001&processId=d7d6273a-505e-43e0-9a73-d5281d2ed976&history=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "EMP-POSTMAN-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "d7d6273a-505e-43e0-9a73-d5281d2ed976"
+                },
+                {
+                  "key": "history",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Employee Onboarding - Full History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=EMP-777&processId=d7d6273a-505e-43e0-9a73-d5281d2ed976&history=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "EMP-777"
+                },
+                {
+                  "key": "processId",
+                  "value": "d7d6273a-505e-43e0-9a73-d5281d2ed976"
+                },
+                {
+                  "key": "history",
+                  "value": "true"
+                }
               ]
             }
           }
