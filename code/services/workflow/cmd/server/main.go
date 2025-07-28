@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"digit.org/workflow/api"
 	"digit.org/workflow/api/handlers"
 	"digit.org/workflow/config"
+	"digit.org/workflow/internal/migration"
 	"digit.org/workflow/internal/repository/postgres"
 	"digit.org/workflow/internal/security"
 	"digit.org/workflow/internal/service"
@@ -25,6 +27,21 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
+
+	// Run database migrations
+	migrationConfig := &migration.Config{
+		Enabled: cfg.Migration.RunMigrations,
+		Path:    cfg.Migration.MigrationPath,
+		Timeout: cfg.Migration.Timeout,
+	}
+
+	migrationRunner := migration.NewRunner(db, migrationConfig)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Migration.Timeout)
+	defer cancel()
+
+	if err := migrationRunner.Run(ctx); err != nil {
+		log.Fatalf("Failed to run database migrations: %v", err)
+	}
 
 	// Initialize repositories
 	processRepo := postgres.NewProcessRepository(db)

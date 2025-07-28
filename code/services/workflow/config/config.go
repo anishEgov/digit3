@@ -4,13 +4,15 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Server ServerConfig
-	DB     DBConfig
+	Server    ServerConfig
+	DB        DBConfig
+	Migration MigrationConfig
 }
 
 type ServerConfig struct {
@@ -25,6 +27,12 @@ type DBConfig struct {
 	Name     string
 }
 
+type MigrationConfig struct {
+	RunMigrations bool
+	MigrationPath string
+	Timeout       time.Duration
+}
+
 func LoadConfig() (*Config, error) {
 	// Try to load .env file (optional)
 	if err := godotenv.Load(); err != nil {
@@ -36,6 +44,10 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	// Parse migration settings
+	runMigrations, _ := strconv.ParseBool(getEnv("RUN_MIGRATIONS", "true"))
+	migrationTimeout, _ := time.ParseDuration(getEnv("MIGRATION_TIMEOUT", "5m"))
+
 	return &Config{
 		Server: ServerConfig{
 			Port: getEnv("SERVER_PORT", "8080"),
@@ -46,6 +58,11 @@ func LoadConfig() (*Config, error) {
 			User:     getEnv("DB_USER", ""),
 			Password: getEnv("DB_PASSWORD", ""),
 			Name:     getEnv("DB_NAME", ""),
+		},
+		Migration: MigrationConfig{
+			RunMigrations: runMigrations,
+			MigrationPath: getEnv("MIGRATION_PATH", "db/migration"),
+			Timeout:       migrationTimeout,
 		},
 	}, nil
 }

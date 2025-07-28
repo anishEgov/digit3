@@ -121,6 +121,7 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 
 	// 5. Create new process instance record for this transition (instead of updating)
 	newInstance := &models.ProcessInstance{
+		// Don't set ID - let the repository generate a new UUID
 		ProcessID:    existingInstance.ProcessID,
 		EntityID:     existingInstance.EntityID,
 		Action:       instance.Action,

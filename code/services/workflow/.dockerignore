@@ -1,0 +1,62 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+*.md
+README.md
+docs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.exe
+*.test
+*.prof
+workflow-service
+
+# Test files
+*_test.go
+testdata/
+
+# Coverage files
+*.out
+coverage.html
+
+# Local development files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Node.js (if any frontend assets)
+node_modules/
+npm-debug.log*
+
+# Docker files (avoid recursion)
+Dockerfile*
+docker-compose*.yml
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Postman collection (not needed in production)
+postman_collection.json 
