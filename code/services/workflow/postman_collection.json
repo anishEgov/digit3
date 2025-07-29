@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Workflow Service API Tests",
-    "description": "Comprehensive test collection for Workflow Service APIs with state code conversion and attribute-based validation",
+    "description": "Comprehensive test collection for Workflow Service APIs with complete workflow examples including Building Permit and Trade License processes",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -24,6 +24,10 @@
     {
       "key": "actionId",
       "value": ""
+    },
+    {
+      "key": "buildingPermitProcessId",
+      "value": "8491c7ed-c8ee-4fd0-89a2-b0ef35d0f570"
     }
   ],
   "item": [
@@ -526,10 +530,316 @@
       ]
     },
     {
+      "name": "Building Permit Workflow (WORKING EXAMPLE)",
+      "item": [
+        {
+          "name": "Get Building Permit Process Definition",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/definition?id={{buildingPermitProcessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "definition"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{buildingPermitProcessId}}"
+                }
+              ]
+            },
+            "description": "Shows complete process with all states and actions"
+          }
+        },
+        {
+          "name": "Step 1: APPLIED → VERIFY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-applicant"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-001\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Submitting building permit for verification via Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: No assignee check required for this action"
+          }
+        },
+        {
+          "name": "Step 2: VERIFY → APPROVED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-001\",\n  \"action\": \"Approve\",\n  \"comment\": \"Approving building permit after verification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: Transitions from VERIFY to APPROVED state"
+          }
+        },
+        {
+          "name": "Alternative: VERIFY → REJECTED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-reject\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Step 1 for reject test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "First submit, then use the 'Reject Application' test below"
+          }
+        },
+        {
+          "name": "Reject Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-reject\",\n  \"action\": \"Reject\",\n  \"comment\": \"Rejecting building permit - does not meet requirements\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: Transitions from VERIFY to REJECTED state"
+          }
+        },
+        {
+          "name": "Send Back for Corrections",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-sendback\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"First submit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "First submit, then send back to APPLIED state"
+          }
+        },
+        {
+          "name": "Execute Send Back",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-sendback\",\n  \"action\": \"Send Back\",\n  \"comment\": \"Sending back for missing documents\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: Sends application back from VERIFY to APPLIED state"
+          }
+        },
+        {
+          "name": "Get Latest Status (No History)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=building-permit-postman-001&processId={{buildingPermitProcessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "building-permit-postman-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{buildingPermitProcessId}}"
+                }
+              ]
+            },
+            "description": "Returns only the latest process instance"
+          }
+        },
+        {
+          "name": "Get Full History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=building-permit-postman-001&processId={{buildingPermitProcessId}}&history=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "building-permit-postman-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{buildingPermitProcessId}}"
+                },
+                {
+                  "key": "history",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Returns complete audit trail of all transitions"
+          }
+        }
+      ]
+    },
+    {
       "name": "Transition Management",
       "item": [
         {
-          "name": "Valid Transition - Matching Attributes",
+          "name": "Valid Transition - With Assignees",
           "request": {
             "method": "POST",
             "header": [
@@ -555,7 +865,37 @@
                 "transition"
               ]
             },
-            "description": "✅ Should succeed - department=HR matches [HR,IT] and priority=HIGH matches [HIGH,CRITICAL]"
+            "description": "✅ Should succeed - has assignees and matching attributes"
+          }
+        },
+        {
+          "name": "Valid Transition - No Assignees (FIXED!)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-NO-ASSIGNEES\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Testing without assignees - should work if action doesn't require assigneeCheck\",\n  \"attributes\": {\n    \"department\": [\"HR\"],\n    \"priority\": [\"HIGH\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ NOW WORKS: Assignee check is conditional based on action's AttributeValidation.AssigneeCheck setting"
           }
         },
         {
@@ -589,7 +929,7 @@
           }
         },
         {
-          "name": "Invalid Transition - No Assignees",
+          "name": "Invalid Transition - Assignee Required",
           "request": {
             "method": "POST",
             "header": [
@@ -604,7 +944,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-003\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Should fail - no assignees but assigneeCheck=true\",\n  \"attributes\": {\n    \"department\": [\"HR\"],\n    \"priority\": [\"HIGH\"]\n  }\n}"
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-003\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Should fail - action requires assigneeCheck=true but no assignees provided\",\n  \"attributes\": {\n    \"department\": [\"HR\"],\n    \"priority\": [\"HIGH\"]\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/transition",
@@ -615,7 +955,7 @@
                 "transition"
               ]
             },
-            "description": "❌ Should fail - assigneeCheck=true but no assignees provided"
+            "description": "❌ Should fail ONLY if the action's AttributeValidation.AssigneeCheck=true"
           }
         },
         {
