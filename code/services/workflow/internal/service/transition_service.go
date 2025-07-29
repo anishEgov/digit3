@@ -109,15 +109,23 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 	}
 
 	// 4. Construct FSM and transition
-	fsm, err := s.buildFSM(ctx, tenantID, existingInstance, eventsForState(actions))
+	events := eventsForState(actions)
+	fmt.Printf("🔍 DEBUG: Building FSM with %d events for current state %s\n", len(events), existingInstance.CurrentState)
+	for i, event := range events {
+		fmt.Printf("   Event %d: %s from %v to %s\n", i, event.Name, event.Src, event.Dst)
+	}
+
+	fsm, err := s.buildFSM(ctx, tenantID, existingInstance, events)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("🚀 DEBUG: Executing FSM event '%s' from current state: %s\n", instance.Action, fsm.Current())
 	err = fsm.Event(ctx, instance.Action)
 	if err != nil {
 		return nil, fmt.Errorf("invalid state transition: %w", err)
 	}
+	fmt.Printf("✅ DEBUG: FSM transitioned to new state: %s\n", fsm.Current())
 
 	// 5. Create new process instance record for this transition (instead of updating)
 	newInstance := &models.ProcessInstance{

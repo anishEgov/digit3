@@ -52,9 +52,8 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 		return
 	}
 
-	// For now, use a default user ID since JWT is not required for role validation
-	// Roles come from the request attributes, not from JWT token
-	userID := "default-user"
+	// Extract user ID from X-Client-Id header for audit tracking
+	userID := models.GetUserIDFromContext(c)
 
 	// Add user information to context for the service layer
 	ctx := context.WithValue(c.Request.Context(), "userID", userID)

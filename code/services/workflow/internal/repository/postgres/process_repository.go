@@ -22,9 +22,14 @@ func NewProcessRepository(db *sqlx.DB) repository.ProcessRepository {
 // CreateProcess inserts a new process record into the database.
 func (r *processRepository) CreateProcess(ctx context.Context, process *models.Process) error {
 	process.ID = uuid.New().String()
+	// Audit details should be set by handlers, only set time if not already set
 	now := time.Now().UnixMilli()
-	process.AuditDetail.CreatedTime = now
-	process.AuditDetail.ModifiedTime = now
+	if process.AuditDetail.CreatedTime == 0 {
+		process.AuditDetail.CreatedTime = now
+	}
+	if process.AuditDetail.ModifiedTime == 0 {
+		process.AuditDetail.ModifiedTime = now
+	}
 
 	query := `INSERT INTO processes (id, tenant_id, name, code, description, version, sla, created_by, created_at, modified_by, modified_at)
               VALUES (:id, :tenant_id, :name, :code, :description, :version, :sla, :created_by, :created_at, :modified_by, :modified_at)`

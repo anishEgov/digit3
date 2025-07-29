@@ -44,6 +44,11 @@ func (s *stateService) UpdateState(ctx context.Context, state *models.State) (*m
 	return s.repo.GetStateByID(ctx, state.TenantID, state.ID)
 }
 
+// GetStateByCodeAndProcess handles the business logic for finding a state by code within a process.
+func (s *stateService) GetStateByCodeAndProcess(ctx context.Context, tenantID, processID, code string) (*models.State, error) {
+	return s.repo.GetStateByCodeAndProcess(ctx, tenantID, processID, code)
+}
+
 // DeleteState handles the business logic for deleting a state.
 func (s *stateService) DeleteState(ctx context.Context, tenantID, id string) error {
 	return s.repo.DeleteState(ctx, tenantID, id)

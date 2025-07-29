@@ -32,11 +32,6 @@ testdata/
 *.out
 coverage.html
 
-# Local development files
-.env
-.env.local
-.env.*.local
-
 # Logs
 *.log
 logs/

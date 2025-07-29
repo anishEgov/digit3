@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"digit.org/workflow/internal/models"
@@ -27,9 +28,30 @@ func NewActionRepository(db *sqlx.DB, attributeValidationRepo repository.Attribu
 // CreateAction inserts a new action record.
 func (r *actionRepository) CreateAction(ctx context.Context, action *models.Action) error {
 	action.ID = uuid.New().String()
+
+	// Validate required UUID fields
+	if action.CurrentState == "" {
+		return fmt.Errorf("current_state_id cannot be empty")
+	}
+	if action.NextState == "" {
+		return fmt.Errorf("next_state_id cannot be empty")
+	}
+
+	// Set default audit values only if not already provided by handlers
+	if action.AuditDetail.CreatedBy == "" {
+		action.AuditDetail.CreatedBy = "system"
+	}
+	if action.AuditDetail.ModifiedBy == "" {
+		action.AuditDetail.ModifiedBy = "system"
+	}
+
 	now := time.Now().UnixMilli()
-	action.AuditDetail.CreatedTime = now
-	action.AuditDetail.ModifiedTime = now
+	if action.AuditDetail.CreatedTime == 0 {
+		action.AuditDetail.CreatedTime = now
+	}
+	if action.AuditDetail.ModifiedTime == 0 {
+		action.AuditDetail.ModifiedTime = now
+	}
 
 	rolesJSON, err := json.Marshal(action.Roles)
 	if err != nil {
@@ -47,22 +69,37 @@ func (r *actionRepository) CreateAction(ctx context.Context, action *models.Acti
 	}
 
 	query := `INSERT INTO actions (id, tenant_id, name, label, current_state_id, next_state_id, roles, attribute_validation_id, created_by, created_at, modified_by, modified_at)
-              VALUES (:id, :tenant_id, :name, :label, :current_state_id, :next_state_id, :roles, :attribute_validation_id, :created_by, :created_at, :modified_by, :modified_at)`
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
-	_, err = r.db.NamedExecContext(ctx, query, map[string]interface{}{
-		"id":                      action.ID,
-		"tenant_id":               action.TenantID,
-		"name":                    action.Name,
-		"label":                   action.Label,
-		"current_state_id":        action.CurrentState,
-		"next_state_id":           action.NextState,
-		"roles":                   rolesJSON,
-		"attribute_validation_id": action.AttributeValidationID,
-		"created_by":              action.AuditDetail.CreatedBy,
-		"created_at":              action.AuditDetail.CreatedTime,
-		"modified_by":             action.AuditDetail.ModifiedBy,
-		"modified_at":             action.AuditDetail.ModifiedTime,
-	})
+	// Handle nil pointers properly for optional fields
+	var attributeValidationID interface{}
+	if action.AttributeValidationID != nil {
+		attributeValidationID = *action.AttributeValidationID
+	} else {
+		attributeValidationID = nil
+	}
+
+	var label interface{}
+	if action.Label != nil {
+		label = *action.Label
+	} else {
+		label = nil
+	}
+
+	_, err = r.db.ExecContext(ctx, query,
+		action.ID,                       // $1
+		action.TenantID,                 // $2
+		action.Name,                     // $3
+		label,                           // $4
+		action.CurrentState,             // $5
+		action.NextState,                // $6
+		rolesJSON,                       // $7
+		attributeValidationID,           // $8
+		action.AuditDetail.CreatedBy,    // $9
+		action.AuditDetail.CreatedTime,  // $10
+		action.AuditDetail.ModifiedBy,   // $11
+		action.AuditDetail.ModifiedTime, // $12
+	)
 	return err
 }
 

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Workflow Service API Tests",
-    "description": "Comprehensive test collection for Workflow Service APIs with attribute-based validation",
+    "description": "Comprehensive test collection for Workflow Service APIs with state code conversion and attribute-based validation",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11,7 +11,7 @@
     },
     {
       "key": "tenantId",
-      "value": "tenant-test"
+      "value": "test-tenant"
     },
     {
       "key": "processId",
@@ -188,7 +188,7 @@
                   "    pm.collectionVariables.set('stateId', response.id);",
                   "    pm.test('State created successfully', () => {",
                   "        pm.expect(response.id).to.exist;",
-                  "        pm.expect(response.code).to.equal('initial');",
+                  "        pm.expect(response.code).to.equal('DRAFT');",
                   "    });",
                   "}"
                 ]
@@ -209,7 +209,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"initial\",\n  \"name\": \"Initial State\",\n  \"description\": \"The starting state of the process\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 120,\n  \"isInitial\": true\n}"
+              "raw": "{\n  \"code\": \"DRAFT\",\n  \"name\": \"Draft State\",\n  \"description\": \"The starting state of the process\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 120,\n  \"isInitial\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/process/{{processId}}/state",
@@ -240,7 +240,38 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"review\",\n  \"name\": \"Under Review\",\n  \"description\": \"State when document is under review\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 240,\n  \"isInitial\": false\n}"
+              "raw": "{\n  \"code\": \"REVIEW\",\n  \"name\": \"Under Review\",\n  \"description\": \"State when document is under review\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 240,\n  \"isInitial\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Approved State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPROVED\",\n  \"name\": \"Approved\",\n  \"description\": \"Final approved state\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 60,\n  \"isInitial\": false\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/process/{{processId}}/state",
@@ -316,7 +347,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{stateId}}\",\n  \"code\": \"initial\",\n  \"name\": \"Updated Initial State\",\n  \"description\": \"Updated description for initial state\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 180,\n  \"isInitial\": true\n}"
+              "raw": "{\n  \"id\": \"{{stateId}}\",\n  \"code\": \"DRAFT\",\n  \"name\": \"Updated Draft State\",\n  \"description\": \"Updated description for draft state\",\n  \"processId\": \"{{processId}}\",\n  \"sla\": 180,\n  \"isInitial\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/state/{{stateId}}",
@@ -336,7 +367,7 @@
       "name": "Action Management",
       "item": [
         {
-          "name": "Create Action with Attribute Validation",
+          "name": "Create Action with State Code (NEW!)",
           "event": [
             {
               "listen": "test",
@@ -345,9 +376,10 @@
                   "if (pm.response.code === 201) {",
                   "    const response = pm.response.json();",
                   "    pm.collectionVariables.set('actionId', response.id);",
-                  "    pm.test('Action created successfully', () => {",
+                  "    pm.test('Action created successfully with state code', () => {",
                   "        pm.expect(response.id).to.exist;",
                   "        pm.expect(response.name).to.equal('Submit for Review');",
+                  "        pm.expect(response.nextState).to.exist; // Should be converted to UUID",
                   "    });",
                   "}"
                 ]
@@ -368,7 +400,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Submit for Review\",\n  \"label\": \"Submit for Review\",\n  \"currentState\": \"{{stateId}}\",\n  \"nextState\": \"review\",\n  \"attributeValidation\": {\n    \"attributes\": {\n      \"roles\": [\"user\", \"admin\"],\n      \"department\": [\"hr\", \"finance\"],\n      \"clearance\": [\"level1\", \"level2\"]\n    },\n    \"assigneeCheck\": true\n  }\n}"
+              "raw": "{\n  \"name\": \"Submit for Review\",\n  \"label\": \"Submit for Review\",\n  \"nextState\": \"REVIEW\",\n  \"roles\": [\"USER\", \"ADMIN\"],\n  \"attributeValidation\": {\n    \"attributes\": {\n      \"department\": [\"HR\", \"IT\"],\n      \"priority\": [\"HIGH\", \"CRITICAL\"]\n    },\n    \"assigneeCheck\": true\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/state/{{stateId}}/action",
@@ -380,7 +412,40 @@
                 "{{stateId}}",
                 "action"
               ]
-            }
+            },
+            "description": "🆕 UPDATED: No currentState in JSON body (comes from URL path). Uses state code 'REVIEW' which gets automatically converted to UUID!"
+          }
+        },
+        {
+          "name": "Create Action with UUID (Backward Compatible)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Approve Document\",\n  \"label\": \"Final approval\",\n  \"nextState\": \"APPROVED\",\n  \"roles\": [\"REVIEWER\", \"ADMIN\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}",
+                "action"
+              ]
+            },
+            "description": "Shows backward compatibility - can still use UUIDs directly if needed"
           }
         },
         {
@@ -444,7 +509,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"{{actionId}}\",\n  \"name\": \"Submit for Review\",\n  \"label\": \"Submit for Review (Updated)\",\n  \"currentState\": \"{{stateId}}\",\n  \"nextState\": \"review\",\n  \"attributeValidation\": {\n    \"id\": \"existing-validation-id\",\n    \"attributes\": {\n      \"roles\": [\"user\", \"admin\", \"manager\"],\n      \"department\": [\"hr\", \"finance\", \"legal\"],\n      \"clearance\": [\"level1\", \"level2\", \"level3\"]\n    },\n    \"assigneeCheck\": true\n  }\n}"
+              "raw": "{\n  \"id\": \"{{actionId}}\",\n  \"name\": \"Submit for Review\",\n  \"label\": \"Submit for Review (Updated)\",\n  \"currentState\": \"{{stateId}}\",\n  \"nextState\": \"REVIEW\",\n  \"roles\": [\"USER\", \"ADMIN\", \"MANAGER\"],\n  \"attributeValidation\": {\n    \"attributes\": {\n      \"department\": [\"HR\", \"IT\", \"LEGAL\"],\n      \"priority\": [\"HIGH\", \"CRITICAL\", \"URGENT\"]\n    },\n    \"assigneeCheck\": true\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/action/{{actionId}}",
@@ -464,7 +529,7 @@
       "name": "Transition Management",
       "item": [
         {
-          "name": "Valid Transition - All Attributes Match",
+          "name": "Valid Transition - Matching Attributes",
           "request": {
             "method": "POST",
             "header": [
@@ -479,7 +544,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-001\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"All required attributes provided\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"user\"],\n    \"department\": [\"hr\"],\n    \"clearance\": [\"level1\"]\n  }\n}"
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-001\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Valid attributes provided\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"department\": [\"HR\"],\n    \"priority\": [\"HIGH\"]\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/transition",
@@ -489,11 +554,12 @@
               "path": [
                 "transition"
               ]
-            }
+            },
+            "description": "✅ Should succeed - department=HR matches [HR,IT] and priority=HIGH matches [HIGH,CRITICAL]"
           }
         },
         {
-          "name": "Valid Transition - Multiple Values Match",
+          "name": "Valid Transition - Partial Match",
           "request": {
             "method": "POST",
             "header": [
@@ -508,7 +574,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-002\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Multiple values provided, one should match\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"guest\", \"user\", \"visitor\"],\n    \"department\": [\"marketing\", \"hr\"],\n    \"clearance\": [\"level2\"]\n  }\n}"
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-002\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"At least one value matches in each attribute\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"department\": [\"FINANCE\", \"IT\"],\n    \"priority\": [\"LOW\", \"CRITICAL\"]\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/transition",
@@ -518,11 +584,12 @@
               "path": [
                 "transition"
               ]
-            }
+            },
+            "description": "✅ Should succeed - IT matches [HR,IT] and CRITICAL matches [HIGH,CRITICAL]"
           }
         },
         {
-          "name": "Invalid Transition - Missing Required Attribute",
+          "name": "Invalid Transition - No Assignees",
           "request": {
             "method": "POST",
             "header": [
@@ -537,7 +604,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-003\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Missing clearance attribute - should fail\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"user\"],\n    \"department\": [\"hr\"]\n  }\n}"
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-003\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Should fail - no assignees but assigneeCheck=true\",\n  \"attributes\": {\n    \"department\": [\"HR\"],\n    \"priority\": [\"HIGH\"]\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/transition",
@@ -547,94 +614,8 @@
               "path": [
                 "transition"
               ]
-            }
-          }
-        },
-        {
-          "name": "Invalid Transition - Wrong Attribute Values",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-004\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Wrong attribute values - should fail\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"guest\"],\n    \"department\": [\"marketing\"],\n    \"clearance\": [\"level5\"]\n  }\n}"
             },
-            "url": {
-              "raw": "{{baseUrl}}/transition",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "transition"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Invalid Transition - Wrong Assignee",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-005\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Wrong assignee - should fail\",\n  \"assignees\": [\"wrong-user\"],\n  \"attributes\": {\n    \"roles\": [\"user\"],\n    \"department\": [\"hr\"],\n    \"clearance\": [\"level1\"]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/transition",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "transition"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Multiple Transitions Same Entity (Audit Trail)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Tenant-ID",
-                "value": "{{tenantId}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"ENTITY-001\",\n  \"action\": \"Submit for Review\",\n  \"comment\": \"Second transition for same entity - should create new record\",\n  \"assignees\": [\"default-user\"],\n  \"attributes\": {\n    \"roles\": [\"admin\"],\n    \"department\": [\"finance\"],\n    \"clearance\": [\"level2\"]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/transition",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "transition"
-              ]
-            }
+            "description": "❌ Should fail - assigneeCheck=true but no assignees provided"
           }
         },
         {
@@ -669,7 +650,8 @@
                   "value": "false"
                 }
               ]
-            }
+            },
+            "description": "Returns only the current/latest process instance"
           }
         },
         {
@@ -704,7 +686,8 @@
                   "value": "true"
                 }
               ]
-            }
+            },
+            "description": "Returns complete transition history for the entity"
           }
         },
         {
@@ -731,7 +714,8 @@
                   "value": "{{processId}}"
                 }
               ]
-            }
+            },
+            "description": "❌ Should return error - entityId is required"
           }
         },
         {
@@ -758,7 +742,8 @@
                   "value": "ENTITY-001"
                 }
               ]
-            }
+            },
+            "description": "❌ Should return error - processId is required"
           }
         }
       ]

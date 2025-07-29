@@ -21,6 +21,7 @@ type StateService interface {
 	CreateState(ctx context.Context, state *models.State) (*models.State, error)
 	GetStatesByProcessID(ctx context.Context, tenantID, processID string) ([]*models.State, error)
 	GetStateByID(ctx context.Context, tenantID, id string) (*models.State, error)
+	GetStateByCodeAndProcess(ctx context.Context, tenantID, processID, code string) (*models.State, error)
 	UpdateState(ctx context.Context, state *models.State) (*models.State, error)
 	DeleteState(ctx context.Context, tenantID, id string) error
 }

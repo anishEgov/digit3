@@ -23,9 +23,14 @@ func NewStateRepository(db *sqlx.DB) repository.StateRepository {
 // CreateState inserts a new state record.
 func (r *stateRepository) CreateState(ctx context.Context, state *models.State) error {
 	state.ID = uuid.New().String()
+	// Audit details should be set by handlers, only set time if not already set
 	now := time.Now().UnixMilli()
-	state.AuditDetail.CreatedTime = now
-	state.AuditDetail.ModifiedTime = now
+	if state.AuditDetail.CreatedTime == 0 {
+		state.AuditDetail.CreatedTime = now
+	}
+	if state.AuditDetail.ModifiedTime == 0 {
+		state.AuditDetail.ModifiedTime = now
+	}
 
 	branchStatesJSON, err := json.Marshal(state.BranchStates)
 	if err != nil {
@@ -179,6 +184,35 @@ func (r *stateRepository) UpdateState(ctx context.Context, state *models.State) 
 }
 
 // DeleteState deletes a state record.
+// GetStateByCodeAndProcess finds a state by code within a specific process.
+func (r *stateRepository) GetStateByCodeAndProcess(ctx context.Context, tenantID, processID, code string) (*models.State, error) {
+	query := `SELECT id, tenant_id, process_id, code, name, description, sla, is_initial, is_parallel, is_join, branch_states, created_by, created_at, modified_by, modified_at 
+              FROM states WHERE tenant_id = $1 AND process_id = $2 AND code = $3`
+
+	var state models.State
+	var branchStatesBytes []byte
+
+	err := r.db.QueryRowContext(ctx, query, tenantID, processID, code).Scan(
+		&state.ID, &state.TenantID, &state.ProcessID, &state.Code, &state.Name, &state.Description,
+		&state.SLA, &state.IsInitial, &state.IsParallel, &state.IsJoin, &branchStatesBytes,
+		&state.AuditDetail.CreatedBy, &state.AuditDetail.CreatedTime,
+		&state.AuditDetail.ModifiedBy, &state.AuditDetail.ModifiedTime,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal branch_states JSONB
+	if branchStatesBytes != nil {
+		if err := json.Unmarshal(branchStatesBytes, &state.BranchStates); err != nil {
+			return nil, err
+		}
+	}
+
+	return &state, nil
+}
+
 func (r *stateRepository) DeleteState(ctx context.Context, tenantID, id string) error {
 	query := `DELETE FROM states WHERE tenant_id = $1 AND id = $2`
 	_, err := r.db.ExecContext(ctx, query, tenantID, id)

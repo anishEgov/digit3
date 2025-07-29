@@ -30,8 +30,13 @@ func NewConfigurableGuard(enabledValidators []string) (*ConfigurableGuard, error
 func (g *ConfigurableGuard) CanTransition(ctx GuardContext) (bool, error) {
 	var validationErrors []string
 
-	// 1. Check assignee validation (existing logic)
-	if !isAssignee(ctx.UserID, ctx.ProcessInstance.Assignees) {
+	// 1. Check assignee validation only if required by the action
+	shouldCheckAssignee := false
+	if ctx.Action.AttributeValidation != nil && ctx.Action.AttributeValidation.AssigneeCheck {
+		shouldCheckAssignee = true
+	}
+
+	if shouldCheckAssignee && !isAssignee(ctx.UserID, ctx.ProcessInstance.Assignees) {
 		validationErrors = append(validationErrors, "user is not assigned to this process instance")
 	}
 

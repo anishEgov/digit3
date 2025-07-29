@@ -24,9 +24,18 @@ func (h *StateHandler) CreateState(c *gin.Context) {
 		return
 	}
 
+	// Extract tenant ID from header (required for multi-tenancy)
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
+	// Extract user ID from X-Client-Id header and set audit details
+	userID := models.GetUserIDFromContext(c)
 	state.ProcessID = c.Param("id") // Changed from "processId"
-	state.TenantID = c.GetHeader("X-Tenant-ID")
-	// state.AuditDetail.CreatedBy = ...
+	state.TenantID = tenantID
+	state.AuditDetail.SetAuditDetailsForCreate(userID)
 
 	createdState, err := h.service.CreateState(c.Request.Context(), &state)
 	if err != nil {
@@ -41,6 +50,10 @@ func (h *StateHandler) CreateState(c *gin.Context) {
 func (h *StateHandler) GetStates(c *gin.Context) {
 	processID := c.Param("id") // Changed from "processId"
 	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
 
 	states, err := h.service.GetStatesByProcessID(c.Request.Context(), tenantID, processID)
 	if err != nil {
@@ -55,6 +68,10 @@ func (h *StateHandler) GetStates(c *gin.Context) {
 func (h *StateHandler) GetState(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
 
 	state, err := h.service.GetStateByID(c.Request.Context(), tenantID, id)
 	if err != nil {
@@ -68,15 +85,23 @@ func (h *StateHandler) GetState(c *gin.Context) {
 // UpdateState handles the API request to update a state.
 func (h *StateHandler) UpdateState(c *gin.Context) {
 	id := c.Param("id")
+	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
+
 	var state models.State
 	if err := c.ShouldBindJSON(&state); err != nil {
 		c.JSON(http.StatusBadRequest, models.Error{Code: "BadRequest", Message: err.Error()})
 		return
 	}
 
+	// Extract user ID from X-Client-Id header and set audit details for update
+	userID := models.GetUserIDFromContext(c)
 	state.ID = id
-	state.TenantID = c.GetHeader("X-Tenant-ID")
-	// state.AuditDetail.ModifiedBy = ...
+	state.TenantID = tenantID
+	state.AuditDetail.SetAuditDetailsForUpdate(userID)
 
 	updatedState, err := h.service.UpdateState(c.Request.Context(), &state)
 	if err != nil {
@@ -91,6 +116,10 @@ func (h *StateHandler) UpdateState(c *gin.Context) {
 func (h *StateHandler) DeleteState(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetHeader("X-Tenant-ID")
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
+		return
+	}
 
 	err := h.service.DeleteState(c.Request.Context(), tenantID, id)
 	if err != nil {

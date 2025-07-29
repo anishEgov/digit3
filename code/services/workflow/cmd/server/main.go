@@ -62,7 +62,7 @@ func main() {
 	// Initialize handlers
 	processHandler := handlers.NewProcessHandler(processService)
 	stateHandler := handlers.NewStateHandler(stateService)
-	actionHandler := handlers.NewActionHandler(actionService)
+	actionHandler := handlers.NewActionHandler(actionService, stateService)
 	transitionHandler := handlers.NewTransitionHandler(transitionService)
 
 	// Initialize Gin router

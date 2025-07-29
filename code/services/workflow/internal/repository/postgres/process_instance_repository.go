@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"digit.org/workflow/internal/models"
@@ -87,7 +88,49 @@ func (r *processInstanceRepository) GetProcessInstanceByEntityID(ctx context.Con
 func (r *processInstanceRepository) GetLatestProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error) {
 	var instance models.ProcessInstance
 	query := `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at DESC LIMIT 1`
-	err := r.db.GetContext(ctx, &instance, query, tenantID, entityID, processID)
+	fmt.Printf("🔍 REPO DEBUG: Getting latest instance for entityID=%s, processID=%s\n", entityID, processID)
+
+	row := r.db.QueryRowContext(ctx, query, tenantID, entityID, processID)
+
+	var documentsJSON, assigneesJSON, attributesJSON []byte
+	err := row.Scan(
+		&instance.ID,
+		&instance.TenantID,
+		&instance.ProcessID,
+		&instance.EntityID,
+		&instance.Action,
+		&instance.Status,
+		&instance.Comment,
+		&documentsJSON,
+		&instance.Assigner,
+		&assigneesJSON,
+		&instance.CurrentState,
+		&instance.StateSLA,
+		&instance.ProcessSLA,
+		&attributesJSON,
+		&instance.AuditDetails.CreatedBy,
+		&instance.AuditDetails.CreatedTime,
+		&instance.AuditDetails.ModifiedBy,
+		&instance.AuditDetails.ModifiedTime,
+	)
+
+	if err == nil {
+		// Unmarshal JSON fields
+		if len(documentsJSON) > 0 {
+			json.Unmarshal(documentsJSON, &instance.Documents)
+		}
+		if len(assigneesJSON) > 0 {
+			json.Unmarshal(assigneesJSON, &instance.Assignees)
+		}
+		if len(attributesJSON) > 0 {
+			json.Unmarshal(attributesJSON, &instance.Attributes)
+		}
+
+		fmt.Printf("✅ REPO DEBUG: Found latest instance ID=%s, currentState=%s, action=%s, createdAt=%d\n",
+			instance.ID, instance.CurrentState, instance.Action, instance.AuditDetails.CreatedTime)
+	} else {
+		fmt.Printf("❌ REPO DEBUG: Error getting latest instance: %v\n", err)
+	}
 	return &instance, err
 }
 
