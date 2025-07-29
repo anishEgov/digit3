@@ -26,13 +26,22 @@ type StateRepository interface {
 	DeleteState(ctx context.Context, tenantID, id string) error
 }
 
-// ActionRepository defines the interface for action data operations.
+// ActionRepository defines the interface for action-related database operations.
 type ActionRepository interface {
 	CreateAction(ctx context.Context, action *models.Action) error
-	GetActionsByStateID(ctx context.Context, tenantID, stateID string) ([]*models.Action, error)
 	GetActionByID(ctx context.Context, tenantID, id string) (*models.Action, error)
+	GetActionsByStateID(ctx context.Context, tenantID, stateID string) ([]*models.Action, error)
 	UpdateAction(ctx context.Context, action *models.Action) error
 	DeleteAction(ctx context.Context, tenantID, id string) error
+}
+
+// ParallelExecutionRepository defines the interface for parallel workflow coordination operations.
+type ParallelExecutionRepository interface {
+	CreateParallelExecution(ctx context.Context, execution *models.ParallelExecution) error
+	GetParallelExecution(ctx context.Context, tenantID, entityID, processID, parallelStateID string) (*models.ParallelExecution, error)
+	UpdateParallelExecution(ctx context.Context, execution *models.ParallelExecution) error
+	MarkBranchCompleted(ctx context.Context, tenantID, entityID, processID, branchID string) error
+	GetActiveParallelExecutions(ctx context.Context, tenantID, entityID, processID string) ([]*models.ParallelExecution, error)
 }
 
 // AttributeValidationRepository defines the interface for attribute validation data operations.
@@ -48,7 +57,9 @@ type ProcessInstanceRepository interface {
 	GetProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error)
 	GetLatestProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error)
 	GetProcessInstancesByEntityID(ctx context.Context, tenantID, entityID, processID string, history bool) ([]*models.ProcessInstance, error)
-	UpdateProcessInstance(ctx context.Context, instance *models.ProcessInstance) error
+	// Parallel workflow methods
+	GetActiveParallelInstances(ctx context.Context, tenantID, entityID, processID string) ([]*models.ProcessInstance, error)
+	GetInstancesByBranch(ctx context.Context, tenantID, entityID, processID, branchID string) ([]*models.ProcessInstance, error)
 }
 
 // More repository interfaces (ActionRepository, etc.) will be added here later.

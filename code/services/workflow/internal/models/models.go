@@ -73,7 +73,25 @@ type ProcessInstance struct {
 	ProcessSLA   *int64              `json:"processSla,omitempty" db:"process_sla"`
 	Attributes   map[string][]string `json:"attributes,omitempty" db:"attributes"`
 	NextActions  []string            `json:"nextActions,omitempty" db:"-"` // Not stored in DB, computed from current state's actions
-	AuditDetails AuditDetail         `json:"auditDetails,omitempty" db:",inline"`
+	// Parallel workflow fields
+	ParentInstanceID *string     `json:"parentInstanceId,omitempty" db:"parent_instance_id"` // For tracking parallel branches
+	BranchID         *string     `json:"branchId,omitempty" db:"branch_id"`                  // Which parallel branch this represents
+	IsParallelBranch bool        `json:"isParallelBranch,omitempty" db:"is_parallel_branch"` // Flag for parallel instances
+	AuditDetails     AuditDetail `json:"auditDetails,omitempty" db:",inline"`
+}
+
+// ParallelExecution tracks the coordination of parallel workflow branches
+type ParallelExecution struct {
+	ID                string      `json:"id,omitempty" db:"id"`
+	TenantID          string      `json:"-" db:"tenant_id"`
+	EntityID          string      `json:"entityId" db:"entity_id"`
+	ProcessID         string      `json:"processId" db:"process_id"`
+	ParallelStateID   string      `json:"parallelStateId" db:"parallel_state_id"`    // State that created branches
+	JoinStateID       string      `json:"joinStateId" db:"join_state_id"`            // State where branches merge
+	ActiveBranches    []string    `json:"activeBranches" db:"active_branches"`       // Which branches are still running
+	CompletedBranches []string    `json:"completedBranches" db:"completed_branches"` // Which branches reached join
+	Status            string      `json:"status" db:"status"`                        // ACTIVE, WAITING_FOR_JOIN, COMPLETED
+	AuditDetail       AuditDetail `json:"auditDetail,omitempty" db:",inline"`
 }
 
 // StateDetail is a response model that includes a state's information along with its possible actions.

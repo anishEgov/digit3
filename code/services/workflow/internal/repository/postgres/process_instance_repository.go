@@ -26,47 +26,51 @@ func generateUUID() string {
 
 func (r *processInstanceRepository) CreateProcessInstance(ctx context.Context, instance *models.ProcessInstance) error {
 	if instance.ID == "" {
-		instance.ID = generateUUID()
+		instance.ID = uuid.New().String()
 	}
 
-	// Set audit details
-	now := time.Now().UnixMilli()
-	instance.AuditDetails.CreatedTime = now
-	instance.AuditDetails.ModifiedTime = now
-	if instance.AuditDetails.CreatedBy == "" {
-		instance.AuditDetails.CreatedBy = "system"
-	}
-	if instance.AuditDetails.ModifiedBy == "" {
-		instance.AuditDetails.ModifiedBy = "system"
+	// Marshal JSON fields for PostgreSQL
+	documentsJSON, err := json.Marshal(instance.Documents)
+	if err != nil {
+		return fmt.Errorf("error marshaling documents: %w", err)
 	}
 
-	// Marshal JSON fields
-	documentsJSON, _ := json.Marshal(instance.Documents)
-	assigneesJSON, _ := json.Marshal(instance.Assignees)
-	attributesJSON, _ := json.Marshal(instance.Attributes)
+	assigneesJSON, err := json.Marshal(instance.Assignees)
+	if err != nil {
+		return fmt.Errorf("error marshaling assignees: %w", err)
+	}
 
-	query := `INSERT INTO process_instances (id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, created_by, created_at, modified_by, modified_at)
-              VALUES (:id, :tenant_id, :process_id, :entity_id, :action, :status, :comment, :documents, :assigner, :assignees, :current_state_id, :state_sla, :process_sla, :attributes, :created_by, :created_at, :modified_by, :modified_at)`
+	attributesJSON, err := json.Marshal(instance.Attributes)
+	if err != nil {
+		return fmt.Errorf("error marshaling attributes: %w", err)
+	}
 
-	_, err := r.db.NamedExecContext(ctx, query, map[string]interface{}{
-		"id":               instance.ID,
-		"tenant_id":        instance.TenantID,
-		"process_id":       instance.ProcessID,
-		"entity_id":        instance.EntityID,
-		"action":           instance.Action,
-		"status":           instance.Status,
-		"comment":          instance.Comment,
-		"documents":        documentsJSON,
-		"assigner":         instance.Assigner,
-		"assignees":        assigneesJSON,
-		"current_state_id": instance.CurrentState,
-		"state_sla":        instance.StateSLA,
-		"process_sla":      instance.ProcessSLA,
-		"attributes":       attributesJSON,
-		"created_by":       instance.AuditDetails.CreatedBy,
-		"created_at":       instance.AuditDetails.CreatedTime,
-		"modified_by":      instance.AuditDetails.ModifiedBy,
-		"modified_at":      instance.AuditDetails.ModifiedTime,
+	// SQL query with parallel workflow fields
+	query := `INSERT INTO process_instances (id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at)
+	VALUES (:id, :tenant_id, :process_id, :entity_id, :action, :status, :comment, :documents, :assigner, :assignees, :current_state_id, :state_sla, :process_sla, :attributes, :parent_instance_id, :branch_id, :is_parallel_branch, :created_by, :created_at, :modified_by, :modified_at)`
+
+	_, err = r.db.NamedExecContext(ctx, query, map[string]interface{}{
+		"id":                 instance.ID,
+		"tenant_id":          instance.TenantID,
+		"process_id":         instance.ProcessID,
+		"entity_id":          instance.EntityID,
+		"action":             instance.Action,
+		"status":             instance.Status,
+		"comment":            instance.Comment,
+		"documents":          documentsJSON,
+		"assigner":           instance.Assigner,
+		"assignees":          assigneesJSON,
+		"current_state_id":   instance.CurrentState,
+		"state_sla":          instance.StateSLA,
+		"process_sla":        instance.ProcessSLA,
+		"attributes":         attributesJSON,
+		"parent_instance_id": instance.ParentInstanceID,
+		"branch_id":          instance.BranchID,
+		"is_parallel_branch": instance.IsParallelBranch,
+		"created_by":         instance.AuditDetails.CreatedBy,
+		"created_at":         instance.AuditDetails.CreatedTime,
+		"modified_by":        instance.AuditDetails.ModifiedBy,
+		"modified_at":        instance.AuditDetails.ModifiedTime,
 	})
 	return err
 }
@@ -87,7 +91,8 @@ func (r *processInstanceRepository) GetProcessInstanceByEntityID(ctx context.Con
 
 func (r *processInstanceRepository) GetLatestProcessInstanceByEntityID(ctx context.Context, tenantID, entityID, processID string) (*models.ProcessInstance, error) {
 	var instance models.ProcessInstance
-	query := `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at DESC LIMIT 1`
+	query := `SELECT id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at 
+		FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 AND is_parallel_branch = false ORDER BY created_at DESC LIMIT 1`
 	fmt.Printf("🔍 REPO DEBUG: Getting latest instance for entityID=%s, processID=%s\n", entityID, processID)
 
 	row := r.db.QueryRowContext(ctx, query, tenantID, entityID, processID)
@@ -108,6 +113,9 @@ func (r *processInstanceRepository) GetLatestProcessInstanceByEntityID(ctx conte
 		&instance.StateSLA,
 		&instance.ProcessSLA,
 		&attributesJSON,
+		&instance.ParentInstanceID,
+		&instance.BranchID,
+		&instance.IsParallelBranch,
 		&instance.AuditDetails.CreatedBy,
 		&instance.AuditDetails.CreatedTime,
 		&instance.AuditDetails.ModifiedBy,
@@ -139,10 +147,12 @@ func (r *processInstanceRepository) GetProcessInstancesByEntityID(ctx context.Co
 
 	if history {
 		// Return all records ordered by created_at (oldest first for chronological order)
-		query = `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at ASC`
+		query = `SELECT id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at 
+			FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at ASC`
 	} else {
 		// Return only the latest record
-		query = `SELECT * FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at DESC LIMIT 1`
+		query = `SELECT id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at 
+			FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 ORDER BY created_at DESC LIMIT 1`
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, tenantID, entityID, processID)
@@ -171,6 +181,9 @@ func (r *processInstanceRepository) GetProcessInstancesByEntityID(ctx context.Co
 			&instance.StateSLA,
 			&instance.ProcessSLA,
 			&attributesJSON,
+			&instance.ParentInstanceID,
+			&instance.BranchID,
+			&instance.IsParallelBranch,
 			&instance.AuditDetails.CreatedBy,
 			&instance.AuditDetails.CreatedTime,
 			&instance.AuditDetails.ModifiedBy,
@@ -242,4 +255,124 @@ func (r *processInstanceRepository) UpdateProcessInstance(ctx context.Context, i
 		"modified_at":      instance.AuditDetails.ModifiedTime,
 	})
 	return err
+}
+
+// GetActiveParallelInstances returns all active parallel branch instances for an entity
+func (r *processInstanceRepository) GetActiveParallelInstances(ctx context.Context, tenantID, entityID, processID string) ([]*models.ProcessInstance, error) {
+	query := `SELECT id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at 
+		FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 AND is_parallel_branch = true AND status != 'COMPLETED' ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query, tenantID, entityID, processID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*models.ProcessInstance
+	for rows.Next() {
+		var instance models.ProcessInstance
+		var documentsJSON, assigneesJSON, attributesJSON []byte
+
+		err := rows.Scan(
+			&instance.ID,
+			&instance.TenantID,
+			&instance.ProcessID,
+			&instance.EntityID,
+			&instance.Action,
+			&instance.Status,
+			&instance.Comment,
+			&documentsJSON,
+			&instance.Assigner,
+			&assigneesJSON,
+			&instance.CurrentState,
+			&instance.StateSLA,
+			&instance.ProcessSLA,
+			&attributesJSON,
+			&instance.ParentInstanceID,
+			&instance.BranchID,
+			&instance.IsParallelBranch,
+			&instance.AuditDetails.CreatedBy,
+			&instance.AuditDetails.CreatedTime,
+			&instance.AuditDetails.ModifiedBy,
+			&instance.AuditDetails.ModifiedTime,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal JSON fields
+		if len(documentsJSON) > 0 {
+			json.Unmarshal(documentsJSON, &instance.Documents)
+		}
+		if len(assigneesJSON) > 0 {
+			json.Unmarshal(assigneesJSON, &instance.Assignees)
+		}
+		if len(attributesJSON) > 0 {
+			json.Unmarshal(attributesJSON, &instance.Attributes)
+		}
+
+		instances = append(instances, &instance)
+	}
+
+	return instances, rows.Err()
+}
+
+// GetInstancesByBranch returns instances for a specific parallel branch
+func (r *processInstanceRepository) GetInstancesByBranch(ctx context.Context, tenantID, entityID, processID, branchID string) ([]*models.ProcessInstance, error) {
+	query := `SELECT id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at 
+		FROM process_instances WHERE tenant_id = $1 AND entity_id = $2 AND process_id = $3 AND branch_id = $4 ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query, tenantID, entityID, processID, branchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*models.ProcessInstance
+	for rows.Next() {
+		var instance models.ProcessInstance
+		var documentsJSON, assigneesJSON, attributesJSON []byte
+
+		err := rows.Scan(
+			&instance.ID,
+			&instance.TenantID,
+			&instance.ProcessID,
+			&instance.EntityID,
+			&instance.Action,
+			&instance.Status,
+			&instance.Comment,
+			&documentsJSON,
+			&instance.Assigner,
+			&assigneesJSON,
+			&instance.CurrentState,
+			&instance.StateSLA,
+			&instance.ProcessSLA,
+			&attributesJSON,
+			&instance.ParentInstanceID,
+			&instance.BranchID,
+			&instance.IsParallelBranch,
+			&instance.AuditDetails.CreatedBy,
+			&instance.AuditDetails.CreatedTime,
+			&instance.AuditDetails.ModifiedBy,
+			&instance.AuditDetails.ModifiedTime,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal JSON fields
+		if len(documentsJSON) > 0 {
+			json.Unmarshal(documentsJSON, &instance.Documents)
+		}
+		if len(assigneesJSON) > 0 {
+			json.Unmarshal(assigneesJSON, &instance.Assignees)
+		}
+		if len(attributesJSON) > 0 {
+			json.Unmarshal(attributesJSON, &instance.Attributes)
+		}
+
+		instances = append(instances, &instance)
+	}
+
+	return instances, rows.Err()
 }

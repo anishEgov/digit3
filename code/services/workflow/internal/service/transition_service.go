@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"digit.org/workflow/internal/models"
 	"digit.org/workflow/internal/repository"
@@ -16,6 +17,7 @@ type transitionService struct {
 	stateRepo    repository.StateRepository
 	actionRepo   repository.ActionRepository
 	processRepo  repository.ProcessRepository
+	parallelRepo repository.ParallelExecutionRepository
 	guard        security.Guard
 }
 
@@ -25,6 +27,7 @@ func NewTransitionService(
 	stateRepo repository.StateRepository,
 	actionRepo repository.ActionRepository,
 	processRepo repository.ProcessRepository,
+	parallelRepo repository.ParallelExecutionRepository,
 	guard security.Guard,
 ) TransitionService {
 	return &transitionService{
@@ -32,6 +35,7 @@ func NewTransitionService(
 		stateRepo:    stateRepo,
 		actionRepo:   actionRepo,
 		processRepo:  processRepo,
+		parallelRepo: parallelRepo,
 		guard:        guard,
 	}
 }
@@ -100,6 +104,7 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 		ProcessInstance: existingInstance,
 		Action:          targetAction,
 	}
+
 	can, err := s.guard.CanTransition(guardCtx)
 	if err != nil {
 		return nil, fmt.Errorf("guard check failed: %w", err)
@@ -108,7 +113,33 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 		return nil, errors.New("transition not permitted by guard")
 	}
 
-	// 4. Construct FSM and transition
+	// 4. Check if transitioning TO a parallel or join state
+	nextState, err := s.stateRepo.GetStateByID(ctx, tenantID, targetAction.NextState)
+	if err != nil {
+		return nil, fmt.Errorf("could not get next state: %w", err)
+	}
+
+	// Handle parallel workflow transitions
+	if nextState.IsParallel {
+		return s.handleParallelTransition(ctx, tenantID, existingInstance, targetAction, nextState, instance)
+	}
+
+	if nextState.IsJoin {
+		return s.handleJoinTransition(ctx, tenantID, existingInstance, targetAction, nextState, instance)
+	}
+
+	// 5. Standard linear transition logic
+	return s.handleLinearTransition(ctx, tenantID, existingInstance, targetAction, instance)
+}
+
+// handleLinearTransition processes standard non-parallel transitions
+func (s *transitionService) handleLinearTransition(ctx context.Context, tenantID string, existingInstance *models.ProcessInstance, targetAction *models.Action, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
+	// Construct FSM and transition
+	actions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, existingInstance.CurrentState)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve actions for FSM: %w", err)
+	}
+
 	events := eventsForState(actions)
 	fmt.Printf("🔍 DEBUG: Building FSM with %d events for current state %s\n", len(events), existingInstance.CurrentState)
 	for i, event := range events {
@@ -127,31 +158,35 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 	}
 	fmt.Printf("✅ DEBUG: FSM transitioned to new state: %s\n", fsm.Current())
 
-	// 5. Create new process instance record for this transition (instead of updating)
+	// Create new process instance record for this transition
 	newInstance := &models.ProcessInstance{
-		// Don't set ID - let the repository generate a new UUID
-		ProcessID:    existingInstance.ProcessID,
-		EntityID:     existingInstance.EntityID,
-		Action:       instance.Action,
-		Status:       existingInstance.Status,
-		Comment:      instance.Comment,
-		Documents:    instance.Documents,
-		Assignees:    instance.Assignees,
-		CurrentState: fsm.Current(), // New state after transition
-		StateSLA:     existingInstance.StateSLA,
-		ProcessSLA:   existingInstance.ProcessSLA,
-		Attributes:   instance.Attributes,
-		TenantID:     tenantID,
+		ProcessID:        existingInstance.ProcessID,
+		EntityID:         existingInstance.EntityID,
+		Action:           instance.Action,
+		Status:           existingInstance.Status,
+		Comment:          instance.Comment,
+		Documents:        instance.Documents,
+		Assignees:        instance.Assignees,
+		CurrentState:     fsm.Current(),
+		StateSLA:         existingInstance.StateSLA,
+		ProcessSLA:       existingInstance.ProcessSLA,
+		Attributes:       instance.Attributes,
+		ParentInstanceID: existingInstance.ParentInstanceID,
+		BranchID:         existingInstance.BranchID,
+		IsParallelBranch: existingInstance.IsParallelBranch,
+		TenantID:         tenantID,
 	}
+
+	// Set audit details
+	newInstance.AuditDetails.SetAuditDetailsForCreate("system")
 
 	if err := s.instanceRepo.CreateProcessInstance(ctx, newInstance); err != nil {
 		return nil, fmt.Errorf("failed to create new process instance record: %w", err)
 	}
 
-	// 6. Populate NextActions with available actions from the current state
+	// Populate NextActions
 	nextActions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, newInstance.CurrentState)
 	if err != nil {
-		// Log warning but don't fail the transition
 		newInstance.NextActions = []string{}
 	} else {
 		newInstance.NextActions = make([]string, len(nextActions))
@@ -163,12 +198,275 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 	return newInstance, nil
 }
 
+// handleParallelTransition creates parallel branches when transitioning to a parallel state
+func (s *transitionService) handleParallelTransition(ctx context.Context, tenantID string, existingInstance *models.ProcessInstance, targetAction *models.Action, parallelState *models.State, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
+	fmt.Printf("🔀 DEBUG: Starting parallel transition to state %s with branches: %v\n", parallelState.Code, parallelState.BranchStates)
+
+	// 1. Find the join state for this parallel execution
+	joinState, err := s.findJoinStateForParallel(ctx, tenantID, parallelState)
+	if err != nil {
+		return nil, fmt.Errorf("could not find join state: %w", err)
+	}
+
+	// 2. Create parallel execution record
+	parallelExec := &models.ParallelExecution{
+		EntityID:          existingInstance.EntityID,
+		ProcessID:         existingInstance.ProcessID,
+		ParallelStateID:   parallelState.ID,
+		JoinStateID:       joinState.ID,
+		ActiveBranches:    parallelState.BranchStates,
+		CompletedBranches: []string{},
+		Status:            "ACTIVE",
+		TenantID:          tenantID,
+	}
+	parallelExec.AuditDetail.SetAuditDetailsForCreate("system")
+
+	if err := s.parallelRepo.CreateParallelExecution(ctx, parallelExec); err != nil {
+		return nil, fmt.Errorf("could not create parallel execution: %w", err)
+	}
+
+	// 3. Create process instances for each parallel branch
+	var branchInstances []*models.ProcessInstance
+	for _, branchStateCode := range parallelState.BranchStates {
+		branchState, err := s.stateRepo.GetStateByCodeAndProcess(ctx, tenantID, existingInstance.ProcessID, branchStateCode)
+		if err != nil {
+			return nil, fmt.Errorf("could not find branch state %s: %w", branchStateCode, err)
+		}
+
+		branchInstance := &models.ProcessInstance{
+			ProcessID:        existingInstance.ProcessID,
+			EntityID:         existingInstance.EntityID,
+			Action:           instance.Action,
+			Status:           "ACTIVE",
+			Comment:          instance.Comment,
+			Documents:        instance.Documents,
+			Assignees:        instance.Assignees,
+			CurrentState:     branchState.ID,
+			ParentInstanceID: &existingInstance.ID,
+			BranchID:         &branchStateCode,
+			IsParallelBranch: true,
+			Attributes:       instance.Attributes,
+			TenantID:         tenantID,
+		}
+		branchInstance.AuditDetails.SetAuditDetailsForCreate("system")
+
+		if err := s.instanceRepo.CreateProcessInstance(ctx, branchInstance); err != nil {
+			return nil, fmt.Errorf("could not create branch instance for %s: %w", branchStateCode, err)
+		}
+		branchInstances = append(branchInstances, branchInstance)
+		fmt.Printf("✅ DEBUG: Created parallel branch instance for %s (ID: %s)\n", branchStateCode, branchInstance.ID)
+	}
+
+	// 4. Return first branch instance with parallel execution info
+	result := branchInstances[0]
+
+	// Add next actions for this branch
+	nextActions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, result.CurrentState)
+	if err == nil {
+		result.NextActions = make([]string, len(nextActions))
+		for i, action := range nextActions {
+			result.NextActions[i] = action.Name
+		}
+	}
+
+	fmt.Printf("🎉 DEBUG: Parallel transition completed. Created %d branch instances\n", len(branchInstances))
+	return result, nil
+}
+
+// handleJoinTransition manages joining parallel branches back to linear workflow
+func (s *transitionService) handleJoinTransition(ctx context.Context, tenantID string, existingInstance *models.ProcessInstance, targetAction *models.Action, joinState *models.State, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
+	fmt.Printf("🔗 DEBUG: Processing join transition from branch %s to join state %s\n", *existingInstance.BranchID, joinState.Code)
+
+	// 1. Find the parallel execution this branch belongs to
+	parallelExec, err := s.findParallelExecutionForBranch(ctx, tenantID, existingInstance)
+	if err != nil {
+		return nil, fmt.Errorf("could not find parallel execution: %w", err)
+	}
+
+	// 2. Mark this branch as completed
+	branchID := *existingInstance.BranchID
+	if err := s.parallelRepo.MarkBranchCompleted(ctx, tenantID, existingInstance.EntityID, existingInstance.ProcessID, branchID); err != nil {
+		return nil, fmt.Errorf("could not mark branch completed: %w", err)
+	}
+
+	// 3. Get updated parallel execution to check completion status
+	updatedExec, err := s.parallelRepo.GetParallelExecution(ctx, tenantID, existingInstance.EntityID, existingInstance.ProcessID, parallelExec.ParallelStateID)
+	if err != nil {
+		return nil, fmt.Errorf("could not get updated parallel execution: %w", err)
+	}
+
+	fmt.Printf("🔍 DEBUG: Branch completion status: %d/%d completed\n", len(updatedExec.CompletedBranches), len(updatedExec.ActiveBranches))
+
+	// 4. If not all branches complete, create instance in WAITING state
+	if len(updatedExec.CompletedBranches) < len(updatedExec.ActiveBranches) {
+		waitingInstance := &models.ProcessInstance{
+			ProcessID:        existingInstance.ProcessID,
+			EntityID:         existingInstance.EntityID,
+			Action:           instance.Action,
+			Status:           "WAITING_FOR_JOIN",
+			Comment:          instance.Comment,
+			Documents:        instance.Documents,
+			Assignees:        existingInstance.Assignees,
+			CurrentState:     joinState.ID,
+			ParentInstanceID: existingInstance.ParentInstanceID,
+			BranchID:         existingInstance.BranchID,
+			IsParallelBranch: true,
+			Attributes:       instance.Attributes,
+			TenantID:         tenantID,
+		}
+		waitingInstance.AuditDetails.SetAuditDetailsForCreate("system")
+
+		if err := s.instanceRepo.CreateProcessInstance(ctx, waitingInstance); err != nil {
+			return nil, fmt.Errorf("could not create waiting instance: %w", err)
+		}
+
+		fmt.Printf("⏳ DEBUG: Branch waiting for other branches to complete\n")
+		return waitingInstance, nil
+	}
+
+	// 5. All branches complete - merge and continue as linear workflow
+	fmt.Printf("🎯 DEBUG: All branches completed, merging parallel execution\n")
+	return s.mergeParallelBranches(ctx, tenantID, updatedExec, targetAction, joinState, instance)
+}
+
+// mergeParallelBranches combines parallel branch data and creates a linear instance
+func (s *transitionService) mergeParallelBranches(ctx context.Context, tenantID string, parallelExec *models.ParallelExecution, targetAction *models.Action, joinState *models.State, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
+	// 1. Get all parallel branch instances that reached the join
+	parallelInstances, err := s.instanceRepo.GetActiveParallelInstances(ctx, tenantID, parallelExec.EntityID, parallelExec.ProcessID)
+	if err != nil {
+		return nil, fmt.Errorf("could not get parallel instances: %w", err)
+	}
+
+	// 2. Merge attributes, documents, assignees from all branches
+	mergedAttributes := make(map[string][]string)
+	var mergedDocuments []models.Document
+	var mergedAssignees []string
+
+	for _, inst := range parallelInstances {
+		// Merge attributes
+		for key, values := range inst.Attributes {
+			mergedAttributes[key] = append(mergedAttributes[key], values...)
+		}
+		// Merge documents
+		mergedDocuments = append(mergedDocuments, inst.Documents...)
+		// Merge assignees
+		mergedAssignees = append(mergedAssignees, inst.Assignees...)
+	}
+
+	// 3. Create merged linear instance
+	mergedComment := fmt.Sprintf("Merged from parallel branches: %s", strings.Join(parallelExec.ActiveBranches, ", "))
+	mergedInstance := &models.ProcessInstance{
+		ProcessID:        parallelExec.ProcessID,
+		EntityID:         parallelExec.EntityID,
+		Action:           instance.Action,
+		Status:           "ACTIVE",
+		Comment:          &mergedComment,
+		Documents:        mergedDocuments,
+		Assignees:        removeDuplicates(mergedAssignees),
+		CurrentState:     joinState.ID,
+		ParentInstanceID: nil, // Back to linear execution
+		BranchID:         nil,
+		IsParallelBranch: false,
+		Attributes:       mergedAttributes,
+		TenantID:         tenantID,
+	}
+	mergedInstance.AuditDetails.SetAuditDetailsForCreate("system")
+
+	if err := s.instanceRepo.CreateProcessInstance(ctx, mergedInstance); err != nil {
+		return nil, fmt.Errorf("could not create merged instance: %w", err)
+	}
+
+	// 4. Mark parallel execution as completed
+	parallelExec.Status = "COMPLETED"
+	parallelExec.AuditDetail.SetAuditDetailsForUpdate("system")
+	if err := s.parallelRepo.UpdateParallelExecution(ctx, parallelExec); err != nil {
+		return nil, fmt.Errorf("could not update parallel execution status: %w", err)
+	}
+
+	// 5. Add next actions
+	nextActions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, mergedInstance.CurrentState)
+	if err == nil {
+		mergedInstance.NextActions = make([]string, len(nextActions))
+		for i, action := range nextActions {
+			mergedInstance.NextActions[i] = action.Name
+		}
+	}
+
+	fmt.Printf("🎉 DEBUG: Parallel branches merged successfully\n")
+	return mergedInstance, nil
+}
+
+// Helper functions for parallel workflow
+
+func (s *transitionService) findJoinStateForParallel(ctx context.Context, tenantID string, parallelState *models.State) (*models.State, error) {
+	// For simplicity, assume the join state is the next state after parallel branches complete
+	// In a more complex implementation, this could be configured or derived from process definition
+	states, err := s.stateRepo.GetStatesByProcessID(ctx, tenantID, parallelState.ProcessID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, state := range states {
+		if state.IsJoin {
+			return state, nil
+		}
+	}
+	return nil, errors.New("no join state found for parallel state")
+}
+
+func (s *transitionService) findParallelExecutionForBranch(ctx context.Context, tenantID string, instance *models.ProcessInstance) (*models.ParallelExecution, error) {
+	executions, err := s.parallelRepo.GetActiveParallelExecutions(ctx, tenantID, instance.EntityID, instance.ProcessID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(executions) == 0 {
+		return nil, errors.New("no active parallel execution found for branch")
+	}
+
+	// Return the first active parallel execution (in practice there should only be one active at a time)
+	return executions[0], nil
+}
+
+func removeDuplicates(slice []string) []string {
+	keys := make(map[string]bool)
+	var result []string
+	for _, item := range slice {
+		if !keys[item] {
+			keys[item] = true
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 func (s *transitionService) GetTransitions(ctx context.Context, tenantID, entityID, processID string, history bool) ([]*models.ProcessInstance, error) {
 	return s.instanceRepo.GetProcessInstancesByEntityID(ctx, tenantID, entityID, processID, history)
 }
 
 func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID string, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
-	// Try to find latest existing instance
+	// First, check if we have an action that needs to be performed
+	// If we have an action, check if it belongs to a parallel branch state
+	if instance.Action != "" {
+		// Get all active parallel instances to see if this action belongs to a parallel branch
+		parallelInstances, err := s.instanceRepo.GetActiveParallelInstances(ctx, tenantID, instance.EntityID, instance.ProcessID)
+		if err == nil && len(parallelInstances) > 0 {
+			// Check each parallel instance to see if the action is valid for its current state
+			for _, parallelInstance := range parallelInstances {
+				actions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, parallelInstance.CurrentState)
+				if err == nil {
+					for _, action := range actions {
+						if action.Name == instance.Action {
+							fmt.Printf("🎯 DEBUG: Found matching parallel branch instance for action '%s' in branch '%s'\n", instance.Action, *parallelInstance.BranchID)
+							return parallelInstance, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Try to find latest existing non-parallel instance (linear workflow)
 	existingInstance, err := s.instanceRepo.GetLatestProcessInstanceByEntityID(ctx, tenantID, instance.EntityID, instance.ProcessID)
 	if err == nil {
 		// Found latest instance, return it as-is (we'll create new record for transition)
@@ -193,6 +491,8 @@ func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID st
 
 	instance.CurrentState = initialState.ID
 	instance.Status = "ACTIVE" // Set default status for new instances
+	// Set audit details for new instance
+	instance.AuditDetails.SetAuditDetailsForCreate("system")
 	if err := s.instanceRepo.CreateProcessInstance(ctx, instance); err != nil {
 		return nil, fmt.Errorf("failed to create new process instance: %w", err)
 	}

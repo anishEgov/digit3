@@ -49,6 +49,7 @@ func main() {
 	attributeValidationRepo := postgres.NewAttributeValidationRepository(db)
 	actionRepo := postgres.NewActionRepository(db, attributeValidationRepo)
 	instanceRepo := postgres.NewProcessInstanceRepository(db)
+	parallelRepo := postgres.NewParallelExecutionRepository(db)
 
 	// Initialize attribute guard for simple key-value validation
 	guard := security.NewAttributeGuard()
@@ -57,7 +58,7 @@ func main() {
 	processService := service.NewProcessService(processRepo, stateRepo, actionRepo)
 	stateService := service.NewStateService(stateRepo)
 	actionService := service.NewActionService(actionRepo)
-	transitionService := service.NewTransitionService(instanceRepo, stateRepo, actionRepo, processRepo, guard)
+	transitionService := service.NewTransitionService(instanceRepo, stateRepo, actionRepo, processRepo, parallelRepo, guard)
 
 	// Initialize handlers
 	processHandler := handlers.NewProcessHandler(processService)
