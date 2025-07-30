@@ -28,8 +28,7 @@ func (h *ActionHandler) CreateAction(c *gin.Context) {
 	var actionRequest struct {
 		Name                string                      `json:"name"`
 		Label               *string                     `json:"label,omitempty"`
-		NextState           string                      `json:"nextState"` // State code from JSON
-		Roles               []string                    `json:"roles,omitempty"`
+		NextState           string                      `json:"nextState"`
 		AttributeValidation *models.AttributeValidation `json:"attributeValidation,omitempty"`
 	}
 
@@ -97,7 +96,6 @@ func (h *ActionHandler) CreateAction(c *gin.Context) {
 		Label:               actionRequest.Label,
 		CurrentState:        currentStateID, // Use state UUID from URL
 		NextState:           nextStateID,    // Converted from code to UUID
-		Roles:               actionRequest.Roles,
 		AttributeValidation: actionRequest.AttributeValidation,
 	}
 	action.AuditDetail.SetAuditDetailsForCreate(userID)
@@ -153,31 +151,70 @@ func (h *ActionHandler) GetAction(c *gin.Context) {
 	c.JSON(http.StatusOK, action)
 }
 
-// UpdateAction handles updating an existing action.
+// UpdateAction handles updating an action.
 func (h *ActionHandler) UpdateAction(c *gin.Context) {
-	var action models.Action
-
-	// Extract tenant ID from header (required for multi-tenancy)
+	id := c.Param("id")
 	tenantID := c.GetHeader("X-Tenant-ID")
 	if tenantID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "X-Tenant-ID header is required"})
 		return
 	}
-	action.TenantID = tenantID
 
-	actionID := c.Param("id")
-	action.ID = actionID
-
-	if err := c.ShouldBindJSON(&action); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// First, get the existing action
+	existingAction, err := h.actionService.GetActionByID(c.Request.Context(), tenantID, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.Error{Code: "NotFound", Message: "Action not found"})
 		return
+	}
+
+	var updateRequest struct {
+		Name                string                      `json:"name,omitempty"`
+		Label               *string                     `json:"label,omitempty"`
+		NextState           string                      `json:"nextState,omitempty"`
+		AttributeValidation *models.AttributeValidation `json:"attributeValidation,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&updateRequest); err != nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "BadRequest", Message: err.Error()})
+		return
+	}
+
+	// Merge update request with existing action, only updating provided fields
+	actionToUpdate := *existingAction
+	if updateRequest.Name != "" {
+		actionToUpdate.Name = updateRequest.Name
+	}
+	if updateRequest.Label != nil {
+		actionToUpdate.Label = updateRequest.Label
+	}
+	if updateRequest.NextState != "" {
+		// Handle nextState conversion like in CreateAction
+		if len(updateRequest.NextState) == 36 && updateRequest.NextState[8] == '-' {
+			actionToUpdate.NextState = updateRequest.NextState // It's already a UUID
+		} else {
+			// Try to convert state code to UUID - need current state for context
+			currentState, err := h.stateService.GetStateByID(c.Request.Context(), tenantID, actionToUpdate.CurrentState)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Current state not found: " + err.Error()})
+				return
+			}
+			nextState, err := h.stateService.GetStateByCodeAndProcess(c.Request.Context(), tenantID, currentState.ProcessID, updateRequest.NextState)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Next state not found for code '" + updateRequest.NextState + "': " + err.Error()})
+				return
+			}
+			actionToUpdate.NextState = nextState.ID
+		}
+	}
+	if updateRequest.AttributeValidation != nil {
+		actionToUpdate.AttributeValidation = updateRequest.AttributeValidation
 	}
 
 	// Extract user ID from X-Client-Id header and set audit details for update
 	userID := models.GetUserIDFromContext(c)
-	action.AuditDetail.SetAuditDetailsForUpdate(userID)
+	actionToUpdate.AuditDetail.SetAuditDetailsForUpdate(userID)
 
-	updatedAction, err := h.actionService.UpdateAction(c.Request.Context(), &action)
+	updatedAction, err := h.actionService.UpdateAction(c.Request.Context(), &actionToUpdate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

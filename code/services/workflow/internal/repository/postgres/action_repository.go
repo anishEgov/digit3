@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -25,82 +24,61 @@ func NewActionRepository(db *sqlx.DB, attributeValidationRepo repository.Attribu
 	}
 }
 
-// CreateAction inserts a new action record.
-func (r *actionRepository) CreateAction(ctx context.Context, action *models.Action) error {
-	action.ID = uuid.New().String()
-
-	// Validate required UUID fields
-	if action.CurrentState == "" {
-		return fmt.Errorf("current_state_id cannot be empty")
-	}
-	if action.NextState == "" {
-		return fmt.Errorf("next_state_id cannot be empty")
-	}
-
-	// Set default audit values only if not already provided by handlers
-	if action.AuditDetail.CreatedBy == "" {
-		action.AuditDetail.CreatedBy = "system"
-	}
-	if action.AuditDetail.ModifiedBy == "" {
-		action.AuditDetail.ModifiedBy = "system"
+// CreateAction creates a new action in the database.
+func (r *actionRepository) CreateAction(ctx context.Context, action *models.Action) (*models.Action, error) {
+	// Generate UUID if not provided
+	if action.ID == "" {
+		action.ID = uuid.New().String()
 	}
 
 	now := time.Now().UnixMilli()
-	if action.AuditDetail.CreatedTime == 0 {
-		action.AuditDetail.CreatedTime = now
-	}
-	if action.AuditDetail.ModifiedTime == 0 {
-		action.AuditDetail.ModifiedTime = now
-	}
-
-	rolesJSON, err := json.Marshal(action.Roles)
-	if err != nil {
-		return err
+	createdBy := action.AuditDetail.CreatedBy
+	if createdBy == "" {
+		createdBy = "system"
 	}
 
 	// Handle AttributeValidation if provided
+	var attributeValidationID *string
 	if action.AttributeValidation != nil {
 		action.AttributeValidation.TenantID = action.TenantID
 		err := r.attributeValidationRepo.CreateAttributeValidation(ctx, action.AttributeValidation)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("failed to create attribute validation: %w", err)
 		}
-		action.AttributeValidationID = &action.AttributeValidation.ID
+		attributeValidationID = &action.AttributeValidation.ID
 	}
 
-	query := `INSERT INTO actions (id, tenant_id, name, label, current_state_id, next_state_id, roles, attribute_validation_id, created_by, created_at, modified_by, modified_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+	query := `INSERT INTO actions (id, tenant_id, name, label, current_state_id, next_state_id, attribute_validation_id, created_by, created_at, modified_by, modified_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		RETURNING id, created_at, modified_at`
 
-	// Handle nil pointers properly for optional fields
-	var attributeValidationID interface{}
-	if action.AttributeValidationID != nil {
-		attributeValidationID = *action.AttributeValidationID
-	} else {
-		attributeValidationID = nil
+	var returnedID string
+	var createdAt, modifiedAt int64
+	err := r.db.QueryRowContext(ctx, query,
+		action.ID,             // $1
+		action.TenantID,       // $2
+		action.Name,           // $3
+		action.Label,          // $4
+		action.CurrentState,   // $5
+		action.NextState,      // $6
+		attributeValidationID, // $7
+		createdBy,             // $8
+		now,                   // $9
+		createdBy,             // $10
+		now,                   // $11
+	).Scan(&returnedID, &createdAt, &modifiedAt)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create action: %w", err)
 	}
 
-	var label interface{}
-	if action.Label != nil {
-		label = *action.Label
-	} else {
-		label = nil
-	}
+	action.ID = returnedID
+	action.AuditDetail.CreatedBy = createdBy
+	action.AuditDetail.CreatedTime = createdAt
+	action.AuditDetail.ModifiedBy = createdBy
+	action.AuditDetail.ModifiedTime = modifiedAt
 
-	_, err = r.db.ExecContext(ctx, query,
-		action.ID,                       // $1
-		action.TenantID,                 // $2
-		action.Name,                     // $3
-		label,                           // $4
-		action.CurrentState,             // $5
-		action.NextState,                // $6
-		rolesJSON,                       // $7
-		attributeValidationID,           // $8
-		action.AuditDetail.CreatedBy,    // $9
-		action.AuditDetail.CreatedTime,  // $10
-		action.AuditDetail.ModifiedBy,   // $11
-		action.AuditDetail.ModifiedTime, // $12
-	)
-	return err
+	return action, nil
 }
 
 // GetActionsByStateID retrieves all actions for a given state.
@@ -112,7 +90,6 @@ func (r *actionRepository) GetActionsByStateID(ctx context.Context, tenantID, st
 		Label                 *string `db:"label"`
 		CurrentStateID        string  `db:"current_state_id"`
 		NextStateID           string  `db:"next_state_id"`
-		Roles                 []byte  `db:"roles"`
 		AttributeValidationID *string `db:"attribute_validation_id"`
 		CreatedBy             string  `db:"created_by"`
 		CreatedAt             int64   `db:"created_at"`
@@ -121,7 +98,7 @@ func (r *actionRepository) GetActionsByStateID(ctx context.Context, tenantID, st
 	}
 
 	var rows []actionRow
-	query := `SELECT id, tenant_id, name, label, current_state_id, next_state_id, roles, attribute_validation_id, created_by, created_at, modified_by, modified_at FROM actions WHERE tenant_id = $1 AND current_state_id = $2`
+	query := `SELECT id, tenant_id, name, label, current_state_id, next_state_id, attribute_validation_id, created_by, created_at, modified_by, modified_at FROM actions WHERE tenant_id = $1 AND current_state_id = $2`
 	err := r.db.SelectContext(ctx, &rows, query, tenantID, stateID)
 	if err != nil {
 		return nil, err
@@ -129,14 +106,6 @@ func (r *actionRepository) GetActionsByStateID(ctx context.Context, tenantID, st
 
 	actions := make([]*models.Action, 0, len(rows))
 	for _, row := range rows {
-		var roles []string
-		if len(row.Roles) > 0 {
-			err := json.Unmarshal(row.Roles, &roles)
-			if err != nil {
-				return nil, err
-			}
-		}
-
 		action := &models.Action{
 			ID:                    row.ID,
 			TenantID:              row.TenantID,
@@ -144,7 +113,6 @@ func (r *actionRepository) GetActionsByStateID(ctx context.Context, tenantID, st
 			Label:                 row.Label,
 			CurrentState:          row.CurrentStateID,
 			NextState:             row.NextStateID,
-			Roles:                 roles,
 			AttributeValidationID: row.AttributeValidationID,
 			AuditDetail: models.AuditDetail{
 				CreatedBy:    row.CreatedBy,
@@ -176,7 +144,6 @@ func (r *actionRepository) GetActionByID(ctx context.Context, tenantID, id strin
 		Label                 *string `db:"label"`
 		CurrentStateID        string  `db:"current_state_id"`
 		NextStateID           string  `db:"next_state_id"`
-		Roles                 []byte  `db:"roles"`
 		AttributeValidationID *string `db:"attribute_validation_id"`
 		CreatedBy             string  `db:"created_by"`
 		CreatedAt             int64   `db:"created_at"`
@@ -185,18 +152,10 @@ func (r *actionRepository) GetActionByID(ctx context.Context, tenantID, id strin
 	}
 
 	var row actionRow
-	query := `SELECT id, tenant_id, name, label, current_state_id, next_state_id, roles, attribute_validation_id, created_by, created_at, modified_by, modified_at FROM actions WHERE tenant_id = $1 AND id = $2`
+	query := `SELECT id, tenant_id, name, label, current_state_id, next_state_id, attribute_validation_id, created_by, created_at, modified_by, modified_at FROM actions WHERE tenant_id = $1 AND id = $2`
 	err := r.db.GetContext(ctx, &row, query, tenantID, id)
 	if err != nil {
 		return nil, err
-	}
-
-	var roles []string
-	if len(row.Roles) > 0 {
-		err := json.Unmarshal(row.Roles, &roles)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	action := &models.Action{
@@ -206,7 +165,6 @@ func (r *actionRepository) GetActionByID(ctx context.Context, tenantID, id strin
 		Label:                 row.Label,
 		CurrentState:          row.CurrentStateID,
 		NextState:             row.NextStateID,
-		Roles:                 roles,
 		AttributeValidationID: row.AttributeValidationID,
 		AuditDetail: models.AuditDetail{
 			CreatedBy:    row.CreatedBy,
@@ -227,32 +185,25 @@ func (r *actionRepository) GetActionByID(ctx context.Context, tenantID, id strin
 	return action, nil
 }
 
-// UpdateAction updates an existing action record.
+// UpdateAction updates an existing action in the database.
 func (r *actionRepository) UpdateAction(ctx context.Context, action *models.Action) error {
 	action.AuditDetail.ModifiedTime = time.Now().UnixMilli()
-
-	rolesJSON, err := json.Marshal(action.Roles)
-	if err != nil {
-		return err
-	}
 
 	query := `UPDATE actions SET
 				  name = :name,
 				  label = :label,
 				  next_state_id = :next_state_id,
-				  roles = :roles,
 				  attribute_validation_id = :attribute_validation_id,
 				  modified_by = :modified_by,
 				  modified_at = :modified_at
 			  WHERE tenant_id = :tenant_id AND id = :id`
 
-	_, err = r.db.NamedExecContext(ctx, query, map[string]interface{}{
+	_, err := r.db.NamedExecContext(ctx, query, map[string]interface{}{
 		"id":                      action.ID,
 		"tenant_id":               action.TenantID,
 		"name":                    action.Name,
 		"label":                   action.Label,
 		"next_state_id":           action.NextState,
-		"roles":                   rolesJSON,
 		"attribute_validation_id": action.AttributeValidationID,
 		"modified_by":             action.AuditDetail.ModifiedBy,
 		"modified_at":             action.AuditDetail.ModifiedTime,

@@ -28,9 +28,9 @@ type StateRepository interface {
 
 // ActionRepository defines the interface for action-related database operations.
 type ActionRepository interface {
-	CreateAction(ctx context.Context, action *models.Action) error
-	GetActionByID(ctx context.Context, tenantID, id string) (*models.Action, error)
+	CreateAction(ctx context.Context, action *models.Action) (*models.Action, error)
 	GetActionsByStateID(ctx context.Context, tenantID, stateID string) ([]*models.Action, error)
+	GetActionByID(ctx context.Context, tenantID, id string) (*models.Action, error)
 	UpdateAction(ctx context.Context, action *models.Action) error
 	DeleteAction(ctx context.Context, tenantID, id string) error
 }

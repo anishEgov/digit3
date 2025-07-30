@@ -111,19 +111,44 @@ func (h *ProcessHandler) UpdateProcess(c *gin.Context) {
 		return
 	}
 
-	var process models.Process
-	if err := c.ShouldBindJSON(&process); err != nil {
+	// First, get the existing process
+	existingProcess, err := h.service.GetProcessByID(c.Request.Context(), tenantID, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.Error{Code: "NotFound", Message: "Process not found"})
+		return
+	}
+
+	var updateRequest models.Process
+	if err := c.ShouldBindJSON(&updateRequest); err != nil {
 		c.JSON(http.StatusBadRequest, models.Error{Code: "BadRequest", Message: err.Error()})
 		return
 	}
 
 	// Extract user ID from X-Client-Id header and set audit details for update
 	userID := models.GetUserIDFromContext(c)
-	process.ID = id
-	process.TenantID = tenantID
-	process.AuditDetail.SetAuditDetailsForUpdate(userID)
 
-	updatedProcess, err := h.service.UpdateProcess(c.Request.Context(), &process)
+	// Merge update request with existing process, only updating provided fields
+	processToUpdate := *existingProcess
+	if updateRequest.Name != "" {
+		processToUpdate.Name = updateRequest.Name
+	}
+	if updateRequest.Code != "" {
+		processToUpdate.Code = updateRequest.Code
+	}
+	if updateRequest.Description != nil && *updateRequest.Description != "" {
+		processToUpdate.Description = updateRequest.Description
+	}
+	if updateRequest.Version != nil && *updateRequest.Version != "" {
+		processToUpdate.Version = updateRequest.Version
+	}
+	if updateRequest.SLA != nil {
+		processToUpdate.SLA = updateRequest.SLA
+	}
+
+	// Set audit details for update
+	processToUpdate.AuditDetail.SetAuditDetailsForUpdate(userID)
+
+	updatedProcess, err := h.service.UpdateProcess(c.Request.Context(), &processToUpdate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.Error{Code: "InternalServerError", Message: err.Error()})
 		return

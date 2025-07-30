@@ -30,7 +30,7 @@ type State struct {
 	AuditDetail  AuditDetail `json:"auditDetail,omitempty" db:",inline"`
 }
 
-// Action represents a transition between two states.
+// Action represents a transition between two states in a process.
 // It corresponds to the 'Action' schema in the OpenAPI specification.
 type Action struct {
 	ID                    string               `json:"id,omitempty" db:"id"`
@@ -39,7 +39,6 @@ type Action struct {
 	Label                 *string              `json:"label,omitempty" db:"label"`
 	CurrentState          string               `json:"currentState" db:"current_state_id"`
 	NextState             string               `json:"nextState" db:"next_state_id"`
-	Roles                 []string             `json:"roles,omitempty" db:"roles"`
 	AttributeValidationID *string              `json:"-" db:"attribute_validation_id"` // Internal DB relation
 	AttributeValidation   *AttributeValidation `json:"attributeValidation,omitempty" db:"-"`
 	AuditDetail           AuditDetail          `json:"auditDetail,omitempty" db:",inline"`

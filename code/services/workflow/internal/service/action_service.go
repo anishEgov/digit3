@@ -18,11 +18,11 @@ func NewActionService(repo repository.ActionRepository) ActionService {
 
 // CreateAction handles the business logic for creating a new action.
 func (s *actionService) CreateAction(ctx context.Context, action *models.Action) (*models.Action, error) {
-	err := s.repo.CreateAction(ctx, action)
+	createdAction, err := s.repo.CreateAction(ctx, action)
 	if err != nil {
 		return nil, err
 	}
-	return action, nil
+	return createdAction, nil
 }
 
 // GetActionsByStateID handles the business logic for retrieving all actions for a state.

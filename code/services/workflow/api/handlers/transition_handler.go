@@ -31,11 +31,20 @@ type TransitionRequest struct {
 }
 
 type TransitionResponse struct {
-	ProcessInstanceID string      `json:"processInstanceId"`
-	State             string      `json:"state"`
-	Action            string      `json:"action"`
-	NextActions       []string    `json:"nextActions"`
-	AuditDetails      interface{} `json:"auditDetails"`
+	ID           string              `json:"id"`
+	ProcessID    string              `json:"processId"`
+	EntityID     string              `json:"entityId"`
+	Action       string              `json:"action"`
+	Status       string              `json:"status"`
+	Comment      *string             `json:"comment,omitempty"`
+	Documents    []models.Document   `json:"documents,omitempty"`
+	Assigner     *string             `json:"assigner,omitempty"`
+	Assignees    []string            `json:"assignees,omitempty"`
+	CurrentState string              `json:"currentState"`
+	StateSla     *int64              `json:"stateSla,omitempty"`
+	ProcessSla   *int64              `json:"processSla,omitempty"`
+	Attributes   map[string][]string `json:"attributes,omitempty"`
+	AuditDetails models.AuditDetail  `json:"auditDetails"`
 }
 
 func (h *TransitionHandler) Transition(c *gin.Context) {
@@ -67,11 +76,20 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 	}
 
 	response := TransitionResponse{
-		ProcessInstanceID: result.ID,
-		State:             result.CurrentState,
-		Action:            req.Action,
-		NextActions:       []string{}, // Empty for now
-		AuditDetails:      result.AuditDetails,
+		ID:           result.ID,
+		ProcessID:    result.ProcessID,
+		EntityID:     result.EntityID,
+		Action:       req.Action,
+		Status:       result.Status,
+		Comment:      req.Comment,
+		Documents:    result.Documents,
+		Assigner:     result.Assigner,
+		Assignees:    result.Assignees,
+		CurrentState: result.CurrentState,
+		StateSla:     result.StateSLA,   // Correct field name
+		ProcessSla:   result.ProcessSLA, // Correct field name
+		Attributes:   result.Attributes,
+		AuditDetails: result.AuditDetails, // Correct field name
 	}
 
 	c.JSON(http.StatusOK, response)

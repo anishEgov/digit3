@@ -17,7 +17,14 @@ func NewRBACGuard() Guard {
 // CanTransition checks if a user is permitted to perform a state transition.
 func (g *RBACGuard) CanTransition(ctx GuardContext) (bool, error) {
 	// 1. Role Check
-	if !hasRequiredRole(ctx.UserRoles, ctx.Action.Roles) {
+	var requiredRoles []string
+	if ctx.Action.AttributeValidation != nil && ctx.Action.AttributeValidation.Attributes != nil {
+		if roles, exists := ctx.Action.AttributeValidation.Attributes["roles"]; exists {
+			requiredRoles = roles
+		}
+	}
+
+	if !hasRequiredRole(ctx.UserRoles, requiredRoles) {
 		return false, errors.New("user does not have the required role for this action")
 	}
 
