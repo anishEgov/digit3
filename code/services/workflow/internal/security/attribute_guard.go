@@ -30,7 +30,7 @@ func (g *AttributeGuard) CanTransition(ctx GuardContext) (bool, error) {
 
 	// 2. Check attribute validation - compare request attributes with action requirements
 	if ctx.Action.AttributeValidation != nil && len(ctx.Action.AttributeValidation.Attributes) > 0 {
-		if valid, err := g.validateAttributes(ctx.ProcessInstance.Attributes, ctx.Action.AttributeValidation.Attributes); !valid {
+		if valid, err := g.validateAttributes(ctx.RequestAttributes, ctx.Action.AttributeValidation.Attributes); !valid {
 			validationErrors = append(validationErrors, fmt.Sprintf("attribute validation failed: %s", err.Error()))
 		}
 	}

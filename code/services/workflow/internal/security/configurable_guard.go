@@ -63,8 +63,8 @@ func (g *ConfigurableGuard) validateAttribute(validatorName string, ctx GuardCon
 		return false, fmt.Errorf("validator '%s' not found", validatorName)
 	}
 
-	// Get user attributes from process instance
-	userAttrs, userAttrsExists := ctx.ProcessInstance.Attributes[validatorName]
+	// Get user attributes from request
+	userAttrs, userAttrsExists := ctx.RequestAttributes[validatorName]
 	if !userAttrsExists || len(userAttrs) == 0 {
 		return false, fmt.Errorf("required attribute '%s' is missing in request", validatorName)
 	}

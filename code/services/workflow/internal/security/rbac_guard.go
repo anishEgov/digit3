@@ -16,32 +16,27 @@ func NewRBACGuard() Guard {
 
 // CanTransition checks if a user is permitted to perform a state transition.
 func (g *RBACGuard) CanTransition(ctx GuardContext) (bool, error) {
-	// 1. Role Check
-	var requiredRoles []string
-	if ctx.Action.AttributeValidation != nil && ctx.Action.AttributeValidation.Attributes != nil {
-		if roles, exists := ctx.Action.AttributeValidation.Attributes["roles"]; exists {
-			requiredRoles = roles
-		}
-	}
+	fmt.Printf("🛡️ GUARD DEBUG: Starting validation\n")
+	fmt.Printf("  Action: %s\n", ctx.Action.Name)
+	fmt.Printf("  UserID: %s\n", ctx.UserID)
+	fmt.Printf("  RequestAttributes: %+v\n", ctx.RequestAttributes)
 
-	if !hasRequiredRole(ctx.UserRoles, requiredRoles) {
-		return false, errors.New("user does not have the required role for this action")
-	}
-
-	// 2. Assignee Check
+	// 1. Assignee Check
 	if ctx.Action.AttributeValidation != nil && ctx.Action.AttributeValidation.AssigneeCheck {
 		if !isAssignee(ctx.UserID, ctx.ProcessInstance.Assignees) {
 			return false, errors.New("user is not an assignee for this instance")
 		}
 	}
 
-	// 3. Attribute Check
-	if ctx.Action.AttributeValidation != nil {
-		if !hasRequiredAttributes(ctx.ProcessInstance.Attributes, ctx.Action.AttributeValidation.Attributes) {
-			return false, errors.New("instance attributes do not match action requirements")
+	// 2. Attribute Check - Check if request attributes match action requirements
+	if ctx.Action.AttributeValidation != nil && ctx.Action.AttributeValidation.Attributes != nil {
+		fmt.Printf("🔍 Starting attribute validation\n")
+		if !hasRequiredAttributes(ctx.RequestAttributes, ctx.Action.AttributeValidation.Attributes) {
+			return false, errors.New("request attributes do not match action requirements")
 		}
 	}
 
+	fmt.Printf("✅ GUARD: All validations passed!\n")
 	return true, nil
 }
 
@@ -72,20 +67,24 @@ func isAssignee(userID string, assignees []string) bool {
 	return false
 }
 
-// hasRequiredAttributes checks if the process instance has the attributes required by the action.
-func hasRequiredAttributes(instanceAttributes, requiredAttributes map[string][]string) bool {
+// hasRequiredAttributes checks if the request attributes match the action requirements.
+func hasRequiredAttributes(requestAttributes, requiredAttributes map[string][]string) bool {
+	fmt.Printf("🔍 ATTR DEBUG: Checking attributes\n")
+	fmt.Printf("  Required: %+v\n", requiredAttributes)
+	fmt.Printf("  Request:  %+v\n", requestAttributes)
+
 	for key, requiredValues := range requiredAttributes {
-		instanceValues, ok := instanceAttributes[key]
+		requestValues, ok := requestAttributes[key]
 		if !ok {
-			fmt.Printf("Missing required attribute key: %s\n", key)
-			return false // Required attribute key is missing from the instance
+			fmt.Printf("❌ Missing required attribute key: %s\n", key)
+			return false // Required attribute key is missing from the request
 		}
 
-		// Check if at least one of the instance's values for this key is in the required list
+		// Check if at least one of the request's values for this key is in the required list
 		foundMatch := false
 		for _, requiredVal := range requiredValues {
-			for _, instanceVal := range instanceValues {
-				if instanceVal == requiredVal {
+			for _, requestVal := range requestValues {
+				if requestVal == requiredVal {
 					foundMatch = true
 					break
 				}
@@ -96,9 +95,11 @@ func hasRequiredAttributes(instanceAttributes, requiredAttributes map[string][]s
 		}
 
 		if !foundMatch {
-			fmt.Printf("Attribute mismatch for key '%s'. Required one of %v, but instance has %v\n", key, requiredValues, instanceValues)
+			fmt.Printf("❌ Attribute mismatch for key '%s'. Required one of %v, but request has %v\n", key, requiredValues, requestValues)
 			return false // No matching value found for this attribute key
 		}
+		fmt.Printf("✅ Attribute match for key '%s': %v\n", key, requestValues)
 	}
+	fmt.Printf("✅ All attributes matched!\n")
 	return true
 }

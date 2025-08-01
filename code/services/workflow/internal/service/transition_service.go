@@ -99,10 +99,11 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 	}
 
 	guardCtx := security.GuardContext{
-		UserRoles:       userRoles,
-		UserID:          userID,
-		ProcessInstance: existingInstance,
-		Action:          targetAction,
+		UserRoles:         userRoles,
+		UserID:            userID,
+		ProcessInstance:   existingInstance,
+		Action:            targetAction,
+		RequestAttributes: instance.Attributes,
 	}
 
 	can, err := s.guard.CanTransition(guardCtx)
