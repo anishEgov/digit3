@@ -93,6 +93,19 @@ type ParallelExecution struct {
 	AuditDetail       AuditDetail `json:"auditDetail,omitempty" db:",inline"`
 }
 
+// EscalationConfig represents an auto-escalation rule for a process state.
+// It defines when and how to automatically escalate workflow instances based on SLA breaches.
+type EscalationConfig struct {
+	ID                string      `json:"id,omitempty" db:"id"`
+	TenantID          string      `json:"-" db:"tenant_id"` // Never serialize tenantId in JSON - comes from header only
+	ProcessID         string      `json:"processId" db:"process_id"`
+	StateCode         string      `json:"stateCode" db:"state_code"`
+	EscalationAction  string      `json:"escalationAction" db:"escalation_action"`
+	StateSlaMinutes   *int        `json:"stateSlaMinutes,omitempty" db:"state_sla_minutes"`
+	ProcessSlaMinutes *int        `json:"processSlaMinutes,omitempty" db:"process_sla_minutes"`
+	AuditDetail       AuditDetail `json:"auditDetail,omitempty" db:",inline"`
+}
+
 // StateDetail is a response model that includes a state's information along with its possible actions.
 type StateDetail struct {
 	State

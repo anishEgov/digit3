@@ -12,6 +12,7 @@ func RegisterAllRoutes(
 	stateHandler *handlers.StateHandler,
 	actionHandler *handlers.ActionHandler,
 	transitionHandler *handlers.TransitionHandler,
+	escalationConfigHandler *handlers.EscalationConfigHandler,
 ) {
 	v3 := router.Group("/workflow/v3")
 
@@ -28,6 +29,10 @@ func RegisterAllRoutes(
 		// Nested State routes
 		processGroup.POST("/:id/state", stateHandler.CreateState)
 		processGroup.GET("/:id/state", stateHandler.GetStates)
+
+		// Nested Escalation Config routes
+		processGroup.POST("/:id/escalation", escalationConfigHandler.CreateEscalationConfig)
+		processGroup.GET("/:id/escalation", escalationConfigHandler.GetEscalationConfigs)
 	}
 
 	// State routes (for operations on a state by its own ID)
@@ -48,6 +53,14 @@ func RegisterAllRoutes(
 		actionGroup.GET("/:id", actionHandler.GetAction)
 		actionGroup.PUT("/:id", actionHandler.UpdateAction)
 		actionGroup.DELETE("/:id", actionHandler.DeleteAction)
+	}
+
+	// Escalation Config routes (for operations on an escalation config by its own ID)
+	escalationGroup := v3.Group("/escalation")
+	{
+		escalationGroup.GET("/:id", escalationConfigHandler.GetEscalationConfig)
+		escalationGroup.PUT("/:id", escalationConfigHandler.UpdateEscalationConfig)
+		escalationGroup.DELETE("/:id", escalationConfigHandler.DeleteEscalationConfig)
 	}
 
 	// Transition routes

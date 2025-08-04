@@ -50,6 +50,7 @@ func main() {
 	actionRepo := postgres.NewActionRepository(db, attributeValidationRepo)
 	instanceRepo := postgres.NewProcessInstanceRepository(db)
 	parallelRepo := postgres.NewParallelExecutionRepository(db)
+	escalationConfigRepo := postgres.NewEscalationConfigRepository(db)
 
 	// Initialize attribute guard for simple key-value validation
 	guard := security.NewAttributeGuard()
@@ -59,18 +60,20 @@ func main() {
 	stateService := service.NewStateService(stateRepo)
 	actionService := service.NewActionService(actionRepo)
 	transitionService := service.NewTransitionService(instanceRepo, stateRepo, actionRepo, processRepo, parallelRepo, guard)
+	escalationConfigService := service.NewEscalationConfigService(escalationConfigRepo, processRepo, stateRepo)
 
 	// Initialize handlers
 	processHandler := handlers.NewProcessHandler(processService)
 	stateHandler := handlers.NewStateHandler(stateService)
 	actionHandler := handlers.NewActionHandler(actionService, stateService)
 	transitionHandler := handlers.NewTransitionHandler(transitionService)
+	escalationConfigHandler := handlers.NewEscalationConfigHandler(escalationConfigService)
 
 	// Initialize Gin router
 	router := gin.Default()
 
 	// Register all routes
-	api.RegisterAllRoutes(router, processHandler, stateHandler, actionHandler, transitionHandler)
+	api.RegisterAllRoutes(router, processHandler, stateHandler, actionHandler, transitionHandler, escalationConfigHandler)
 
 	// Start server
 	serverPort := ":" + cfg.Server.Port

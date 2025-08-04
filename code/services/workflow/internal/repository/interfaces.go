@@ -62,4 +62,14 @@ type ProcessInstanceRepository interface {
 	GetInstancesByBranch(ctx context.Context, tenantID, entityID, processID, branchID string) ([]*models.ProcessInstance, error)
 }
 
+// EscalationConfigRepository handles persistence operations for escalation configurations.
+type EscalationConfigRepository interface {
+	CreateEscalationConfig(ctx context.Context, config *models.EscalationConfig) (*models.EscalationConfig, error)
+	GetEscalationConfigByID(ctx context.Context, tenantID, id string) (*models.EscalationConfig, error)
+	GetEscalationConfigsByProcessID(ctx context.Context, tenantID, processID string, stateCode string, isActive *bool) ([]*models.EscalationConfig, error)
+	UpdateEscalationConfig(ctx context.Context, config *models.EscalationConfig) (*models.EscalationConfig, error)
+	DeleteEscalationConfig(ctx context.Context, tenantID, id string) error
+	GetActiveEscalationConfigs(ctx context.Context, tenantID string) ([]*models.EscalationConfig, error)
+}
+
 // More repository interfaces (ActionRepository, etc.) will be added here later.

@@ -35,10 +35,19 @@ type ActionService interface {
 	DeleteAction(ctx context.Context, tenantID, id string) error
 }
 
-// TransitionService defines the interface for handling state transitions.
+// TransitionService handles business logic for process instance transitions.
 type TransitionService interface {
 	Transition(ctx context.Context, processInstanceID *string, processID, entityID, action string, comment *string, documents []models.Document, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error)
 	GetTransitions(ctx context.Context, tenantID, entityID, processID string, history bool) ([]*models.ProcessInstance, error)
+}
+
+// EscalationConfigService handles business logic for escalation configurations.
+type EscalationConfigService interface {
+	CreateEscalationConfig(ctx context.Context, config *models.EscalationConfig) (*models.EscalationConfig, error)
+	GetEscalationConfigByID(ctx context.Context, tenantID, id string) (*models.EscalationConfig, error)
+	GetEscalationConfigsByProcessID(ctx context.Context, tenantID, processID string, stateCode string, isActive *bool) ([]*models.EscalationConfig, error)
+	UpdateEscalationConfig(ctx context.Context, config *models.EscalationConfig) (*models.EscalationConfig, error)
+	DeleteEscalationConfig(ctx context.Context, tenantID, id string) error
 }
 
 // More service interfaces will be added here later.
