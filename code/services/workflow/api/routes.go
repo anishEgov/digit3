@@ -13,6 +13,7 @@ func RegisterAllRoutes(
 	actionHandler *handlers.ActionHandler,
 	transitionHandler *handlers.TransitionHandler,
 	escalationConfigHandler *handlers.EscalationConfigHandler,
+	autoEscalationHandler *handlers.AutoEscalationHandler,
 ) {
 	v3 := router.Group("/workflow/v3")
 
@@ -66,4 +67,8 @@ func RegisterAllRoutes(
 	// Transition routes
 	v3.POST("/transition", transitionHandler.Transition)
 	v3.GET("/transition", transitionHandler.GetTransitions)
+
+	// Auto-escalation routes
+	v3.POST("/auto/:processCode/_escalate", autoEscalationHandler.EscalateApplications)
+	v3.GET("/auto/_search", autoEscalationHandler.SearchEscalatedApplications)
 }

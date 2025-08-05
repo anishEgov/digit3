@@ -73,10 +73,14 @@ type ProcessInstance struct {
 	Attributes   map[string][]string `json:"attributes,omitempty" db:"attributes"`
 	NextActions  []string            `json:"nextActions,omitempty" db:"-"` // Not stored in DB, computed from current state's actions
 	// Parallel workflow fields
-	ParentInstanceID *string     `json:"parentInstanceId,omitempty" db:"parent_instance_id"` // For tracking parallel branches
-	BranchID         *string     `json:"branchId,omitempty" db:"branch_id"`                  // Which parallel branch this represents
-	IsParallelBranch bool        `json:"isParallelBranch,omitempty" db:"is_parallel_branch"` // Flag for parallel instances
-	AuditDetails     AuditDetail `json:"auditDetails,omitempty" db:",inline"`
+	ParentInstanceID *string `json:"parentInstanceId,omitempty" db:"parent_instance_id"` // For tracking parallel branches
+	BranchID         *string `json:"branchId,omitempty" db:"branch_id"`                  // Which parallel branch this represents
+	IsParallelBranch bool    `json:"isParallelBranch,omitempty" db:"is_parallel_branch"` // Flag for parallel instances
+
+	// Auto-escalation tracking field (following Java service pattern)
+	Escalated bool `json:"escalated" db:"escalated"`
+
+	AuditDetails AuditDetail `json:"auditDetails,omitempty" db:",inline"`
 }
 
 // ParallelExecution tracks the coordination of parallel workflow branches
@@ -104,6 +108,14 @@ type EscalationConfig struct {
 	StateSlaMinutes   *int        `json:"stateSlaMinutes,omitempty" db:"state_sla_minutes"`
 	ProcessSlaMinutes *int        `json:"processSlaMinutes,omitempty" db:"process_sla_minutes"`
 	AuditDetail       AuditDetail `json:"auditDetail,omitempty" db:",inline"`
+}
+
+// EscalationResult represents the result of an auto-escalation operation.
+type EscalationResult struct {
+	TotalFound         int                `json:"totalFound"`
+	TotalEscalated     int                `json:"totalEscalated"`
+	EscalatedInstances []*ProcessInstance `json:"escalatedInstances,omitempty"`
+	Errors             []string           `json:"errors,omitempty"`
 }
 
 // StateDetail is a response model that includes a state's information along with its possible actions.

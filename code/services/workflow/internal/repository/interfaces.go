@@ -60,6 +60,9 @@ type ProcessInstanceRepository interface {
 	// Parallel workflow methods
 	GetActiveParallelInstances(ctx context.Context, tenantID, entityID, processID string) ([]*models.ProcessInstance, error)
 	GetInstancesByBranch(ctx context.Context, tenantID, entityID, processID, branchID string) ([]*models.ProcessInstance, error)
+	// Auto-escalation methods
+	GetSLABreachedInstances(ctx context.Context, tenantID, processID, stateCode string, stateSlaMinutes, processSlaMinutes *int) ([]*models.ProcessInstance, error)
+	GetEscalatedInstances(ctx context.Context, tenantID, processID string, limit, offset int) ([]*models.ProcessInstance, error)
 }
 
 // EscalationConfigRepository handles persistence operations for escalation configurations.

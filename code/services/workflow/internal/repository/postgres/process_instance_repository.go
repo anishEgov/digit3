@@ -45,9 +45,9 @@ func (r *processInstanceRepository) CreateProcessInstance(ctx context.Context, i
 		return fmt.Errorf("error marshaling attributes: %w", err)
 	}
 
-	// SQL query with parallel workflow fields
-	query := `INSERT INTO process_instances (id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, created_by, created_at, modified_by, modified_at)
-	VALUES (:id, :tenant_id, :process_id, :entity_id, :action, :status, :comment, :documents, :assigner, :assignees, :current_state_id, :state_sla, :process_sla, :attributes, :parent_instance_id, :branch_id, :is_parallel_branch, :created_by, :created_at, :modified_by, :modified_at)`
+	// SQL query with parallel workflow fields and escalated field
+	query := `INSERT INTO process_instances (id, tenant_id, process_id, entity_id, action, status, comment, documents, assigner, assignees, current_state_id, state_sla, process_sla, attributes, parent_instance_id, branch_id, is_parallel_branch, escalated, created_by, created_at, modified_by, modified_at)
+	VALUES (:id, :tenant_id, :process_id, :entity_id, :action, :status, :comment, :documents, :assigner, :assignees, :current_state_id, :state_sla, :process_sla, :attributes, :parent_instance_id, :branch_id, :is_parallel_branch, :escalated, :created_by, :created_at, :modified_by, :modified_at)`
 
 	_, err = r.db.NamedExecContext(ctx, query, map[string]interface{}{
 		"id":                 instance.ID,
@@ -67,6 +67,7 @@ func (r *processInstanceRepository) CreateProcessInstance(ctx context.Context, i
 		"parent_instance_id": instance.ParentInstanceID,
 		"branch_id":          instance.BranchID,
 		"is_parallel_branch": instance.IsParallelBranch,
+		"escalated":          instance.Escalated,
 		"created_by":         instance.AuditDetails.CreatedBy,
 		"created_at":         instance.AuditDetails.CreatedTime,
 		"modified_by":        instance.AuditDetails.ModifiedBy,
@@ -351,6 +352,196 @@ func (r *processInstanceRepository) GetInstancesByBranch(ctx context.Context, te
 			&instance.ParentInstanceID,
 			&instance.BranchID,
 			&instance.IsParallelBranch,
+			&instance.AuditDetails.CreatedBy,
+			&instance.AuditDetails.CreatedTime,
+			&instance.AuditDetails.ModifiedBy,
+			&instance.AuditDetails.ModifiedTime,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal JSON fields
+		if len(documentsJSON) > 0 {
+			json.Unmarshal(documentsJSON, &instance.Documents)
+		}
+		if len(assigneesJSON) > 0 {
+			json.Unmarshal(assigneesJSON, &instance.Assignees)
+		}
+		if len(attributesJSON) > 0 {
+			json.Unmarshal(attributesJSON, &instance.Attributes)
+		}
+
+		instances = append(instances, &instance)
+	}
+
+	return instances, rows.Err()
+}
+
+// GetSLABreachedInstances retrieves process instances that have breached SLA thresholds
+func (r *processInstanceRepository) GetSLABreachedInstances(ctx context.Context, tenantID, processID, stateCode string, stateSlaMinutes, processSlaMinutes *int) ([]*models.ProcessInstance, error) {
+	// Base query to get latest instances for each entity in the specified state
+	query := `
+		SELECT pi.id, pi.tenant_id, pi.process_id, pi.entity_id, pi.action, pi.status, 
+			   pi.current_state_id, pi.documents, pi.assignees, pi.attributes, pi.comment,
+			   pi.state_sla, pi.process_sla, pi.parent_instance_id, pi.branch_id, pi.is_parallel_branch,
+			   pi.escalated, pi.created_by, pi.created_at, pi.modified_by, pi.modified_at
+		FROM process_instances pi
+		INNER JOIN (
+			SELECT entity_id, MAX(created_at) as latest_time
+			FROM process_instances 
+			WHERE tenant_id = $1 AND process_id = $2 AND current_state_id = $3
+			GROUP BY entity_id
+		) latest ON pi.entity_id = latest.entity_id AND pi.created_at = latest.latest_time
+		WHERE pi.tenant_id = $1 AND pi.process_id = $2 AND pi.current_state_id = $3`
+
+	args := []interface{}{tenantID, processID, stateCode}
+	argIndex := 3
+
+	// Add SLA breach conditions
+	currentTimeMillis := time.Now().UnixMilli()
+
+	if stateSlaMinutes != nil && *stateSlaMinutes > 0 {
+		argIndex++
+		query += fmt.Sprintf(" AND (%d - pi.created_at) > ($%d * 60 * 1000)", currentTimeMillis, argIndex)
+		args = append(args, *stateSlaMinutes)
+	}
+
+	if processSlaMinutes != nil && *processSlaMinutes > 0 {
+		argIndex++
+		query += fmt.Sprintf(" AND (%d - pi.created_at) > ($%d * 60 * 1000)", currentTimeMillis, argIndex)
+		args = append(args, *processSlaMinutes)
+	}
+
+	query += " ORDER BY pi.created_at DESC"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query SLA breached instances: %w", err)
+	}
+	defer rows.Close()
+
+	var instances []*models.ProcessInstance
+	for rows.Next() {
+		var instance models.ProcessInstance
+		var documentsJSON, assigneesJSON, attributesJSON []byte
+
+		err := rows.Scan(
+			&instance.ID,
+			&instance.TenantID,
+			&instance.ProcessID,
+			&instance.EntityID,
+			&instance.Action,
+			&instance.Status,
+			&instance.CurrentState,
+			&documentsJSON,
+			&assigneesJSON,
+			&attributesJSON,
+			&instance.Comment,
+			&instance.StateSLA,
+			&instance.ProcessSLA,
+			&instance.ParentInstanceID,
+			&instance.BranchID,
+			&instance.IsParallelBranch,
+			&instance.Escalated,
+			&instance.AuditDetails.CreatedBy,
+			&instance.AuditDetails.CreatedTime,
+			&instance.AuditDetails.ModifiedBy,
+			&instance.AuditDetails.ModifiedTime,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Unmarshal JSON fields
+		if len(documentsJSON) > 0 {
+			json.Unmarshal(documentsJSON, &instance.Documents)
+		}
+		if len(assigneesJSON) > 0 {
+			json.Unmarshal(assigneesJSON, &instance.Assignees)
+		}
+		if len(attributesJSON) > 0 {
+			json.Unmarshal(attributesJSON, &instance.Attributes)
+		}
+
+		instances = append(instances, &instance)
+	}
+
+	return instances, rows.Err()
+}
+
+// GetEscalatedInstances retrieves process instances that have been auto-escalated
+// Following the Java service pattern - this searches for instances with escalated = true
+func (r *processInstanceRepository) GetEscalatedInstances(ctx context.Context, tenantID, processID string, limit, offset int) ([]*models.ProcessInstance, error) {
+	// Base query to get latest instances per entity that have been escalated
+	// Following the exact Java service pattern: WHERE escalated = true
+	query := `
+		SELECT pi.id, pi.tenant_id, pi.process_id, pi.entity_id, pi.action, pi.status, 
+			   pi.current_state_id, pi.documents, pi.assignees, pi.attributes, pi.comment,
+			   pi.state_sla, pi.process_sla, pi.parent_instance_id, pi.branch_id, pi.is_parallel_branch,
+			   pi.escalated, pi.created_by, pi.created_at, pi.modified_by, pi.modified_at
+		FROM (
+			SELECT *, ROW_NUMBER() OVER (PARTITION BY entity_id ORDER BY created_at DESC) as rank_number
+			FROM process_instances 
+			WHERE tenant_id = $1`
+
+	args := []interface{}{tenantID}
+	argIndex := 1
+
+	if processID != "" {
+		argIndex++
+		query += fmt.Sprintf(" AND process_id = $%d", argIndex)
+		args = append(args, processID)
+	}
+
+	query += `
+		) pi 
+		WHERE pi.rank_number = 1 
+		AND pi.escalated = true`
+
+	query += " ORDER BY pi.created_at DESC"
+
+	if limit > 0 {
+		argIndex++
+		query += fmt.Sprintf(" LIMIT $%d", argIndex)
+		args = append(args, limit)
+	}
+
+	if offset > 0 {
+		argIndex++
+		query += fmt.Sprintf(" OFFSET $%d", argIndex)
+		args = append(args, offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query escalated instances: %w", err)
+	}
+	defer rows.Close()
+
+	var instances []*models.ProcessInstance
+	for rows.Next() {
+		var instance models.ProcessInstance
+		var documentsJSON, assigneesJSON, attributesJSON []byte
+
+		err := rows.Scan(
+			&instance.ID,
+			&instance.TenantID,
+			&instance.ProcessID,
+			&instance.EntityID,
+			&instance.Action,
+			&instance.Status,
+			&instance.CurrentState,
+			&documentsJSON,
+			&assigneesJSON,
+			&attributesJSON,
+			&instance.Comment,
+			&instance.StateSLA,
+			&instance.ProcessSLA,
+			&instance.ParentInstanceID,
+			&instance.BranchID,
+			&instance.IsParallelBranch,
+			&instance.Escalated,
 			&instance.AuditDetails.CreatedBy,
 			&instance.AuditDetails.CreatedTime,
 			&instance.AuditDetails.ModifiedBy,

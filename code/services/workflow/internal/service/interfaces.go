@@ -50,4 +50,10 @@ type EscalationConfigService interface {
 	DeleteEscalationConfig(ctx context.Context, tenantID, id string) error
 }
 
+// AutoEscalationService handles auto-escalation business logic.
+type AutoEscalationService interface {
+	EscalateApplications(ctx context.Context, tenantID, processCode string, attributes map[string][]string, userID string) (*models.EscalationResult, error)
+	SearchEscalatedApplications(ctx context.Context, tenantID, processID string, limit, offset int) ([]*models.ProcessInstance, error)
+}
+
 // More service interfaces will be added here later.

@@ -62,18 +62,22 @@ func main() {
 	transitionService := service.NewTransitionService(instanceRepo, stateRepo, actionRepo, processRepo, parallelRepo, guard)
 	escalationConfigService := service.NewEscalationConfigService(escalationConfigRepo, processRepo, stateRepo)
 
+	// Initialize auto-escalation service and handler
+	autoEscalationService := service.NewAutoEscalationService(escalationConfigRepo, instanceRepo, processRepo, stateRepo, transitionService)
+
 	// Initialize handlers
 	processHandler := handlers.NewProcessHandler(processService)
 	stateHandler := handlers.NewStateHandler(stateService)
 	actionHandler := handlers.NewActionHandler(actionService, stateService)
 	transitionHandler := handlers.NewTransitionHandler(transitionService)
 	escalationConfigHandler := handlers.NewEscalationConfigHandler(escalationConfigService)
+	autoEscalationHandler := handlers.NewAutoEscalationHandler(autoEscalationService)
 
 	// Initialize Gin router
 	router := gin.Default()
 
 	// Register all routes
-	api.RegisterAllRoutes(router, processHandler, stateHandler, actionHandler, transitionHandler, escalationConfigHandler)
+	api.RegisterAllRoutes(router, processHandler, stateHandler, actionHandler, transitionHandler, escalationConfigHandler, autoEscalationHandler)
 
 	// Start server
 	serverPort := ":" + cfg.Server.Port

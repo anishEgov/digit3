@@ -176,6 +176,9 @@ func (s *transitionService) handleLinearTransition(ctx context.Context, tenantID
 		BranchID:         existingInstance.BranchID,
 		IsParallelBranch: existingInstance.IsParallelBranch,
 		TenantID:         tenantID,
+		// Set escalated flag based on whether this is an auto-escalation action
+		// Following Java service pattern: escalated = true for auto-escalation actions
+		Escalated: s.isEscalationAction(instance.Action, instance.Comment),
 	}
 
 	// Set audit details
@@ -248,6 +251,7 @@ func (s *transitionService) handleParallelTransition(ctx context.Context, tenant
 			IsParallelBranch: true,
 			Attributes:       instance.Attributes,
 			TenantID:         tenantID,
+			Escalated:        s.isEscalationAction(instance.Action, instance.Comment),
 		}
 		branchInstance.AuditDetails.SetAuditDetailsForCreate("system")
 
@@ -314,6 +318,7 @@ func (s *transitionService) handleJoinTransition(ctx context.Context, tenantID s
 			IsParallelBranch: true,
 			Attributes:       instance.Attributes,
 			TenantID:         tenantID,
+			Escalated:        s.isEscalationAction(instance.Action, instance.Comment),
 		}
 		waitingInstance.AuditDetails.SetAuditDetailsForCreate("system")
 
@@ -370,6 +375,7 @@ func (s *transitionService) mergeParallelBranches(ctx context.Context, tenantID 
 		IsParallelBranch: false,
 		Attributes:       mergedAttributes,
 		TenantID:         tenantID,
+		Escalated:        s.isEscalationAction(instance.Action, instance.Comment),
 	}
 	mergedInstance.AuditDetails.SetAuditDetailsForCreate("system")
 
@@ -514,4 +520,26 @@ func eventsForState(actions []*models.Action) fsm.Events {
 		})
 	}
 	return events
+}
+
+// isEscalationAction determines if an action represents an auto-escalation
+// Following the Java service pattern, we detect escalation by checking:
+// 1. Action name contains "escalat" (case-insensitive)
+// 2. Comment contains "auto-escalat" (case-insensitive)
+func (s *transitionService) isEscalationAction(action string, comment *string) bool {
+	// Check if action name indicates escalation
+	actionLower := strings.ToLower(action)
+	if strings.Contains(actionLower, "escalat") {
+		return true
+	}
+
+	// Check if comment indicates auto-escalation
+	if comment != nil {
+		commentLower := strings.ToLower(*comment)
+		if strings.Contains(commentLower, "auto-escalat") {
+			return true
+		}
+	}
+
+	return false
 }
