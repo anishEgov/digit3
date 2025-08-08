@@ -47,14 +47,6 @@ config:
       - work-dir: "code/services/localization/src/main/resources/db"
         image-name: "localization-db"
 
-  - name: "builds/digit3/code/services/notification"
-    build:
-      - work-dir: "code/services/notification"
-        image-name: "notification"
-        dockerfile: "build/maven/Dockerfile"
-      - work-dir: "code/services/notification/src/main/resources/db"
-        image-name: "notification-db"
-
   - name: "builds/digit3/code/services/url-shortening"
     build:
       - work-dir: "code/services/url-shortening"
@@ -134,3 +126,11 @@ config:
         dockerfile: "build/maven/Dockerfile"
       - work-dir: "code/services/tenant/src/main/resources/db"
         image-name: "tenant-db"
+
+  - name: "builds/digit3/code/services/notification"
+    build:
+      - work-dir: "code/services/notification"
+        image-name: "notification"
+        dockerfile: "build/go/Dockerfile"
+      - work-dir: "code/services/notification/src/main/resources/db"
+        image-name: "notification-db"
