@@ -123,9 +123,13 @@ func (s *autoEscalationService) escalateInstance(ctx context.Context, instance *
 		instance.ProcessID,
 		instance.EntityID,
 		config.EscalationAction,
+		nil, // init - escalations are actions, not initialization
+		nil, // status - let service handle it
+		nil, // currentState - auto-escalation doesn't validate current state
 		&comment,
-		[]models.Document{}, // empty documents
-		nil,                 // assignees
+		[]string{}, // empty documents (fileStoreIds)
+		nil,        // assigner
+		nil,        // assignees
 		attributes,
 		instance.TenantID,
 	)

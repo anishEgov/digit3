@@ -31,6 +31,12 @@ func (h *ProcessHandler) CreateProcess(c *gin.Context) {
 		return
 	}
 
+	// Validate input
+	if validationErrors := models.ValidateProcessCreate(&process); validationErrors != nil {
+		c.JSON(http.StatusBadRequest, validationErrors)
+		return
+	}
+
 	// Extract user ID from X-Client-Id header and set audit details
 	userID := models.GetUserIDFromContext(c)
 	process.TenantID = tenantID
@@ -38,6 +44,11 @@ func (h *ProcessHandler) CreateProcess(c *gin.Context) {
 
 	createdProcess, err := h.service.CreateProcess(c.Request.Context(), &process)
 	if err != nil {
+		// Check for database constraint violations and return proper error codes
+		if models.IsDatabaseConstraintError(err) {
+			c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: models.GetConstraintErrorMessage(err)})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, models.Error{Code: "InternalServerError", Message: err.Error()})
 		return
 	}
@@ -93,6 +104,12 @@ func (h *ProcessHandler) GetProcess(c *gin.Context) {
 		return
 	}
 
+	// Validate UUID format
+	if err := models.ValidateUUID(id, "processId"); err != nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: err.Error()})
+		return
+	}
+
 	process, err := h.service.GetProcessByID(c.Request.Context(), tenantID, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, models.Error{Code: "NotFound", Message: "Process not found"})
@@ -111,16 +128,31 @@ func (h *ProcessHandler) UpdateProcess(c *gin.Context) {
 		return
 	}
 
-	// First, get the existing process
-	existingProcess, err := h.service.GetProcessByID(c.Request.Context(), tenantID, id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, models.Error{Code: "NotFound", Message: "Process not found"})
+	// Validate UUID format
+	if err := models.ValidateUUID(id, "processId"); err != nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: err.Error()})
 		return
 	}
 
 	var updateRequest models.Process
 	if err := c.ShouldBindJSON(&updateRequest); err != nil {
 		c.JSON(http.StatusBadRequest, models.Error{Code: "BadRequest", Message: err.Error()})
+		return
+	}
+
+	// Validate that at least one field is provided for update
+	if updateRequest.Name == "" && updateRequest.Code == "" &&
+		(updateRequest.Description == nil || *updateRequest.Description == "") &&
+		(updateRequest.Version == nil || *updateRequest.Version == "") &&
+		updateRequest.SLA == nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: "At least one field must be provided for update"})
+		return
+	}
+
+	// First, get the existing process
+	existingProcess, err := h.service.GetProcessByID(c.Request.Context(), tenantID, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.Error{Code: "NotFound", Message: "Process not found"})
 		return
 	}
 
@@ -166,8 +198,19 @@ func (h *ProcessHandler) DeleteProcess(c *gin.Context) {
 		return
 	}
 
+	// Validate UUID format
+	if err := models.ValidateUUID(id, "processId"); err != nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: err.Error()})
+		return
+	}
+
 	err := h.service.DeleteProcess(c.Request.Context(), tenantID, id)
 	if err != nil {
+		// Check for database constraint violations and return proper error codes
+		if models.IsDatabaseConstraintError(err) {
+			c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: models.GetConstraintErrorMessage(err)})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, models.Error{Code: "InternalServerError", Message: err.Error()})
 		return
 	}

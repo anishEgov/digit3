@@ -31,14 +31,32 @@ func (h *StateHandler) CreateState(c *gin.Context) {
 		return
 	}
 
+	// Validate processId UUID format
+	processID := c.Param("id")
+	if err := models.ValidateUUID(processID, "processId"); err != nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: err.Error()})
+		return
+	}
+
+	// Validate input
+	if validationErrors := models.ValidateStateCreate(&state); validationErrors != nil {
+		c.JSON(http.StatusBadRequest, validationErrors)
+		return
+	}
+
 	// Extract user ID from X-Client-Id header and set audit details
 	userID := models.GetUserIDFromContext(c)
-	state.ProcessID = c.Param("id") // Changed from "processId"
+	state.ProcessID = processID
 	state.TenantID = tenantID
 	state.AuditDetail.SetAuditDetailsForCreate(userID)
 
 	createdState, err := h.service.CreateState(c.Request.Context(), &state)
 	if err != nil {
+		// Check for database constraint violations and return proper error codes
+		if models.IsDatabaseConstraintError(err) {
+			c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: models.GetConstraintErrorMessage(err)})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, models.Error{Code: "InternalServerError", Message: err.Error()})
 		return
 	}

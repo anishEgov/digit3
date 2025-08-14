@@ -23,9 +23,13 @@ type TransitionRequest struct {
 	ProcessInstanceID *string             `json:"processInstanceId,omitempty"`
 	ProcessID         string              `json:"processId" binding:"required"`
 	EntityID          string              `json:"entityId" binding:"required"`
-	Action            string              `json:"action" binding:"required"`
+	Init              *bool               `json:"init,omitempty"` // NEW: Flag to create new instance in initial state
+	Action            string              `json:"action"`
+	Status            *string             `json:"status,omitempty"`
+	CurrentState      *string             `json:"currentState,omitempty"` // Expected current state for validation
 	Comment           *string             `json:"comment,omitempty"`
-	Documents         []models.Document   `json:"documents,omitempty"`
+	Documents         []string            `json:"documents,omitempty"`
+	Assigner          *string             `json:"assigner,omitempty"`
 	Assignees         *[]string           `json:"assignees,omitempty"`
 	Attributes        map[string][]string `json:"attributes,omitempty"` // User attributes for validation
 }
@@ -36,14 +40,14 @@ type TransitionResponse struct {
 	EntityID     string              `json:"entityId"`
 	Action       string              `json:"action"`
 	Status       string              `json:"status"`
-	Comment      *string             `json:"comment,omitempty"`
-	Documents    []models.Document   `json:"documents,omitempty"`
-	Assigner     *string             `json:"assigner,omitempty"`
-	Assignees    []string            `json:"assignees,omitempty"`
+	Comment      string              `json:"comment"`
+	Documents    []string            `json:"documents"`
+	Assigner     string              `json:"assigner"`
+	Assignees    []string            `json:"assignees"`
 	CurrentState string              `json:"currentState"`
-	StateSla     *int64              `json:"stateSla,omitempty"`
-	ProcessSla   *int64              `json:"processSla,omitempty"`
-	Attributes   map[string][]string `json:"attributes,omitempty"`
+	StateSla     int64               `json:"stateSla"`
+	ProcessSla   int64               `json:"processSla"`
+	Attributes   map[string][]string `json:"attributes"`
 	AuditDetails models.AuditDetail  `json:"auditDetails"`
 }
 
@@ -51,6 +55,20 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 	var req TransitionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate mutually exclusive operations
+	isInit := req.Init != nil && *req.Init
+	hasAction := req.Action != ""
+
+	if isInit && hasAction {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot specify both init=true and action - these are mutually exclusive operations"})
+		return
+	}
+
+	if !isInit && !hasAction {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Must specify either init=true for instance creation or action for transitions"})
 		return
 	}
 
@@ -68,11 +86,44 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 	ctx := context.WithValue(c.Request.Context(), "userID", userID)
 	ctx = context.WithValue(ctx, "tenantID", tenantID)
 
-	// Call the transition service
-	result, err := h.transitionService.Transition(ctx, req.ProcessInstanceID, req.ProcessID, req.EntityID, req.Action, req.Comment, req.Documents, req.Assignees, req.Attributes, tenantID)
+	// Call the transition service with init parameter
+	result, err := h.transitionService.Transition(ctx, req.ProcessInstanceID, req.ProcessID, req.EntityID, req.Action, req.Init, req.Status, req.CurrentState, req.Comment, req.Documents, req.Assigner, req.Assignees, req.Attributes, tenantID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Convert documents from []models.Document to []string
+	var docStrings []string
+	for _, doc := range result.Documents {
+		docStrings = append(docStrings, doc.FileStoreID)
+	}
+
+	// Handle optional fields with defaults
+	comment := ""
+	if req.Comment != nil {
+		comment = *req.Comment
+	}
+
+	assigner := ""
+	if result.Assigner != nil {
+		assigner = *result.Assigner
+	}
+
+	stateSla := int64(0)
+	if result.StateSLA != nil {
+		stateSla = *result.StateSLA
+	}
+
+	processSla := int64(0)
+	if result.ProcessSLA != nil {
+		processSla = *result.ProcessSLA
+	}
+
+	// Ensure attributes is not nil
+	attributes := result.Attributes
+	if attributes == nil {
+		attributes = make(map[string][]string)
 	}
 
 	response := TransitionResponse{
@@ -81,15 +132,15 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 		EntityID:     result.EntityID,
 		Action:       req.Action,
 		Status:       result.Status,
-		Comment:      req.Comment,
-		Documents:    result.Documents,
-		Assigner:     result.Assigner,
+		Comment:      comment,
+		Documents:    docStrings,
+		Assigner:     assigner,
 		Assignees:    result.Assignees,
 		CurrentState: result.CurrentState,
-		StateSla:     result.StateSLA,   // Correct field name
-		ProcessSla:   result.ProcessSLA, // Correct field name
-		Attributes:   result.Attributes,
-		AuditDetails: result.AuditDetails, // Correct field name
+		StateSla:     stateSla,
+		ProcessSla:   processSla,
+		Attributes:   attributes,
+		AuditDetails: result.AuditDetails,
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -119,9 +119,20 @@ func (h *ActionHandler) GetActions(c *gin.Context) {
 	}
 
 	stateID := c.Param("id")
+	// Validate UUID format
+	if err := models.ValidateUUID(stateID, "stateId"); err != nil {
+		c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: err.Error()})
+		return
+	}
+
 	actions, err := h.actionService.GetActionsByStateID(c.Request.Context(), tenantID, stateID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		// Check for database constraint violations and return proper error codes
+		if models.IsDatabaseConstraintError(err) {
+			c.JSON(http.StatusBadRequest, models.Error{Code: "ValidationError", Message: models.GetConstraintErrorMessage(err)})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, models.Error{Code: "InternalServerError", Message: err.Error()})
 		return
 	}
 

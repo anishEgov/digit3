@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "Workflow Service API Tests",
-    "description": "Comprehensive test collection for Workflow Service APIs with complete workflow examples including Building Permit and Trade License processes - Updated for port 9090",
+    "description": "Comprehensive test collection for Workflow Service APIs including Process, State, Action, Transition, and Auto-Escalation management with complete workflow examples. Updated with escalation functionality following Java service pattern.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:9090/workflow/v3"
+      "value": "http://localhost:8080/workflow/v3"
     },
     {
       "key": "tenantId",
@@ -28,6 +28,10 @@
     {
       "key": "buildingPermitProcessId",
       "value": "8491c7ed-c8ee-4fd0-89a2-b0ef35d0f570"
+    },
+    {
+      "key": "escalationConfigId",
+      "value": ""
     }
   ],
   "item": [
@@ -1296,6 +1300,331 @@
               ]
             },
             "description": "Returns complete audit trail of all transitions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Escalation Configuration Management",
+      "item": [
+        {
+          "name": "Create Escalation Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('escalationConfigId', response.id);",
+                  "    pm.test('Escalation config created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.stateCode).to.equal('REVIEW');",
+                  "        pm.expect(response.escalationAction).to.equal('AUTO_ESCALATE');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateCode\": \"REVIEW\",\n  \"escalationAction\": \"AUTO_ESCALATE\",\n  \"stateSlaMinutes\": 60,\n  \"processSlaMinutes\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/escalation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "escalation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Escalation Configs for Process",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/escalation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "escalation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Escalation Config by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escalation/{{escalationConfigId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escalation",
+                "{{escalationConfigId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Escalation Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateCode\": \"REVIEW\",\n  \"escalationAction\": \"AUTO_ESCALATE\",\n  \"stateSlaMinutes\": 120,\n  \"processSlaMinutes\": 240\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/escalation/{{escalationConfigId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escalation",
+                "{{escalationConfigId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Escalation Config",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escalation/{{escalationConfigId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escalation",
+                "{{escalationConfigId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auto-Escalation Operations",
+      "item": [
+        {
+          "name": "Trigger Auto-Escalation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.test('Auto-escalation executed successfully', () => {",
+                  "        pm.expect(response.totalFound).to.be.a('number');",
+                  "        pm.expect(response.totalEscalated).to.be.a('number');",
+                  "        pm.expect(response.totalEscalated).to.be.at.most(response.totalFound);",
+                  "    });",
+                  "    if (response.escalatedInstances && response.escalatedInstances.length > 0) {",
+                  "        pm.test('Escalated instances have correct structure', () => {",
+                  "            const instance = response.escalatedInstances[0];",
+                  "            pm.expect(instance.escalated).to.be.true;",
+                  "            pm.expect(instance.action).to.include('ESCALATE');",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attributes\": {\n    \"roles\": [\"AUTO_ESCALATE\", \"ADMIN\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auto/DOC_APPROVAL/_escalate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auto",
+                "DOC_APPROVAL",
+                "_escalate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Escalated Applications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.test('Search escalated applications successful', () => {",
+                  "        pm.expect(response).to.be.an('array');",
+                  "    });",
+                  "    if (response.length > 0) {",
+                  "        pm.test('Escalated instances have correct escalated field', () => {",
+                  "            response.forEach(instance => {",
+                  "                pm.expect(instance.escalated).to.be.true;",
+                  "                pm.expect(instance.id).to.exist;",
+                  "                pm.expect(instance.processId).to.exist;",
+                  "            });",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auto/_search?processId={{processId}}&limit=50&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auto",
+                "_search"
+              ],
+              "query": [
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search All Escalated Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auto/_search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auto",
+                "_search"
+              ]
+            }
           }
         }
       ]

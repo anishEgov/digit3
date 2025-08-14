@@ -40,14 +40,35 @@ func NewTransitionService(
 	}
 }
 
-func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, processID, entityID, action string, comment *string, documents []models.Document, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error) {
+func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, processID, entityID, action string, init *bool, status *string, currentState *string, comment *string, documents []string, assigner *string, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error) {
+	// Validate mutually exclusive operations
+	isInit := init != nil && *init
+	hasAction := action != ""
+
+	if isInit && hasAction {
+		return nil, errors.New("cannot specify both init=true and action - these are mutually exclusive operations")
+	}
+
+	if !isInit && !hasAction {
+		return nil, errors.New("must specify either init=true for instance creation or action for transitions")
+	}
+
+	// Convert documents []string to []models.Document
+	var docModels []models.Document
+	for _, fileStoreID := range documents {
+		docModels = append(docModels, models.Document{
+			FileStoreID: fileStoreID,
+		})
+	}
+
 	// Build ProcessInstance from parameters
 	instance := &models.ProcessInstance{
 		ProcessID:  processID, // Use provided process ID directly
 		EntityID:   entityID,
 		Action:     action,
 		Comment:    comment,
-		Documents:  documents,
+		Documents:  docModels,
+		Assigner:   assigner,
 		TenantID:   tenantID,
 		Attributes: attributes, // User attributes for validation
 	}
@@ -56,81 +77,21 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 		instance.ID = *processInstanceID
 	}
 
+	if status != nil {
+		instance.Status = *status
+	}
+
 	if assignees != nil {
 		instance.Assignees = *assignees
 	}
 
-	// 1. Get or Create Process Instance
-	existingInstance, err := s.getOrCreateInstance(ctx, tenantID, instance)
-	if err != nil {
-		return nil, err
+	if isInit {
+		// INSTANCE CREATION: Create new instance in initial state
+		return s.createNewInstance(ctx, tenantID, instance)
+	} else {
+		// TRANSITION: Perform action on existing instance
+		return s.performTransition(ctx, tenantID, instance, currentState)
 	}
-
-	// 2. Find the action being performed
-	actions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, existingInstance.CurrentState)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve actions for current state: %w", err)
-	}
-	var targetAction *models.Action
-	for _, a := range actions {
-		if a.Name == instance.Action {
-			targetAction = a
-			break
-		}
-	}
-	if targetAction == nil {
-		return nil, fmt.Errorf("action '%s' is not valid for the current state", instance.Action)
-	}
-
-	// 3. Authorization Guard Check
-	userID := "anonymous"
-	var userRoles []string
-
-	// Extract user information from context (for testing)
-	if uid := ctx.Value("userID"); uid != nil {
-		if uidStr, ok := uid.(string); ok {
-			userID = uidStr
-		}
-	}
-	if roles := ctx.Value("userRoles"); roles != nil {
-		if rolesSlice, ok := roles.([]string); ok {
-			userRoles = rolesSlice
-		}
-	}
-
-	guardCtx := security.GuardContext{
-		UserRoles:         userRoles,
-		UserID:            userID,
-		ProcessInstance:   existingInstance,
-		Action:            targetAction,
-		RequestAttributes: instance.Attributes,
-	}
-
-	can, err := s.guard.CanTransition(guardCtx)
-	if err != nil {
-		return nil, fmt.Errorf("guard check failed: %w", err)
-	}
-	if !can {
-		return nil, errors.New("transition not permitted by guard")
-	}
-
-	// 4. Check if transitioning TO a parallel or join state
-	nextState, err := s.stateRepo.GetStateByID(ctx, tenantID, targetAction.NextState)
-	if err != nil {
-		return nil, fmt.Errorf("could not get next state: %w", err)
-	}
-
-	// Handle parallel workflow transitions
-	if nextState.IsParallel {
-		return s.handleParallelTransition(ctx, tenantID, existingInstance, targetAction, nextState, instance)
-	}
-
-	if nextState.IsJoin {
-		return s.handleJoinTransition(ctx, tenantID, existingInstance, targetAction, nextState, instance)
-	}
-
-	// 5. Standard linear transition logic
-	return s.handleLinearTransition(ctx, tenantID, existingInstance, targetAction, instance)
 }
 
 // handleLinearTransition processes standard non-parallel transitions
@@ -451,7 +412,7 @@ func (s *transitionService) GetTransitions(ctx context.Context, tenantID, entity
 	return s.instanceRepo.GetProcessInstancesByEntityID(ctx, tenantID, entityID, processID, history)
 }
 
-func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID string, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
+func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID string, instance *models.ProcessInstance, currentState *string) (*models.ProcessInstance, error) {
 	// First, check if we have an action that needs to be performed
 	// If we have an action, check if it belongs to a parallel branch state
 	if instance.Action != "" {
@@ -476,11 +437,22 @@ func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID st
 	// Try to find latest existing non-parallel instance (linear workflow)
 	existingInstance, err := s.instanceRepo.GetLatestProcessInstanceByEntityID(ctx, tenantID, instance.EntityID, instance.ProcessID)
 	if err == nil {
+		// Found latest instance, validate current state if provided
+		if currentState != nil && existingInstance.CurrentState != *currentState {
+			return nil, fmt.Errorf("current state mismatch: expected '%s', but entity is in state '%s'", *currentState, existingInstance.CurrentState)
+		}
 		// Found latest instance, return it as-is (we'll create new record for transition)
 		return existingInstance, nil
 	}
 
-	// Not found, create the first instance (initial state)
+	// Entity doesn't exist - check if we should create a new instance
+	// If an action is being performed, we should NOT auto-create instances
+	if instance.Action != "" {
+		return nil, fmt.Errorf("no process instance found for entity '%s'. Cannot perform action '%s' on non-existent entity", instance.EntityID, instance.Action)
+	}
+
+	// Only create new instance if NO action is being performed (just initialization)
+	// Get the initial state to check if creation is allowed
 	states, err := s.stateRepo.GetStatesByProcessID(ctx, tenantID, instance.ProcessID)
 	if err != nil || len(states) == 0 {
 		return nil, errors.New("cannot find any states for this process definition")
@@ -496,14 +468,24 @@ func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID st
 		return nil, errors.New("no initial state configured for this process")
 	}
 
-	instance.CurrentState = initialState.ID
-	instance.Status = "ACTIVE" // Set default status for new instances
+	// Create new instance in initial state for initialization only
+	newInstance := &models.ProcessInstance{
+		ProcessID:    instance.ProcessID,
+		EntityID:     instance.EntityID,
+		CurrentState: initialState.ID,
+		Status:       "ACTIVE",
+		TenantID:     tenantID,
+		// This is just instance creation - no action performed
+	}
+
 	// Set audit details for new instance
-	instance.AuditDetails.SetAuditDetailsForCreate("system")
-	if err := s.instanceRepo.CreateProcessInstance(ctx, instance); err != nil {
+	newInstance.AuditDetails.SetAuditDetailsForCreate("system")
+	if err := s.instanceRepo.CreateProcessInstance(ctx, newInstance); err != nil {
 		return nil, fmt.Errorf("failed to create new process instance: %w", err)
 	}
-	return instance, nil
+
+	fmt.Printf("🆕 DEBUG: Created new process instance in initial state %s for entity %s\n", initialState.ID, instance.EntityID)
+	return newInstance, nil
 }
 
 func (s *transitionService) buildFSM(ctx context.Context, tenantID string, instance *models.ProcessInstance, events fsm.Events) (*fsm.FSM, error) {
@@ -542,4 +524,140 @@ func (s *transitionService) isEscalationAction(action string, comment *string) b
 	}
 
 	return false
+}
+
+// createNewInstance creates a new process instance in the initial state
+func (s *transitionService) createNewInstance(ctx context.Context, tenantID string, instance *models.ProcessInstance) (*models.ProcessInstance, error) {
+	// Check if instance already exists - init should fail if entity already exists
+	_, err := s.instanceRepo.GetLatestProcessInstanceByEntityID(ctx, tenantID, instance.EntityID, instance.ProcessID)
+	if err == nil {
+		return nil, fmt.Errorf("process instance already exists for entity '%s'. Use action-based transitions instead of init=true", instance.EntityID)
+	}
+
+	// Get the initial state
+	states, err := s.stateRepo.GetStatesByProcessID(ctx, tenantID, instance.ProcessID)
+	if err != nil || len(states) == 0 {
+		return nil, errors.New("cannot find any states for this process definition")
+	}
+
+	var initialState *models.State
+	for _, state := range states {
+		if state.IsInitial {
+			initialState = state
+			break
+		}
+	}
+	if initialState == nil {
+		return nil, errors.New("no initial state configured for this process")
+	}
+
+	// Create new instance in initial state
+	newInstance := &models.ProcessInstance{
+		ProcessID:    instance.ProcessID,
+		EntityID:     instance.EntityID,
+		CurrentState: initialState.ID,
+		Status:       "ACTIVE",
+		Comment:      instance.Comment,
+		Documents:    instance.Documents,
+		Assigner:     instance.Assigner,
+		Assignees:    instance.Assignees,
+		Attributes:   instance.Attributes,
+		TenantID:     tenantID,
+	}
+
+	// Set audit details for new instance
+	newInstance.AuditDetails.SetAuditDetailsForCreate("system")
+	if err := s.instanceRepo.CreateProcessInstance(ctx, newInstance); err != nil {
+		return nil, fmt.Errorf("failed to create new process instance: %w", err)
+	}
+
+	// Populate NextActions for the response
+	nextActions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, newInstance.CurrentState)
+	if err != nil {
+		newInstance.NextActions = []string{}
+	} else {
+		newInstance.NextActions = make([]string, len(nextActions))
+		for i, actionItem := range nextActions {
+			newInstance.NextActions[i] = actionItem.Name
+		}
+	}
+
+	fmt.Printf("🆕 DEBUG: Created new process instance in initial state %s for entity %s\n", initialState.ID, instance.EntityID)
+	return newInstance, nil
+}
+
+// performTransition executes an action on an existing process instance
+func (s *transitionService) performTransition(ctx context.Context, tenantID string, instance *models.ProcessInstance, currentState *string) (*models.ProcessInstance, error) {
+	// Find existing instance
+	existingInstance, err := s.getOrCreateInstance(ctx, tenantID, instance, currentState)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the action being performed
+	actions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, existingInstance.CurrentState)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve actions for current state: %w", err)
+	}
+
+	var targetAction *models.Action
+	for _, a := range actions {
+		if a.Name == instance.Action {
+			targetAction = a
+			break
+		}
+	}
+	if targetAction == nil {
+		return nil, fmt.Errorf("action '%s' is not valid for the current state", instance.Action)
+	}
+
+	// Authorization Guard Check
+	userID := "anonymous"
+	var userRoles []string
+
+	// Extract user information from context (for testing)
+	if uid := ctx.Value("userID"); uid != nil {
+		if uidStr, ok := uid.(string); ok {
+			userID = uidStr
+		}
+	}
+	if roles := ctx.Value("userRoles"); roles != nil {
+		if rolesSlice, ok := roles.([]string); ok {
+			userRoles = rolesSlice
+		}
+	}
+
+	guardCtx := security.GuardContext{
+		UserRoles:         userRoles,
+		UserID:            userID,
+		ProcessInstance:   existingInstance,
+		Action:            targetAction,
+		RequestAttributes: instance.Attributes,
+	}
+
+	can, err := s.guard.CanTransition(guardCtx)
+	if err != nil {
+		return nil, fmt.Errorf("guard check failed: %w", err)
+	}
+	if !can {
+		return nil, errors.New("transition not permitted by guard")
+	}
+
+	// Check if transitioning TO a parallel or join state
+	nextState, err := s.stateRepo.GetStateByID(ctx, tenantID, targetAction.NextState)
+	if err != nil {
+		return nil, fmt.Errorf("could not get next state: %w", err)
+	}
+
+	// Handle parallel workflow transitions
+	if nextState.IsParallel {
+		return s.handleParallelTransition(ctx, tenantID, existingInstance, targetAction, nextState, instance)
+	}
+
+	if nextState.IsJoin {
+		return s.handleJoinTransition(ctx, tenantID, existingInstance, targetAction, nextState, instance)
+	}
+
+	// Standard linear transition logic
+	return s.handleLinearTransition(ctx, tenantID, existingInstance, targetAction, instance)
 }
