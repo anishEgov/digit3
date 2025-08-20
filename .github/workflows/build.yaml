@@ -21,6 +21,7 @@ on:
           - "boundary-service"
           - "build"
           - "filestore"
+          - "clamav-wrapper"
           - "idgen"
           - "localization"
           - "notification"
