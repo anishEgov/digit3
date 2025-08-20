@@ -41,18 +41,6 @@ func NewTransitionService(
 }
 
 func (s *transitionService) Transition(ctx context.Context, processInstanceID *string, processID, entityID, action string, init *bool, status *string, currentState *string, comment *string, documents []string, assigner *string, assignees *[]string, attributes map[string][]string, tenantID string) (*models.ProcessInstance, error) {
-	// Validate mutually exclusive operations
-	isInit := init != nil && *init
-	hasAction := action != ""
-
-	if isInit && hasAction {
-		return nil, errors.New("cannot specify both init=true and action - these are mutually exclusive operations")
-	}
-
-	if !isInit && !hasAction {
-		return nil, errors.New("must specify either init=true for instance creation or action for transitions")
-	}
-
 	// Convert documents []string to []models.Document
 	var docModels []models.Document
 	for _, fileStoreID := range documents {
@@ -85,12 +73,80 @@ func (s *transitionService) Transition(ctx context.Context, processInstanceID *s
 		instance.Assignees = *assignees
 	}
 
-	if isInit {
-		// INSTANCE CREATION: Create new instance in initial state
-		return s.createNewInstance(ctx, tenantID, instance)
+	// Use the original getOrCreateInstance logic
+	existingInstance, err := s.getOrCreateInstance(ctx, tenantID, instance, currentState)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no action is provided, return the instance (creation case)
+	if action == "" {
+		return existingInstance, nil
+	}
+
+	// Find the action by getting all actions for current state and matching by name
+	actions, err := s.actionRepo.GetActionsByStateID(ctx, tenantID, existingInstance.CurrentState)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve actions for current state '%s': %w", existingInstance.CurrentState, err)
+	}
+
+	var targetAction *models.Action
+	for _, act := range actions {
+		if act.Name == action {
+			targetAction = act
+			break
+		}
+	}
+
+	if targetAction == nil {
+		return nil, fmt.Errorf("action '%s' is not valid for current state '%s'", action, existingInstance.CurrentState)
+	}
+
+	// Authorization Guard Check
+	userID := "anonymous"
+	var userRoles []string
+
+	// Extract user information from context (for testing)
+	if uid := ctx.Value("userID"); uid != nil {
+		if uidStr, ok := uid.(string); ok {
+			userID = uidStr
+		}
+	}
+	if roles := ctx.Value("userRoles"); roles != nil {
+		if rolesSlice, ok := roles.([]string); ok {
+			userRoles = rolesSlice
+		}
+	}
+
+	guardCtx := security.GuardContext{
+		UserRoles:         userRoles,
+		UserID:            userID,
+		ProcessInstance:   existingInstance,
+		Action:            targetAction,
+		RequestAttributes: instance.Attributes,
+	}
+
+	can, err := s.guard.CanTransition(guardCtx)
+	if err != nil {
+		return nil, fmt.Errorf("guard check failed: %w", err)
+	}
+	if !can {
+		return nil, fmt.Errorf("user is not authorized to perform action '%s'", action)
+	}
+
+	// Find target state to determine transition type
+	targetState, err := s.stateRepo.GetStateByID(ctx, tenantID, targetAction.NextState)
+	if err != nil {
+		return nil, fmt.Errorf("could not find target state for action '%s': %w", action, err)
+	}
+
+	// Determine transition type and delegate
+	if targetState.IsParallel {
+		return s.handleParallelTransition(ctx, tenantID, existingInstance, targetAction, targetState, instance)
+	} else if targetState.IsJoin {
+		return s.handleJoinTransition(ctx, tenantID, existingInstance, targetAction, targetState, instance)
 	} else {
-		// TRANSITION: Perform action on existing instance
-		return s.performTransition(ctx, tenantID, instance, currentState)
+		return s.handleLinearTransition(ctx, tenantID, existingInstance, targetAction, instance)
 	}
 }
 

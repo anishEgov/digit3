@@ -58,19 +58,7 @@ func (h *TransitionHandler) Transition(c *gin.Context) {
 		return
 	}
 
-	// Validate mutually exclusive operations
-	isInit := req.Init != nil && *req.Init
-	hasAction := req.Action != ""
-
-	if isInit && hasAction {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot specify both init=true and action - these are mutually exclusive operations"})
-		return
-	}
-
-	if !isInit && !hasAction {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Must specify either init=true for instance creation or action for transitions"})
-		return
-	}
+	// No validation needed - the old logic handles both creation and transition cases
 
 	// Extract tenant ID from header (required for multi-tenancy)
 	tenantID := c.GetHeader("X-Tenant-ID")

@@ -1,0 +1,263 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+
+  workflow-service:
+    image: mithunhegdeegov/workflowgo:multiarch10
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: workflow_db
+      SERVER_PORT: 8080
+    ports:
+      - "8085:8080"
+    depends_on:
+      - postgres
+
+  localisation:
+    image: mithunhegdeegov/localisationgo:multiarch11
+    environment:
+      REST_PORT: 8088
+      GRPC_PORT: 8089
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: postgres
+      DB_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      CACHE_EXPIRATION: 24h
+    ports:
+      - "8088:8088"
+      - "8089:8089"
+    depends_on:
+      - postgres
+      - redis
+
+  keycloak:
+    image: egovio/keycloak:keycloak-spi-multiarch
+    environment:
+      SERVER_PORT: 8080
+      KC_PROXY: edge
+      KC_HTTP_RELATIVE_PATH: /keycloak-test
+      KC_DB_URL: jdbc:postgresql://postgres:5432/new_keycloak
+      KC_DB: postgres
+      DB_PORT: 5432
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_EVENTS_LISTENERS: jboss-logging,register-citizen-listener
+      KC_SPI_EVENTS_LISTENER_REGISTER_CITIZEN_LISTENER_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      - postgres
+
+  notification:
+    image: varunkumar704/notification:digit3.0
+    environment:
+      HTTP_PORT: 8080
+      SERVER_CONTEXT_PATH: /notification
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: template_db
+      DB_SSL_MODE: disable
+      MIGRATION_SCRIPT_PATH: ./migrations
+      MIGRATION_ENABLED: "true"
+      TEMPLATE_CONFIG_HOST: http://template-config:8081
+      TEMPLATE_CONFIG_PATH: /template-config/v1/render
+      FILESTORE_HOST: http://localhost:8082
+      FILESTORE_PATH: /filestore/v1/files
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USERNAME: example@gmail.com
+      SMTP_PASSWORD: ""
+      SMTP_FROM_ADDRESS: example@gmail.com
+      SMTP_FROM_NAME: egov
+      SMS_PROVIDER_URL: http://api.smscountry.com/SMSCwebservice_bulk.aspx
+      SMS_PROVIDER_USERNAME: ""
+      SMS_PROVIDER_PASSWORD: ""
+      SMS_PROVIDER_CONTENT_TYPE: application/x-www-form-urlencoded
+      MESSAGE_BROKER_ENABLED: "true"
+      MESSAGE_BROKER_TYPE: REDIS
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_CONSUMER_GROUP: notification-consumer-group
+      EMAIL_TOPIC: notification-email
+      SMS_TOPIC: notification-sms
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+    ports:
+      - "8091:8080"
+    depends_on:
+      - postgres
+      - redis
+
+  template-config:
+    image: varunkumar704/template-config:latest
+    environment:
+      HTTP_PORT: 8081
+      SERVER_CONTEXT_PATH: /template-config/v1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: config_db
+      DB_SSL_MODE: disable
+      MIGRATION_SCRIPT_PATH: ./migrations
+      MIGRATION_ENABLED: "true"
+    ports:
+      - "8092:8081"
+    depends_on:
+      - postgres
+
+  boundary-service:
+    image: sahuaradhya222/boundary-go:v1.0.0
+    environment:
+      SERVER_PORT: 8081
+      SERVER_CONTEXT_PATH: /boundary-service
+      SERVER_READ_TIMEOUT: 30
+      SERVER_WRITE_TIMEOUT: 30
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: keycloak
+      DB_SSL_MODE: disable
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_CONSUMER_GROUP_ID: boundary-consumer-group
+      KAFKA_TOPIC_CREATE_BOUNDARY: boundary.create
+      KAFKA_TOPIC_UPDATE_BOUNDARY: boundary.update
+      KAFKA_TOPIC_CREATE_BOUNDARY_HIERARCHY: boundary.hierarchy.create
+      KAFKA_TOPIC_UPDATE_BOUNDARY_HIERARCHY: boundary.hierarchy.update
+      KAFKA_TOPIC_CREATE_BOUNDARY_RELATIONSHIP: boundary.relationship.create
+      KAFKA_TOPIC_UPDATE_BOUNDARY_RELATIONSHIP: boundary.relationship.update
+      FILESTORE_BASEPATH: http://localhost:8082
+      FILESTORE_ENDPOINT: /filestore/v1/files
+      CACHE_TYPE: redis
+      CACHE_REDIS_ADDR: redis:6379
+      CACHE_REDIS_PASSWORD: ""
+      CACHE_REDIS_DB: 0
+    ports:
+      - "8093:8081"
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+
+  tenant-management:
+    image: sahuaradhya222/tenant-management-go:v3.0.0
+    environment:
+      SERVER_PORT: 8081
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: keycloak
+      DB_SSL_MODE: disable
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASS: admin
+      KEYCLOAK_REALM_CONFIG_PATH: ""
+      CITIZEN_BROKER_CLIENT_ID: citizen-broker
+      CITIZEN_BROKER_CLIENT_SECRET: sW2iIWd6Da8JpeGoAuWWcnbDFYT31rk3-clientsecrete
+    ports:
+      - "8094:8081"
+    depends_on:
+      - postgres
+      - keycloak
+
+  kong-migration:
+    image: mithunhegdeegov/gateway-kong:v1.0.0
+    command: ["kong", "migrations", "bootstrap"]
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_PORT: 5432
+      KONG_PG_USER: postgres
+      KONG_PG_PASSWORD: password
+      KONG_PG_DATABASE: kong_db
+    depends_on:
+      - postgres
+    restart: "no"
+
+  kong:
+    image: mithunhegdeegov/gateway-kong:v1.0.0
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_PORT: 5432
+      KONG_PG_USER: postgres
+      KONG_PG_PASSWORD: password
+      KONG_PG_DATABASE: kong_db
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_ENV_KEYCLOAK_BASE_URL: http://keycloak:8080/keycloak-test
+      KONG_PLUGINS: bundled,dynamic-jwt,keycloak-rbac,header-enrichment
+    ports:
+      - "8095:8000"   # Proxy HTTP
+      - "8096:8443"   # Proxy HTTPS
+      - "8097:8001"   # Admin API
+    depends_on:
+      - postgres
+      - keycloak
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  zookeeper_data:
+  kafka_data: 
