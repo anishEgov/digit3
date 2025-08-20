@@ -142,3 +142,9 @@ config:
         dockerfile: "build/go/Dockerfile"
       - work-dir: "code/services/template-config/src/main/resources/db"
         image-name: "template-config-db"
+
+  - name: "builds/digit3/code/services/clamav-wrapper"
+    build:
+      - work-dir: "code/services/clamav-wrapper"
+        image-name: "clamav-wrapper"
+        dockerfile: "build/go/Dockerfile"
