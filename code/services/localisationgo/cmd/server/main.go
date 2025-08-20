@@ -13,9 +13,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -26,6 +23,7 @@ import (
 	"localisationgo/internal/core/ports"
 	"localisationgo/internal/core/services"
 	"localisationgo/internal/handlers"
+	"localisationgo/internal/migration"
 	dbpostgres "localisationgo/internal/repositories/postgres"
 )
 
@@ -41,15 +39,13 @@ func main() {
 	}
 
 	// Apply database migrations
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		log.Fatalf("could not create migrate driver: %v", err)
+	migrationConfig := &migration.Config{
+		Enabled: true,
+		Path:    "migrations",
+		Timeout: 30 * time.Second,
 	}
-	m, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
-	if err != nil {
-		log.Fatalf("could not create migrate instance: %v", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	migrationRunner := migration.NewRunner(db, migrationConfig)
+	if err := migrationRunner.Run(context.Background()); err != nil {
 		log.Fatalf("failed to apply migrations: %v", err)
 	}
 	log.Println("Database migrations applied successfully")

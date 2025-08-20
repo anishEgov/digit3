@@ -359,24 +359,44 @@ func (r *MessageRepositoryImpl) FindMessagesByCode(ctx context.Context, tenantID
 		return []domain.Message{}, nil
 	}
 
-	// Create a placeholder string for the IN clause
-	placeholders := make([]string, len(codes))
-	args := make([]interface{}, len(codes)+2)
-	args[0] = tenantID
-	args[1] = locale
+	// Build the query dynamically based on whether locale is provided
+	var query string
+	var args []interface{}
 
-	// Build the query dynamically
-	for i, code := range codes {
-		placeholders[i] = fmt.Sprintf("$%d", i+3)
-		args[i+2] = code
+	if locale == "" {
+		// Search across all locales when locale is not specified
+		placeholders := make([]string, len(codes))
+		args = make([]interface{}, len(codes)+1)
+		args[0] = tenantID
+
+		for i, code := range codes {
+			placeholders[i] = fmt.Sprintf("$%d", i+2)
+			args[i+1] = code
+		}
+
+		query = fmt.Sprintf(`
+			SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+			FROM localisation
+			WHERE tenant_id = $1 AND code IN (%s)
+		`, strings.Join(placeholders, ","))
+	} else {
+		// Search within specific locale when locale is provided
+		placeholders := make([]string, len(codes))
+		args = make([]interface{}, len(codes)+2)
+		args[0] = tenantID
+		args[1] = locale
+
+		for i, code := range codes {
+			placeholders[i] = fmt.Sprintf("$%d", i+3)
+			args[i+2] = code
+		}
+
+		query = fmt.Sprintf(`
+			SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
+			FROM localisation
+			WHERE tenant_id = $1 AND locale = $2 AND code IN (%s)
+		`, strings.Join(placeholders, ","))
 	}
-
-	// Create the select query
-	query := fmt.Sprintf(`
-		SELECT id, uuid, tenant_id, module, locale, code, message, created_by, created_date, last_modified_by, last_modified_date
-		FROM localisation
-		WHERE tenant_id = $1 AND locale = $2 AND code IN (%s)
-	`, strings.Join(placeholders, ","))
 
 	// Execute the query
 	rows, err := r.db.QueryContext(ctx, query, args...)

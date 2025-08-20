@@ -1,9 +1,10 @@
 {
 	"info": {
-		"_postman_id": "localization-service",
-		"name": "Localization Service",
-		"description": "Collection for Localization Service REST and gRPC APIs - Updated for OpenAPI Contract Compliance",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+		"_postman_id": "localization-service-v2",
+		"name": "Localization Service API Collection",
+		"description": "Simple collection for Localization Service REST and gRPC APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"version": "2.0.0"
 	},
 	"item": [
 		{
@@ -38,7 +39,7 @@
 								{
 									"key": "codes",
 									"value": "{{codes}}",
-									"description": "Filter by specific codes (optional)"
+									"description": "Filter by codes (optional)"
 								},
 								{
 									"key": "limit",
@@ -54,7 +55,7 @@
 								}
 							]
 						},
-						"description": "Search for localization messages. Returns only 5 fields: uuid, code, message, module, locale"
+						"description": "Search for localization messages with optional filters"
 					}
 				},
 				{
@@ -86,7 +87,7 @@
 							"host": ["{{base_url}}"],
 							"path": ["localization", "messages"]
 						},
-						"description": "Create new localization messages. UUIDs are auto-generated."
+						"description": "Create new localization messages"
 					}
 				},
 				{
@@ -111,14 +112,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"message\": \"Updated welcome message\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"message\": \"Updated message content\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/localization/messages",
 							"host": ["{{base_url}}"],
 							"path": ["localization", "messages"]
 						},
-						"description": "Update existing localization messages by UUID"
+						"description": "Update existing messages by UUID"
 					}
 				},
 				{
@@ -143,18 +144,18 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"code\": \"welcome.msg\",\n            \"message\": \"Updated Welcome Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        },\n        {\n            \"code\": \"new.msg\",\n            \"message\": \"New Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"code\": \"existing.code\",\n            \"message\": \"Updated existing message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        },\n        {\n            \"code\": \"new.code\",\n            \"message\": \"New message via upsert\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/localization/messages/_upsert",
 							"host": ["{{base_url}}"],
 							"path": ["localization", "messages", "_upsert"]
 						},
-						"description": "Create or update localization messages. Include UUID to update, omit UUID to create."
+						"description": "Create or update messages (include UUID to update, omit UUID to create)"
 					}
 				},
 				{
-					"name": "Delete Messages - Single UUID",
+					"name": "Delete Messages",
 					"request": {
 						"method": "DELETE",
 						"header": [
@@ -173,46 +174,16 @@
 									"key": "uuid",
 									"value": "{{message_uuid}}",
 									"description": "UUID of message to delete"
-								}
-							]
-						},
-						"description": "Delete a single localization message by UUID. Includes transaction rollback if UUID not found."
-					}
-				},
-				{
-					"name": "Delete Messages - Multiple UUIDs",
-					"request": {
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "X-Tenant-ID",
-								"value": "{{tenant_id}}",
-								"description": "Required tenant identifier"
-							}
-						],
-						"url": {
-							"raw": "{{base_url}}/localization/messages?uuids=uuid1&uuids=uuid2&uuids=uuid3",
-							"host": ["{{base_url}}"],
-							"path": ["localization", "messages"],
-							"query": [
-								{
-									"key": "uuids",
-									"value": "uuid1",
-									"description": "First UUID to delete"
 								},
 								{
 									"key": "uuids",
-									"value": "uuid2",
-									"description": "Second UUID to delete"
-								},
-								{
-									"key": "uuids",
-									"value": "uuid3",
-									"description": "Third UUID to delete"
+									"value": "{{message_uuid2}}",
+									"description": "Additional UUID for bulk delete",
+									"disabled": true
 								}
 							]
 						},
-						"description": "Delete multiple localization messages by UUIDs. All UUIDs must exist or transaction will rollback."
+						"description": "Delete messages by UUID (use 'uuid' for single, 'uuids' for multiple)"
 					}
 				},
 				{
@@ -224,16 +195,8 @@
 								"key": "X-Tenant-ID",
 								"value": "{{tenant_id}}",
 								"description": "Required tenant identifier"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
 							}
 						],
-						"body": {
-							"mode": "raw",
-							"raw": ""
-						},
 						"url": {
 							"raw": "{{base_url}}/localization/messages/_missing?module={{module}}",
 							"host": ["{{base_url}}"],
@@ -247,7 +210,7 @@
 								}
 							]
 						},
-						"description": "Find missing localization codes. Returns {module: {locale: [missing_codes]}}"
+						"description": "Find missing translations"
 					}
 				},
 				{
@@ -269,18 +232,18 @@
 								{
 									"key": "module",
 									"value": "{{module}}",
-									"description": "Module to bust cache for (optional)",
+									"description": "Module to clear cache for (optional)",
 									"disabled": true
 								},
 								{
 									"key": "locale",
 									"value": "{{locale}}",
-									"description": "Locale to bust cache for (optional)",
+									"description": "Locale to clear cache for (optional)",
 									"disabled": true
 								}
 							]
 						},
-						"description": "Clear the cache. If no parameters provided, clears entire tenant cache."
+						"description": "Clear cache for tenant"
 					}
 				}
 			]
@@ -304,14 +267,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"module\": \"{{module}}\",\n    \"locale\": \"{{locale}}\",\n    \"codes\": [\"welcome.msg\"],\n    \"limit\": 20,\n    \"offset\": 0\n}"
+							"raw": "{\n    \"module\": \"{{module}}\",\n    \"locale\": \"{{locale}}\",\n    \"codes\": [\"welcome.msg\", \"goodbye.msg\"],\n    \"limit\": 20,\n    \"offset\": 0\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/SearchMessages",
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "SearchMessages"]
 						},
-						"description": "Search for localization messages using gRPC"
+						"description": "Search messages via gRPC"
 					}
 				},
 				{
@@ -334,14 +297,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"messages\": [\n        {\n            \"code\": \"welcome.msg\",\n            \"message\": \"Welcome Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"code\": \"grpc.test.msg\",\n            \"message\": \"gRPC Test Message\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/CreateMessages",
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "CreateMessages"]
 						},
-						"description": "Create new localization messages using gRPC"
+						"description": "Create messages via gRPC"
 					}
 				},
 				{
@@ -364,44 +327,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"message\": \"Updated Message\"\n        }\n    ]\n}"
+							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"message\": \"Updated via gRPC\"\n        }\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/UpdateMessages",
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "UpdateMessages"]
 						},
-						"description": "Update existing localization messages using gRPC"
-					}
-				},
-				{
-					"name": "Upsert Messages",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/grpc"
-							},
-							{
-								"key": "x-tenant-id",
-								"value": "{{tenant_id}}"
-							},
-							{
-								"key": "x-user-id",
-								"value": "{{user_id}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"messages\": [\n        {\n            \"uuid\": \"{{message_uuid}}\",\n            \"code\": \"welcome.msg\",\n            \"message\": \"Updated Welcome\",\n            \"module\": \"{{module}}\",\n            \"locale\": \"{{locale}}\"\n        }\n    ]\n}"
-						},
-						"url": {
-							"raw": "{{grpc_url}}/localization.v1.LocalizationService/UpsertMessages",
-							"host": ["{{grpc_url}}"],
-							"path": ["localization.v1.LocalizationService", "UpsertMessages"]
-						},
-						"description": "Create or update localization messages using gRPC"
+						"description": "Update messages via gRPC"
 					}
 				},
 				{
@@ -420,14 +353,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"uuids\": [\n        \"{{message_uuid}}\",\n        \"uuid2\",\n        \"uuid3\"\n    ]\n}"
+							"raw": "{\n    \"uuids\": [\n        \"{{message_uuid}}\"\n    ]\n}"
 						},
 						"url": {
 							"raw": "{{grpc_url}}/localization.v1.LocalizationService/DeleteMessages",
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "DeleteMessages"]
 						},
-						"description": "Delete localization messages by UUIDs using gRPC"
+						"description": "Delete messages via gRPC"
 					}
 				},
 				{
@@ -453,7 +386,7 @@
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "FindMissingMessages"]
 						},
-						"description": "Find missing localization messages using gRPC"
+						"description": "Find missing messages via gRPC"
 					}
 				},
 				{
@@ -479,7 +412,7 @@
 							"host": ["{{grpc_url}}"],
 							"path": ["localization.v1.LocalizationService", "BustCache"]
 						},
-						"description": "Clear the cache using gRPC"
+						"description": "Clear cache via gRPC"
 					}
 				}
 			]
@@ -508,31 +441,37 @@
 			"key": "user_id",
 			"value": "test-user",
 			"type": "string",
-			"description": "User identifier for audit trail"
+			"description": "User identifier"
 		},
 		{
 			"key": "module",
 			"value": "common",
 			"type": "string",
-			"description": "Module name for grouping messages"
+			"description": "Module name"
 		},
 		{
 			"key": "locale",
 			"value": "en",
 			"type": "string",
-			"description": "Locale identifier (e.g., en, fr, en_US)"
+			"description": "Locale identifier"
 		},
 		{
 			"key": "codes",
-			"value": "welcome.msg,goodbye.msg",
+			"value": "welcome.msg",
 			"type": "string",
-			"description": "Comma-separated list of message codes"
+			"description": "Message code"
 		},
 		{
 			"key": "message_uuid",
 			"value": "35f792e5-2983-4d94-9d14-8bdec6006e58",
 			"type": "string",
-			"description": "Example UUID for testing update/delete operations"
+			"description": "Example UUID for operations"
+		},
+		{
+			"key": "message_uuid2",
+			"value": "ac40f87b-8feb-43a9-81d3-df242b68e59e",
+			"type": "string",
+			"description": "Second UUID for bulk operations"
 		}
 	]
 } 
