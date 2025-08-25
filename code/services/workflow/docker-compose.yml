@@ -243,21 +243,75 @@ services:
       KONG_PG_USER: postgres
       KONG_PG_PASSWORD: password
       KONG_PG_DATABASE: kong_db
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
-      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
-      KONG_ENV_KEYCLOAK_BASE_URL: http://keycloak:8080/keycloak-test
-      KONG_PLUGINS: bundled,dynamic-jwt,keycloak-rbac,header-enrichment
+      KONG_PLUGINS: "bundled,dynamic-jwt,keycloak-rbac,header-enrichment"
     ports:
       - "8095:8000"   # Proxy HTTP
-      - "8096:8443"   # Proxy HTTPS
+      - "8096:8443"   # Proxy HTTPS  
       - "8097:8001"   # Admin API
     depends_on:
-      - postgres
-      - keycloak
-    restart: unless-stopped
+      kong-migration:
+        condition: service_completed_successfully
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9002:9000"   # MinIO API
+      - "9003:9001"   # MinIO Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: clamav
+    ports:
+      - "3310:3310"   # ClamAV daemon port
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "true"  # Disable freshclam in container
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 300s  # ClamAV takes time to initialize virus definitions
+
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "myroot"
+      VAULT_ADDR: "http://0.0.0.0:8200"
+    ports:
+      - "8202:8200"
+    command: vault server -dev -dev-listen-address="0.0.0.0:8200" -dev-root-token-id="myroot"
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   postgres_data:
   redis_data:
   zookeeper_data:
-  kafka_data: 
+  kafka_data:
+  minio_data:
+  clamav_data: 
