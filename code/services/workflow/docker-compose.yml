@@ -53,7 +53,7 @@ services:
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: password
-      DB_NAME: workflow_db
+      DB_NAME: postgres
       SERVER_PORT: 8080
     ports:
       - "8085:8080"
@@ -208,7 +208,7 @@ services:
       DB_PASSWORD: password
       DB_NAME: keycloak
       DB_SSL_MODE: disable
-      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_BASE_URL: http://keycloak:8080/keycloak-test
       KEYCLOAK_ADMIN_USER: admin
       KEYCLOAK_ADMIN_PASS: admin
       KEYCLOAK_REALM_CONFIG_PATH: ""
@@ -229,7 +229,7 @@ services:
       KONG_PG_PORT: 5432
       KONG_PG_USER: postgres
       KONG_PG_PASSWORD: password
-      KONG_PG_DATABASE: kong_db
+      KONG_PG_DATABASE: postgres
     depends_on:
       - postgres
     restart: "no"
@@ -242,13 +242,16 @@ services:
       KONG_PG_PORT: 5432
       KONG_PG_USER: postgres
       KONG_PG_PASSWORD: password
-      KONG_PG_DATABASE: kong_db
+      KONG_PG_DATABASE: postgres
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
       KONG_PLUGINS: "bundled,dynamic-jwt,keycloak-rbac,header-enrichment"
+      # Plugin configurations via environment variables
+      KONG_PLUGIN_DYNAMIC_JWT_KEYCLOAK_BASE_URL: "http://keycloak:8080/keycloak-test"
+      KONG_PLUGIN_KEYCLOAK_RBAC_ALLOWED_ROLES: "admin,user"
     ports:
       - "8095:8000"   # Proxy HTTP
       - "8096:8443"   # Proxy HTTPS  
@@ -307,6 +310,50 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
+  urlshortener:
+    image: egovio/urlshortener:urlshorterner_digit3.0-88d8e65
+    environment:
+      REST_PORT: 8088
+      GRPC_PORT: 8089
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_SSL_MODE: disable
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      TRACER_OPENTRACING_ENABLED: "false"
+    ports:
+      - "8098:8088"  # REST API
+      - "8099:8089"  # GRPC
+    depends_on:
+      - postgres
+      - redis
+
+  idgen:
+    image: sahuaradhya222/idgen:fixed
+    environment:
+      REST_PORT: 8088
+      GRPC_PORT: 8089
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_SSL_MODE: disable
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      TRACER_OPENTRACING_ENABLED: "false"
+    ports:
+      - "8100:8088"  # REST API
+      - "8101:8089"  # GRPC
+    depends_on:
+      - postgres
+      - redis
 
 volumes:
   postgres_data:
