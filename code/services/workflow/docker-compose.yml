@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   postgres:
+    container_name: postgres
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: postgres
@@ -13,6 +14,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
+    container_name: redis
     image: redis:7-alpine
     ports:
       - "6380:6379"
@@ -20,6 +22,7 @@ services:
       - redis_data:/data
 
   zookeeper:
+    container_name: zookeeper
     image: confluentinc/cp-zookeeper:7.4.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -30,6 +33,7 @@ services:
       - zookeeper_data:/var/lib/zookeeper/data
 
   kafka:
+    container_name: kafka
     image: confluentinc/cp-kafka:7.4.0
     environment:
       KAFKA_BROKER_ID: 1
@@ -47,6 +51,7 @@ services:
       - zookeeper
 
   workflow-service:
+    container_name: workflow-service
     image: mithunhegdeegov/workflowgo:multiarch10
     environment:
       DB_HOST: postgres
@@ -61,6 +66,7 @@ services:
       - postgres
 
   localisation:
+    container_name: localisation
     image: mithunhegdeegov/localisationgo:multiarch11
     environment:
       REST_PORT: 8088
@@ -84,6 +90,7 @@ services:
       - redis
 
   keycloak:
+    container_name: keycloak
     image: egovio/keycloak:keycloak-spi-multiarch
     environment:
       SERVER_PORT: 8080
@@ -105,6 +112,7 @@ services:
       - postgres
 
   notification:
+    container_name: notification
     image: varunkumar704/notification:digit3.0
     environment:
       HTTP_PORT: 8080
@@ -113,10 +121,10 @@ services:
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: password
-      DB_NAME: template_db
+      DB_NAME: postgres
       DB_SSL_MODE: disable
       MIGRATION_SCRIPT_PATH: ./migrations
-      MIGRATION_ENABLED: "true"
+      MIGRATION_ENABLED: "false"
       TEMPLATE_CONFIG_HOST: http://template-config:8081
       TEMPLATE_CONFIG_PATH: /template-config/v1/render
       FILESTORE_HOST: http://localhost:8082
@@ -147,6 +155,7 @@ services:
       - redis
 
   template-config:
+    container_name: template-config
     image: varunkumar704/template-config:latest
     environment:
       HTTP_PORT: 8081
@@ -155,16 +164,17 @@ services:
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: password
-      DB_NAME: config_db
+      DB_NAME: postgres
       DB_SSL_MODE: disable
       MIGRATION_SCRIPT_PATH: ./migrations
-      MIGRATION_ENABLED: "true"
+      MIGRATION_ENABLED: "false"
     ports:
       - "8092:8081"
     depends_on:
       - postgres
 
   boundary-service:
+    container_name: boundary-service
     image: sahuaradhya222/boundary-go:v1.0.0
     environment:
       SERVER_PORT: 8081
@@ -199,6 +209,7 @@ services:
       - redis
 
   tenant-management:
+    container_name: tenant-management
     image: sahuaradhya222/tenant-management-go:v3.0.0
     environment:
       SERVER_PORT: 8081
@@ -221,6 +232,7 @@ services:
       - keycloak
 
   kong-migration:
+    container_name: kong-migration
     image: mithunhegdeegov/gateway-kong:v1.0.0
     command: ["kong", "migrations", "bootstrap"]
     environment:
@@ -235,6 +247,7 @@ services:
     restart: "no"
 
   kong:
+    container_name: kong
     image: mithunhegdeegov/gateway-kong:v1.0.0
     environment:
       KONG_DATABASE: postgres
@@ -312,6 +325,7 @@ services:
       retries: 5
 
   urlshortener:
+    container_name: urlshortener
     image: egovio/urlshortener:urlshorterner_digit3.0-88d8e65
     environment:
       REST_PORT: 8088
@@ -334,6 +348,7 @@ services:
       - redis
 
   idgen:
+    container_name: idgen
     image: sahuaradhya222/idgen:fixed
     environment:
       REST_PORT: 8088
