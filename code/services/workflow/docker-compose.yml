@@ -1,9 +1,17 @@
 version: '3.8'
 
+# Reusable logging policy for all services (prevents host disk bloat)
+x-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   postgres:
     container_name: postgres
     image: postgres:15-alpine
+    mem_limit: 1g
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -12,6 +20,16 @@ services:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - env=dev
+      - app=postgres
+    logging: *json-logging
 
   redis:
     container_name: redis
@@ -20,35 +38,10 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
-
-  zookeeper:
-    container_name: zookeeper
-    image: confluentinc/cp-zookeeper:7.4.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-
-  kafka:
-    container_name: kafka
-    image: confluentinc/cp-kafka:7.4.0
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    ports:
-      - "9092:9092"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    depends_on:
-      - zookeeper
+    labels:
+      - env=dev
+      - app=redis
+    logging: *json-logging
 
   workflow-service:
     container_name: workflow-service
@@ -63,7 +56,12 @@ services:
     ports:
       - "8085:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    labels:
+      - env=dev
+      - app=workflow-service
+    logging: *json-logging
 
   localisation:
     container_name: localisation
@@ -86,17 +84,26 @@ services:
       - "8088:8088"
       - "8089:8089"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    labels:
+      - env=dev
+      - app=localisation
+    logging: *json-logging
 
   keycloak:
     container_name: keycloak
     image: egovio/keycloak:keycloak-spi-multiarch
+    mem_limit: 1g
     environment:
-      SERVER_PORT: 8080
       KC_PROXY: edge
+      KC_HOSTNAME: keycloak
+      KC_HOSTNAME_PORT: "8080"
+      KC_HOSTNAME_STRICT: "false"
       KC_HTTP_RELATIVE_PATH: /keycloak-test
-      KC_DB_URL: jdbc:postgresql://postgres:5432/new_keycloak
+      KC_DB_URL: jdbc:postgresql://postgres:5432/postgres
       KC_DB: postgres
       DB_PORT: 5432
       KC_DB_USERNAME: postgres
@@ -105,15 +112,20 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_EVENTS_LISTENERS: jboss-logging,register-citizen-listener
       KC_SPI_EVENTS_LISTENER_REGISTER_CITIZEN_LISTENER_ENABLED: "true"
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KC_FEATURES: admin-fine-grained-authz,token-exchange
     ports:
-      - "8090:8080"
+      - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    labels:
+      - env=dev
+      - app=keycloak
+    logging: *json-logging
 
   notification:
     container_name: notification
-    image: varunkumar704/notification:digit3.0
+    image: mithunhegdeegov/notification:multiarch
     environment:
       HTTP_PORT: 8080
       SERVER_CONTEXT_PATH: /notification
@@ -141,8 +153,6 @@ services:
       SMS_PROVIDER_CONTENT_TYPE: application/x-www-form-urlencoded
       MESSAGE_BROKER_ENABLED: "true"
       MESSAGE_BROKER_TYPE: REDIS
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_CONSUMER_GROUP: notification-consumer-group
       EMAIL_TOPIC: notification-email
       SMS_TOPIC: notification-sms
       REDIS_ADDR: redis:6379
@@ -151,12 +161,16 @@ services:
     ports:
       - "8091:8080"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+    labels:
+      - env=dev
+      - app=notification
+    logging: *json-logging
 
   template-config:
     container_name: template-config
-    image: varunkumar704/template-config:latest
+    image: mithunhegdeegov/template-config:multiarch
     environment:
       HTTP_PORT: 8081
       SERVER_CONTEXT_PATH: /template-config/v1
@@ -171,11 +185,16 @@ services:
     ports:
       - "8092:8081"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    labels:
+      - env=dev
+      - app=template-config
+    logging: *json-logging
 
   boundary-service:
     container_name: boundary-service
-    image: sahuaradhya222/boundary-go:v1.0.0
+    image: sahuaradhya222/boundary-go:v5.0.0
     environment:
       SERVER_PORT: 8081
       SERVER_CONTEXT_PATH: /boundary-service
@@ -185,17 +204,9 @@ services:
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: password
-      DB_NAME: keycloak
+      DB_NAME: postgres
       DB_SSL_MODE: disable
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KAFKA_CONSUMER_GROUP_ID: boundary-consumer-group
-      KAFKA_TOPIC_CREATE_BOUNDARY: boundary.create
-      KAFKA_TOPIC_UPDATE_BOUNDARY: boundary.update
-      KAFKA_TOPIC_CREATE_BOUNDARY_HIERARCHY: boundary.hierarchy.create
-      KAFKA_TOPIC_UPDATE_BOUNDARY_HIERARCHY: boundary.hierarchy.update
-      KAFKA_TOPIC_CREATE_BOUNDARY_RELATIONSHIP: boundary.relationship.create
-      KAFKA_TOPIC_UPDATE_BOUNDARY_RELATIONSHIP: boundary.relationship.update
-      FILESTORE_BASEPATH: http://localhost:8082
+      FILESTORE_BASEPATH: http://localhost:8001
       FILESTORE_ENDPOINT: /filestore/v1/files
       CACHE_TYPE: redis
       CACHE_REDIS_ADDR: redis:6379
@@ -204,36 +215,46 @@ services:
     ports:
       - "8093:8081"
     depends_on:
-      - postgres
-      - kafka
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    labels:
+      - env=dev
+      - app=boundary-service
+    logging: *json-logging
 
   tenant-management:
     container_name: tenant-management
-    image: sahuaradhya222/tenant-management-go:v3.0.0
+    image: sahuaradhya222/tenant-management-go:v8.0.0
     environment:
       SERVER_PORT: 8081
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: password
-      DB_NAME: keycloak
+      DB_NAME: postgres
       DB_SSL_MODE: disable
       KEYCLOAK_BASE_URL: http://keycloak:8080/keycloak-test
       KEYCLOAK_ADMIN_USER: admin
       KEYCLOAK_ADMIN_PASS: admin
       KEYCLOAK_REALM_CONFIG_PATH: ""
+      NOTIFICATION_BASE_URL: http://notification:8080
       CITIZEN_BROKER_CLIENT_ID: citizen-broker
       CITIZEN_BROKER_CLIENT_SECRET: sW2iIWd6Da8JpeGoAuWWcnbDFYT31rk3-clientsecrete
     ports:
       - "8094:8081"
     depends_on:
-      - postgres
-      - keycloak
+      keycloak:
+        condition: service_started
+    labels:
+      - env=dev
+      - app=tenant-management
+    logging: *json-logging
 
   kong-migration:
     container_name: kong-migration
-    image: mithunhegdeegov/gateway-kong:v1.0.0
+    image: mithunhegdeegov/gateway-kong:multiarch1
     command: ["kong", "migrations", "bootstrap"]
     environment:
       KONG_DATABASE: postgres
@@ -243,12 +264,17 @@ services:
       KONG_PG_PASSWORD: password
       KONG_PG_DATABASE: postgres
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: "no"
+    labels:
+      - env=dev
+      - app=kong-migration
+    logging: *json-logging
 
   kong:
     container_name: kong
-    image: mithunhegdeegov/gateway-kong:v1.0.0
+    image: mithunhegdeegov/gateway-kong:multiarch2
     environment:
       KONG_DATABASE: postgres
       KONG_PG_HOST: postgres
@@ -256,13 +282,12 @@ services:
       KONG_PG_USER: postgres
       KONG_PG_PASSWORD: password
       KONG_PG_DATABASE: postgres
-      KONG_ADMIN_ACCESS_LOG: /dev/stdout
-      KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
       KONG_PLUGINS: "bundled,dynamic-jwt,keycloak-rbac,header-enrichment"
-      # Plugin configurations via environment variables
       KONG_PLUGIN_DYNAMIC_JWT_KEYCLOAK_BASE_URL: "http://keycloak:8080/keycloak-test"
       KONG_PLUGIN_KEYCLOAK_RBAC_ALLOWED_ROLES: "admin,user"
     ports:
@@ -272,57 +297,53 @@ services:
     depends_on:
       kong-migration:
         condition: service_completed_successfully
+    labels:
+      - env=dev
+      - app=kong
+    logging: *json-logging
 
   minio:
-    image: minio/minio:latest
     container_name: minio
+    image: minio/minio:latest
     ports:
       - "9002:9000"   # MinIO API
       - "9003:9001"   # MinIO Console
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
+    command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
-
-  clamav:
-    image: clamav/clamav:latest
-    container_name: clamav
-    ports:
-      - "3310:3310"   # ClamAV daemon port
     environment:
-      CLAMAV_NO_FRESHCLAMD: "true"  # Disable freshclam in container
-    volumes:
-      - clamav_data:/var/lib/clamav
-    healthcheck:
-      test: ["CMD", "clamdscan", "--ping"]
-      interval: 60s
-      timeout: 10s
-      retries: 5
-      start_period: 300s  # ClamAV takes time to initialize virus definitions
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    labels:
+      - env=dev
+      - app=minio
+    logging: *json-logging
 
   vault:
-    image: hashicorp/vault:1.17
     container_name: vault
+    image: hashicorp/vault:1.17
     cap_add:
       - IPC_LOCK
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: "myroot"
-      VAULT_ADDR: "http://0.0.0.0:8200"
     ports:
       - "8202:8200"
-    command: vault server -dev -dev-listen-address="0.0.0.0:8200" -dev-root-token-id="myroot"
+    volumes:
+      - vault_data:/vault/data
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: myroot
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    command: vault server -dev
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 30s
-      timeout: 10s
-      retries: 5
+    labels:
+      - env=dev
+      - app=vault
+    logging: *json-logging
 
   urlshortener:
     container_name: urlshortener
@@ -332,20 +353,26 @@ services:
       GRPC_PORT: 8089
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_SSL_MODE: disable
-      DB_NAME: postgres
       DB_USER: postgres
       DB_PASSWORD: password
+      DB_NAME: postgres
+      DB_SSL_MODE: disable
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
       REDIS_DB: 0
-      TRACER_OPENTRACING_ENABLED: "false"
     ports:
-      - "8098:8088"  # REST API
-      - "8099:8089"  # GRPC
+      - "8098:8088"
+      - "8099:8089"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    labels:
+      - env=dev
+      - app=urlshortener
+    logging: *json-logging
 
   idgen:
     container_name: idgen
@@ -355,25 +382,136 @@ services:
       GRPC_PORT: 8089
       DB_HOST: postgres
       DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: postgres
+      DB_SSL_MODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+    ports:
+      - "8100:8088"
+      - "8101:8089"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    labels:
+      - env=dev
+      - app=idgen
+    logging: *json-logging
+
+  filestore:
+    container_name: filestore
+    image: mithunhegdeegov/filestore:multiarch4
+    mem_limit: 512m
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_SSL_MODE: disable
       DB_NAME: postgres
       DB_USER: postgres
       DB_PASSWORD: password
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
+      MINIO_BUCKET: digit
+      MINIO_READ_BUCKET: digit
+      MINIO_USE_SSL: "false"
+      ISNFSSTORAGEENABLED: "false"
+      ISS3ENABLED: "true"
+      MINIO_ACCESS_KEY: digit
+      MINIO_SECRET_KEY: Digit@123
+      IS_BUCKET_FIXED: "true"
+      FIXED_BUCKETNAME: unified-dev-bucket-s3
+      JAVA_OPTS: -Xmx256m -Xms256m
+      MINIO_ENDPOINT: minio:9000
+      FLYWAY_ENABLED: "false"
+      SPRING_FLYWAY_ENABLED: "false"
+      MANAGEMENT_ENDPOINTS_WEB_BASE_PATH: /
+      APP_TIMEZONE: Asia/Kolkata
+      IS_ENVIRONMENT_CENTRAL_INSTANCE: "false"
+      SPRING_JPA_SHOW_SQL: "false"
       TRACER_OPENTRACING_ENABLED: "false"
     ports:
-      - "8100:8088"  # REST API
-      - "8101:8089"  # GRPC
+      - "8102:8080"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/filestore/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    labels:
+      - env=dev
+      - app=filestore
+    logging: *json-logging
+
+  # ---------- Centralized logging stack ----------
+  loki:
+    container_name: loki
+    image: grafana/loki:2.9.8
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+      - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
+    restart: unless-stopped
+    labels:
+      - env=dev
+      - app=loki
+    logging: *json-logging
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:2.9.8
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    ports:
+      - "9080:9080"   # Promtail UI (targets, metrics) - optional expose
+    labels:
+      - env=dev
+      - app=promtail
+    logging: *json-logging
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:11.1.3
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    depends_on:
+      - loki
+    restart: unless-stopped
+    labels:
+      - env=dev
+      - app=grafana
+    logging: *json-logging
 
 volumes:
   postgres_data:
+    name: postgres_data
   redis_data:
-  zookeeper_data:
-  kafka_data:
+    name: redis_data
   minio_data:
-  clamav_data: 
+    name: minio_data
+  vault_data:
+    name: vault_data
+  loki_data:
+    name: loki_data
+  grafana_data:
+    name: grafana_data 
