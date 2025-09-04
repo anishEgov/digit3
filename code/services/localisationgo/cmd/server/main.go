@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net"
@@ -13,9 +12,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	localizationv1 "localisationgo/api/proto/localization/v1"
 	"localisationgo/configs"
@@ -31,12 +31,28 @@ func main() {
 	// Load application configurations
 	config := configs.LoadConfig()
 
-	// Setup database connection
-	db, err := sql.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		config.DBHost, config.DBPort, config.DBUser, config.DBPassword, config.DBName))
+	// Setup GORM database connection
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		config.DBHost, config.DBPort, config.DBUser, config.DBPassword, config.DBName)
+
+	gormDB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		// Enable connection pooling for better performance
+		ConnPool: nil, // Use default connection pool
+	})
 	if err != nil {
 		log.Fatalf("could not connect to the database: %v", err)
 	}
+
+	// Get underlying sql.DB for migration runner (migrations still use sqlx)
+	sqlDB, err := gormDB.DB()
+	if err != nil {
+		log.Fatalf("could not get underlying sql.DB: %v", err)
+	}
+
+	// Configure connection pool for optimal performance
+	sqlDB.SetMaxOpenConns(25)                 // Maximum number of open connections
+	sqlDB.SetMaxIdleConns(10)                 // Maximum number of idle connections
+	sqlDB.SetConnMaxLifetime(5 * time.Minute) // Maximum connection lifetime
 
 	// Apply database migrations
 	migrationConfig := &migration.Config{
@@ -44,7 +60,7 @@ func main() {
 		Path:    "migrations",
 		Timeout: 30 * time.Second,
 	}
-	migrationRunner := migration.NewRunner(db, migrationConfig)
+	migrationRunner := migration.NewRunner(sqlDB, migrationConfig)
 	if err := migrationRunner.Run(context.Background()); err != nil {
 		log.Fatalf("failed to apply migrations: %v", err)
 	}
@@ -68,8 +84,8 @@ func main() {
 		log.Println("Initialized Redis cache.")
 	}
 
-	// Initialize repository and service
-	messageRepo := dbpostgres.NewMessageRepository(db)
+	// Initialize repository and service with GORM
+	messageRepo := dbpostgres.NewMessageRepository(gormDB)
 	messageService := services.NewMessageService(messageRepo, messageCache)
 
 	// Load all messages into memory for the missing messages API

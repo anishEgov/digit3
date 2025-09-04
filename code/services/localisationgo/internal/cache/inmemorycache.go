@@ -29,9 +29,11 @@ func (c *InMemoryMessageCache) GetMessages(ctx context.Context, tenantID, module
 	key := buildCacheKey(tenantID, module, locale)
 	messages, found := c.cache[key]
 	if !found {
+		log.Printf("IN-MEMORY: MISS - key:%s", key)
 		return nil, ports.ErrCacheMiss
 	}
 
+	log.Printf("IN-MEMORY: HIT - key:%s (found %d messages)", key, len(messages))
 	return messages, nil
 }
 
@@ -40,7 +42,7 @@ func (c *InMemoryMessageCache) SetMessages(ctx context.Context, tenantID, module
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	key := buildCacheKey(tenantID, module, locale)
-	log.Printf("IN-MEMORY CACHE: SET for key: %s", key)
+	log.Printf("IN-MEMORY: SET - key:%s (stored %d messages)", key, len(messages))
 	c.cache[key] = messages
 	return nil
 }
@@ -50,8 +52,14 @@ func (c *InMemoryMessageCache) Invalidate(ctx context.Context, tenantID, module,
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	key := buildCacheKey(tenantID, module, locale)
-	log.Printf("IN-MEMORY CACHE: INVALIDATE for key: %s", key)
-	delete(c.cache, key)
+
+	if _, exists := c.cache[key]; exists {
+		delete(c.cache, key)
+		log.Printf("IN-MEMORY: INVALIDATE - key:%s (key removed)", key)
+	} else {
+		log.Printf("IN-MEMORY: INVALIDATE - key:%s (key not found)", key)
+	}
+
 	return nil
 }
 

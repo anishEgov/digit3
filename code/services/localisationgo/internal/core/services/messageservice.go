@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +19,7 @@ type MessageServiceImpl struct {
 	repository        ports.MessageRepository
 	cache             ports.MessageCache
 	messageLocalesMap map[string]map[string]map[string][]string // tenantID -> module -> code -> []locale
+	mapMutex          sync.RWMutex                              // Protects messageLocalesMap from concurrent access
 }
 
 // NewMessageService creates a new message service
@@ -35,6 +38,10 @@ func (s *MessageServiceImpl) LoadAllMessages(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Lock the map for writing during rebuild
+	s.mapMutex.Lock()
+	defer s.mapMutex.Unlock()
 
 	// Clear the existing map
 	s.messageLocalesMap = make(map[string]map[string]map[string][]string)
@@ -55,6 +62,10 @@ func (s *MessageServiceImpl) LoadAllMessages(ctx context.Context) error {
 // FindMissingMessages finds the missing messages for a given tenant.
 // The response can be filtered by providing a module.
 func (s *MessageServiceImpl) FindMissingMessages(ctx context.Context, tenantID string, module string) (map[string]map[string][]string, error) {
+	// Lock for reading the map
+	s.mapMutex.RLock()
+	defer s.mapMutex.RUnlock()
+
 	tenantData, ok := s.messageLocalesMap[tenantID]
 	if !ok {
 		return nil, nil // Or an error indicating tenant not found
@@ -145,6 +156,7 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 		finalMessages = append(finalMessages, messagesToCreate...)
 
 		// Update the in-memory map for created messages
+		s.mapMutex.Lock()
 		for _, msg := range messagesToCreate {
 			if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
 				s.messageLocalesMap[msg.TenantID] = make(map[string]map[string][]string)
@@ -167,6 +179,7 @@ func (s *MessageServiceImpl) UpsertMessages(ctx context.Context, tenantID string
 				s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code], msg.Locale)
 			}
 		}
+		s.mapMutex.Unlock()
 	}
 
 	// Handle updates
@@ -212,6 +225,7 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 	s.invalidateCacheForMessages(ctx, messages)
 
 	// Update the in-memory map
+	s.mapMutex.Lock()
 	for _, msg := range messages {
 		if _, ok := s.messageLocalesMap[msg.TenantID]; !ok {
 			s.messageLocalesMap[msg.TenantID] = make(map[string]map[string][]string)
@@ -233,6 +247,7 @@ func (s *MessageServiceImpl) CreateMessages(ctx context.Context, tenantID string
 			s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code] = append(s.messageLocalesMap[msg.TenantID][msg.Module][msg.Code], msg.Locale)
 		}
 	}
+	s.mapMutex.Unlock()
 
 	return messages, nil
 }
@@ -274,29 +289,66 @@ func (s *MessageServiceImpl) DeleteMessages(ctx context.Context, tenantID string
 
 // BustCache clears the cache based on tenant, and optionally module and locale
 func (s *MessageServiceImpl) BustCache(ctx context.Context, tenantID, module, locale string) error {
-	return s.cache.BustCache(ctx, tenantID, module, locale)
+	cacheKey := fmt.Sprintf("tenant:%s|module:%s|locale:%s", tenantID, module, locale)
+	start := time.Now()
+
+	err := s.cache.BustCache(ctx, tenantID, module, locale)
+	duration := time.Since(start)
+
+	if err != nil {
+		log.Printf("CACHE: BUST ERROR - %s (error: %v, duration: %v)", cacheKey, err, duration)
+		return err
+	}
+
+	log.Printf("CACHE: BUST - %s (duration: %v)", cacheKey, duration)
+	return nil
 }
 
 // SearchMessages searches for messages, checking the cache first
 func (s *MessageServiceImpl) SearchMessages(ctx context.Context, tenantID, module, locale string, limit, offset int) ([]domain.Message, error) {
+	cacheKey := fmt.Sprintf("tenant:%s|module:%s|locale:%s", tenantID, module, locale)
+
 	// Bypass cache for paginated requests. Caching paginated results is complex.
 	if limit > 0 {
+		log.Printf("CACHE: BYPASS for paginated request - %s (limit:%d, offset:%d)", cacheKey, limit, offset)
 		return s.repository.FindMessages(ctx, tenantID, module, locale, limit, offset)
 	}
 
 	// Try to get from cache first for non-paginated requests
+	start := time.Now()
 	if cachedMessages, err := s.cache.GetMessages(ctx, tenantID, module, locale); err == nil && len(cachedMessages) > 0 {
+		cacheDuration := time.Since(start)
+		log.Printf("CACHE: HIT - %s (found %d messages in %v)", cacheKey, len(cachedMessages), cacheDuration)
 		return cachedMessages, nil
+	} else {
+		cacheDuration := time.Since(start)
+		if err != nil && err != ports.ErrCacheMiss {
+			log.Printf("CACHE: ERROR - %s (error: %v, duration: %v)", cacheKey, err, cacheDuration)
+		} else {
+			log.Printf("CACHE: MISS - %s (duration: %v)", cacheKey, cacheDuration)
+		}
 	}
 
 	// If not in cache, get from repository (non-paginated)
+	dbStart := time.Now()
 	messages, err := s.repository.FindMessages(ctx, tenantID, module, locale, 0, 0) // limit=0 means no limit
 	if err != nil {
+		dbDuration := time.Since(dbStart)
+		log.Printf("DB: ERROR - %s (error: %v, duration: %v)", cacheKey, err, dbDuration)
 		return nil, err
 	}
+	dbDuration := time.Since(dbStart)
+	log.Printf("DB: FETCH - %s (found %d messages in %v)", cacheKey, len(messages), dbDuration)
 
 	// Store in cache
-	_ = s.cache.SetMessages(ctx, tenantID, module, locale, messages)
+	cacheSetStart := time.Now()
+	if err := s.cache.SetMessages(ctx, tenantID, module, locale, messages); err != nil {
+		cacheSetDuration := time.Since(cacheSetStart)
+		log.Printf("CACHE: SET ERROR - %s (error: %v, duration: %v)", cacheKey, err, cacheSetDuration)
+	} else {
+		cacheSetDuration := time.Since(cacheSetStart)
+		log.Printf("CACHE: SET - %s (stored %d messages in %v)", cacheKey, len(messages), cacheSetDuration)
+	}
 
 	return messages, nil
 }
@@ -320,7 +372,16 @@ func (s *MessageServiceImpl) invalidateCacheForMessages(ctx context.Context, mes
 	for key := range cacheKeys {
 		parts := strings.Split(key, ":")
 		if len(parts) == 3 {
-			_ = s.cache.Invalidate(ctx, parts[0], parts[1], parts[2])
+			start := time.Now()
+			if err := s.cache.Invalidate(ctx, parts[0], parts[1], parts[2]); err != nil {
+				duration := time.Since(start)
+				log.Printf("CACHE: INVALIDATE ERROR - tenant:%s|module:%s|locale:%s (error: %v, duration: %v)",
+					parts[0], parts[1], parts[2], err, duration)
+			} else {
+				duration := time.Since(start)
+				log.Printf("CACHE: INVALIDATE - tenant:%s|module:%s|locale:%s (duration: %v)",
+					parts[0], parts[1], parts[2], duration)
+			}
 		}
 	}
 }

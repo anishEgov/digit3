@@ -87,16 +87,69 @@ func (r *Runner) Run(ctx context.Context) error {
 
 // createMigrationTable creates the migration tracking table
 func (r *Runner) createMigrationTable() error {
-	query := `
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version VARCHAR(255) PRIMARY KEY,
-			name VARCHAR(500) NOT NULL,
-			checksum VARCHAR(32) NOT NULL,
-			applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+	// Check if old golang-migrate schema_migrations table exists
+	var hasNameColumn bool
+	err := r.db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns 
+			WHERE table_name = 'schema_migrations' 
+			AND column_name = 'name'
 		)
-	`
-	_, err := r.db.Exec(query)
-	return err
+	`).Scan(&hasNameColumn)
+
+	if err != nil {
+		return fmt.Errorf("failed to check schema_migrations structure: %w", err)
+	}
+
+	if !hasNameColumn {
+		// Old golang-migrate table exists, need to migrate it
+		log.Println("Detected old golang-migrate schema_migrations table, migrating to new format...")
+
+		// Rename old table
+		if _, err := r.db.Exec("ALTER TABLE schema_migrations RENAME TO schema_migrations_old"); err != nil {
+			return fmt.Errorf("failed to rename old schema_migrations table: %w", err)
+		}
+
+		// Create new table
+		query := `
+			CREATE TABLE schema_migrations (
+				version VARCHAR(255) PRIMARY KEY,
+				name VARCHAR(500) NOT NULL,
+				checksum VARCHAR(32) NOT NULL,
+				applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+			)
+		`
+		if _, err := r.db.Exec(query); err != nil {
+			return fmt.Errorf("failed to create new schema_migrations table: %w", err)
+		}
+
+		// Check what migrations were applied based on database state
+		if err := r.migrateFromOldSchema(); err != nil {
+			return fmt.Errorf("failed to migrate from old schema: %w", err)
+		}
+
+		// Drop old table
+		if _, err := r.db.Exec("DROP TABLE schema_migrations_old"); err != nil {
+			log.Printf("Warning: failed to drop old schema_migrations table: %v", err)
+		}
+
+		log.Println("Successfully migrated schema_migrations table to new format")
+	} else {
+		// Table already exists with correct structure or doesn't exist
+		query := `
+			CREATE TABLE IF NOT EXISTS schema_migrations (
+				version VARCHAR(255) PRIMARY KEY,
+				name VARCHAR(500) NOT NULL,
+				checksum VARCHAR(32) NOT NULL,
+				applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+			)
+		`
+		if _, err := r.db.Exec(query); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // acquireLock acquires a database lock for migrations
@@ -247,5 +300,75 @@ func (r *Runner) executeMigration(migration Migration) error {
 		return fmt.Errorf("failed to commit migration: %w", err)
 	}
 
+	return nil
+}
+
+// migrateFromOldSchema migrates from golang-migrate schema to new format
+func (r *Runner) migrateFromOldSchema() error {
+	// Check database state to determine what migrations should be marked as applied
+	var tableExists bool
+
+	// Check if localisation table exists
+	err := r.db.QueryRow(`
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables 
+			WHERE table_name = 'localisation'
+		)
+	`).Scan(&tableExists)
+	if err != nil {
+		return fmt.Errorf("failed to check localisation table: %w", err)
+	}
+
+	if !tableExists {
+		// No localisation table, no migrations to mark as applied
+		return nil
+	}
+
+	log.Println("Found existing localisation table, determining applied migrations...")
+
+	// Migration 1: Create table - if table exists, this is applied
+	if err := r.markMigrationApplied("001", "create_localisation_table", "auto-migrated"); err != nil {
+		return err
+	}
+
+	// Migration 2: Alter user ID type - check if created_by is VARCHAR
+	var dataType string
+	err = r.db.QueryRow(`
+		SELECT data_type FROM information_schema.columns 
+		WHERE table_name = 'localisation' AND column_name = 'created_by'
+	`).Scan(&dataType)
+	if err == nil && dataType == "character varying" {
+		if err := r.markMigrationApplied("002", "alter_user_id_type", "auto-migrated"); err != nil {
+			return err
+		}
+	}
+
+	// Migration 3: Add UUID - check if uuid column exists
+	var uuidExists bool
+	err = r.db.QueryRow(`
+		SELECT EXISTS (
+			SELECT FROM information_schema.columns 
+			WHERE table_name = 'localisation' AND column_name = 'uuid'
+		)
+	`).Scan(&uuidExists)
+	if err == nil && uuidExists {
+		if err := r.markMigrationApplied("003", "add_uuid_to_localisation", "auto-migrated"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// markMigrationApplied marks a migration as applied with the given checksum
+func (r *Runner) markMigrationApplied(version, name, checksum string) error {
+	_, err := r.db.Exec(
+		"INSERT INTO schema_migrations (version, name, checksum) VALUES ($1, $2, $3)",
+		version, name, checksum,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to mark migration %s as applied: %w", version, err)
+	}
+	log.Printf("Marked migration %s (%s) as applied", version, name)
 	return nil
 }
