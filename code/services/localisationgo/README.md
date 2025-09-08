@@ -307,754 +307,233 @@ CACHE_TYPE=redis
 ```
 - **Response**: `201 Created` with created/updated messages
 
-#### 2. Search Messages
-- **Endpoint**: `GET /localization/messages`
-- **Description**: Searches for localization messages
-- **Query Parameters**:
-  - `tenantId` (required)
-  - `module` (optional)
-  - `locale` (optional)
-  - `codes` (optional, comma-separated)
-  - `limit` (optional, default: 20)
-  - `offset` (optional, default: 0)
-- **Response**: `200 OK` with matching messages
 
-#### 3. Create Messages
-- **Endpoint**: `POST /localization/messages/v1/_create`
-- **Description**: Creates new localization messages (fails if exists)
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**: Same as upsert
-- **Response**: `201 Created` with created messages
+##### Sequence Diagram: Upsert Messages
 
-#### 4. Update Messages
-- **Endpoint**: `PUT /localization/messages/v1/_update`
-- **Description**: Updates existing localization messages
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**:
-```json
-{
-  "module": "auth",
-  "locale": "en_US",
-  "messages": [
-    {
-      "code": "welcome.message",
-      "message": "Updated welcome message"
-    }
-  ]
-}
-```
-- **Response**: `200 OK` with updated messages
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
 
-#### 5. Delete Messages
-- **Endpoint**: `DELETE /localization/messages/v1/_delete`
-- **Description**: Deletes localization messages
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**:
-```json
-{
-  "messages": [
-    {
-      "module": "auth",
-      "locale": "en_US",
-      "code": "welcome.message"
-    }
-  ]
-}
-```
-- **Response**: `200 OK` with success status
-
-#### 6. Cache Bust
-- **Endpoint**: `DELETE /localization/messages/cache-bust`
-- **Description**: Clears the entire message cache
-- **Response**: `200 OK` with success message
-
-#### 7. Find Missing Messages
-- **Endpoint**: `POST /localization/messages/v1/_missing`
-- **Description**: Finds missing localization messages
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**:
-```json
-{
-  "module": "auth"
-}
-```
-- **Response**: `200 OK` with missing message codes by module/locale
-
-### gRPC API
-
-The service also provides a gRPC API with identical functionality. The protobuf definition can be found in `api/proto/localization/v1/localization.proto`.
-
-### Error Codes
-
-| HTTP Status | Error Code | Description |
-|-------------|------------|-------------|
-| 400 | BAD_REQUEST | Invalid request parameters |
-| 401 | UNAUTHORIZED | Authentication required |
-| 403 | FORBIDDEN | Insufficient permissions |
-| 404 | NOT_FOUND | Resource not found |
-| 409 | CONFLICT | Resource already exists |
-| 422 | UNPROCESSABLE_ENTITY | Validation failed |
-| 500 | INTERNAL_SERVER_ERROR | Server error |
-
-## Observability
-
-### Logging
-
-**Format:** JSON structured logging with request correlation IDs
-
-**Framework:** Standard Go log with context support
-
-**Log Levels:** DEBUG, INFO, WARN, ERROR
-
-**Example Log:**
-```json
-{
-  "level": "INFO",
-  "timestamp": "2024-01-15T10:30:45Z",
-  "request_id": "req-123456",
-  "tenant_id": "DEFAULT",
-  "method": "GET",
-  "path": "/localization/messages",
-  "duration_ms": 45,
-  "status_code": 200
-}
+    Client->>Handler: POST /messages/v1/_upsert
+    Handler->>Service: UpsertMessages(messages)
+    
+    Service->>Repository: Check existing messages
+    Repository->>Database: SELECT query for existing records
+    Database-->>Repository: Existing records
+    Repository-->>Service: Existing message data
+    
+    Service->>Repository: Insert/Update messages
+    Repository->>Database: INSERT/UPDATE queries
+    Database-->>Repository: Success confirmation
+    Repository-->>Service: Operation results
+    
+    Service->>Cache: Invalidate related cache keys
+    Cache-->>Service: Cache invalidation complete
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 201 Created with messages
 ```
 
-### Metrics
+##### Sequence Diagram: Search Messages
 
-**Framework:** Prometheus metrics exposed on `/metrics` endpoint
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
 
-**Key Metrics:**
-- `http_requests_total{path, method, status}` - Total HTTP requests
-- `http_request_duration_seconds{path, method}` - Request duration histogram
-- `db_connections_active` - Active database connections
-- `cache_hit_total` - Cache hit counter
-- `cache_miss_total` - Cache miss counter
-- `messages_created_total` - Total messages created
-- `messages_updated_total` - Total messages updated
+    Client->>Handler: GET /messages (with query params)
+    Handler->>Service: SearchMessages(tenantId, module, locale, codes)
+    
+    alt Cache Hit
+        Cache-->>Service: Return cached data
+    else Cache Miss
+        Service->>Repository: Query messages from DB
+        Repository->>Database: SELECT query with filters
+        Database-->>Repository: Message results
+        Repository-->>Service: Domain objects
+        Service->>Cache: Store results in cache
+    end
+    
+    Service-->>Handler: Formatted message response
+    Handler-->>Client: 200 OK with messages
+##### Sequence Diagram: Update Messages
 
-### Tracing
+##### Sequence Diagram: Create Messages
 
-**Framework:** OpenTelemetry with Jaeger integration
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
 
-**Configuration:**
-```bash
-export OTEL_TRACES_EXPORTER=jaeger
-export OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14268/api/traces
+    Client->>Handler: POST /messages/v1/_create
+    Handler->>Service: CreateMessages(messages)
+    
+    Service->>Repository: Check for existing messages
+    Repository->>Database: SELECT query for conflicts
+    Database-->>Repository: Check results
+    Repository-->>Service: Conflict check results
+    
+    alt No conflicts
+        Service->>Repository: Insert new messages
+        Repository->>Database: INSERT queries
+        Database-->>Repository: Success confirmation
+        Repository-->>Service: Created message data
+        Service-->>Handler: Success response
+        Handler-->>Client: 201 Created with messages
+    else Conflicts exist
+        Service-->>Handler: Conflict error
+        Handler-->>Client: 409 Conflict
+    end
 ```
 
-**Trace Context:** Automatic trace propagation with W3C trace context headers
 
-## Operations
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
 
-### Health Checks
-
-#### REST Health Check
-- **Endpoint**: `GET /health`
-- **Response**: `200 OK` with service status
-
-#### Ready Check
-- **Endpoint**: `GET /ready`
-- **Response**: `200 OK` when service is ready to accept traffic
-
-### Scaling Guidelines
-
-**Resource Requirements:**
-- **CPU:** 0.5-1 core per 1000 RPS
-- **Memory:** 512MB base + 50MB per tenant
-- **Storage:** 1GB per 100k messages
-
-**Recommended Replicas:** 2-3 for production
-
-**Horizontal Scaling:** Stateless design supports horizontal scaling
-
-### Database Operations
-
-#### Running Migrations
-```bash
-# Automatic (on startup)
-go run ./cmd/server
-
-# Manual migration
-go run ./internal/migration --path ./migrations
+    Client->>Handler: PUT /messages/v1/_update
+    Handler->>Service: UpdateMessages(module, locale, messages)
+    
+    Service->>Repository: Check existing messages
+    Repository->>Database: SELECT query for existing records
+    Database-->>Repository: Existing records
+    Repository-->>Service: Existing message data
+    
+    alt Messages exist
+        Service->>Repository: Update messages
+        Repository->>Database: UPDATE queries
+        Database-->>Repository: Success confirmation
+        Repository-->>Service: Updated message data
+        
+        Service->>Cache: Invalidate related cache keys
+        Cache-->>Service: Cache invalidation complete
+        
+        Service-->>Handler: Success response
+        Handler-->>Client: 200 OK with updated messages
+    else Messages not found
+        Service-->>Handler: Not found error
+        Handler-->>Client: 404 Not Found
+    end
 ```
 
-#### Backup Strategy
-```bash
-# PostgreSQL backup
-pg_dump localization > backup.sql
+##### Sequence Diagram: Delete Messages
 
-# Restore
-psql localization < backup.sql
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
+
+    Client->>Handler: DELETE /messages/v1/_delete
+    Handler->>Service: DeleteMessages(messages)
+
+##### Sequence Diagram: Find Missing Messages
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
+
+    Client->>Handler: POST /messages/v1/_missing
+    Handler->>Service: FindMissingMessages(module)
+    
+    alt Module specified
+        Service->>Service: Load all messages for module
+    else All modules
+        Service->>Service: Load all messages
+    end
+    
+    Service->>Repository: Query all messages
+    Repository->>Database: SELECT all messages
+    Database-->>Repository: All message records
+    Repository-->>Service: Message data
+    
+    Service->>Service: Analyze message coverage
+    Service->>Service: Identify missing translations
+    
+    Service-->>Handler: Missing messages analysis
+    Handler-->>Client: 200 OK with missing codes by module/locale
 ```
 
-#### Connection Pool Settings
-- Max Open Connections: 25
-- Max Idle Connections: 10
-- Connection Max Lifetime: 5 minutes
-
-### Cache Operations
-
-#### Cache Busting
-```bash
-curl -X DELETE http://localhost:8088/localization/messages/cache-bust
+    
+    Service->>Repository: Delete messages
+    Repository->>Database: DELETE queries
+    Database-->>Repository: Deletion results
+    Repository-->>Service: Deletion confirmation
+    
+    Service->>Cache: Invalidate related cache keys
+    Cache-->>Service: Cache invalidation complete
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 200 OK with success status
 ```
 
-#### Redis Monitoring
-```bash
-# Check Redis connectivity
-redis-cli ping
+##### Sequence Diagram: Cache Bust
 
-# Monitor cache keys
-redis-cli keys "localization:*"
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+
+    Client->>Handler: DELETE /messages/cache-bust
+    Handler->>Service: BustCache()
+    
+    Service->>Cache: Clear all cache keys
+    Cache-->>Service: Cache clearing confirmation
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 200 OK with success message
 ```
 
-## Security
 
-### Authentication & Authorization
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
+
+    Client->>Handler: PUT /messages/v1/_update
+    Handler->>Service: UpdateMessages(module, locale, messages)
+    
+    Service->>Repository: Check existing messages
+    Repository->>Database: SELECT query for existing records
+    Database-->>Repository: Existing records
+    Repository-->>Service: Existing message data
+    
+    alt Messages exist
+        Service->>Repository: Update messages
+        Repository->>Database: UPDATE queries
+        Database-->>Repository: Success confirmation
+        Repository-->>Service: Updated message data
+        
+        Service->>Cache: Invalidate related cache keys
 
-**Current Implementation:** Header-based authentication
-- `X-User-ID`: User identifier
-- `X-Tenant-ID`: Tenant identifier (required for multi-tenancy)
-
-**Recommended:** Implement JWT-based authentication for production
-
-### Data Protection
-
-**Database Security:**
-- SSL/TLS encryption in transit (`DB_SSL_MODE=require`)
-- Database credentials via environment variables
-- Principle of least privilege for database user
-
-**Cache Security:**
-- Redis AUTH with password
-- Network isolation for Redis instance
-
-**API Security:**
-- Input validation and sanitization
-- Rate limiting (recommended)
-- CORS configuration for web clients
-
-### Sensitive Data Handling
-
-**Environment Variables:**
-- Database passwords
-- Redis passwords
-- API keys
-
-**Recommendations:**
-- Use Docker secrets or Kubernetes secrets
-- Rotate credentials regularly
-- Audit access logs
-
-## Testing
-
-### Running Tests
-
-**All Tests:**
-```bash
-go test ./...
-```
-
-**Unit Tests Only:**
-```bash
-go test ./internal/...
-```
-
-**Integration Tests Only:**
-```bash
-go test ./tests/...
-```
-
-**With Coverage:**
-```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-```
-
-**With Verbose Output:**
-```bash
-go test -v ./...
-```
-
-### Test Structure
-
-#### Unit Tests
-Located in the same package with `_test.go` suffix:
-- `internal/core/services/messageservice_test.go` - Business logic tests
-- `internal/repositories/postgres/messagerepository_test.go` - Database layer tests
-- `internal/platform/cache/rediscache_test.go` - Cache layer tests
-- `internal/handlers/messagehandler_test.go` - HTTP handler tests
-
-#### Integration Tests
-End-to-end tests in `tests/` directory:
-- `tests/integration_test.go` - Complete API flow tests
-
-### Test Dependencies
-
-- **Testify:** `github.com/stretchr/testify` - Assertions and mocks
-- **SQLMock:** `github.com/DATA-DOG/go-sqlmock` - Database mocking
-- **MiniRedis:** `github.com/alicebob/miniredis/v2` - Redis mocking
-- **SQLite:** `github.com/mattn/go-sqlite3` - In-memory database for integration tests
-
-### Mock Setup
-
-```go
-// Database mock example
-db, mock, err := sqlmock.New()
-defer db.Close()
-
-mock.ExpectQuery("SELECT (.+) FROM localisation").
-//   WithArgs(tenantID, module, locale).
-//   WillReturnRows(rows)
-
-// Service test
-service := services.NewMessageService(repo, cache)
-messages, err := service.SearchMessages(ctx, tenantID, module, locale)
-```
-
-## Development Guide
-
-### Coding Standards
-
-**Go Standards:**
-- Follow standard Go formatting (`gofmt`)
-- Use `goimports` for import organization
-- Follow Go naming conventions
-- Use `golangci-lint` for code quality
-
-**Project Standards:**
-- Clean Architecture principles
-- Dependency injection
-- Interface-based design
-- Comprehensive error handling
-- Unit test coverage > 80%
-
-### Common Utilities
-
-#### Retry Logic
-```go
-// Exponential backoff retry utility
-func retryWithBackoff(operation func() error, maxRetries int) error {
-    // Implementation with exponential backoff
-}
-```
-
-#### Cache Abstraction
-```go
-// Cache interface
-type MessageCache interface {
-    Get(ctx context.Context, key string) (interface{}, error)
-    Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
-    Delete(ctx context.Context, key string) error
-}
-```
-
-#### Database Connection
-```go
-// Database configuration helper
-func newDatabaseConnection(config *Config) (*sql.DB, error) {
-    // Connection pooling and configuration
-}
-```
-
-### Adding New API Endpoints
-
-**Step-by-step guide:**
-
-1. **Define the domain model** (if needed):
-   ```go
-   // internal/core/domain/newmodel.go
-   type NewModel struct {
-       // fields
-   }
-   ```
-
-2. **Add repository interface**:
-   ```go
-   // internal/core/ports/repository.go
-   type NewRepository interface {
-       Create(ctx context.Context, model *NewModel) error
-       GetByID(ctx context.Context, id string) (*NewModel, error)
-   }
-   ```
-
-3. **Implement repository**:
-   ```go
-   // internal/repositories/postgres/newrepository.go
-   type newRepository struct {
-       db *gorm.DB
-   }
-   ```
-
-4. **Add service interface and implementation**:
-   ```go
-   // internal/core/ports/service.go
-   type NewService interface {
-       Process(ctx context.Context, data interface{}) error
-   }
-   
-   // internal/core/services/newservice.go
-   type newService struct {
-       repo NewRepository
-   }
-   ```
-
-5. **Add HTTP handler**:
-   ```go
-   // internal/handlers/newhandler.go
-   func (h *NewHandler) ProcessNewRequest(c *gin.Context) {
-       // Handler implementation
-   }
-   ```
-
-6. **Register routes**:
-   ```go
-   // internal/handlers/newhandler.go
-   func (h *NewHandler) RegisterRoutes(router *gin.RouterGroup) {
-       router.POST("/new-endpoint", h.ProcessNewRequest)
-   }
-   ```
-
-7. **Update main.go**:
-   ```go
-   // cmd/server/main.go
-   newHandler := handlers.NewNewHandler(newService)
-   apiGroup := router.Group("/api")
-   newHandler.RegisterRoutes(apiGroup)
-   ```
-
-8. **Add tests** for all layers
-
-### Project Structure
-
-```
-localisationgo/
-├── api/proto/                    # Protocol buffer definitions
-├── cmd/server/                   # Application entrypoint
-├── configs/                      # Configuration management
-├── internal/                     # Private application code
-│   ├── cache/                   # Cache implementations
-│   ├── common/                  # Shared utilities
-│   ├── core/                    # Business logic
-│   │   ├── domain/             # Domain models
-│   │   ├── ports/              # Interfaces
-│   │   └── services/           # Business logic
-│   ├── handlers/               # HTTP/gRPC handlers
-│   ├── migration/              # Database migrations
-│   ├── platform/               # Platform-specific code
-│   └── repositories/           # Data access layer
-├── migrations/                  # SQL migration files
-├── pkg/dtos/                    # Data transfer objects
-├── scripts/                     # Build/utility scripts
-└── tests/                       # Integration tests
-```
-
-## Release & Deployment
-
-### Branching Strategy
-
-**Git Flow:**
-- `main` - Production releases
-- `develop` - Development integration
-- `feature/*` - Feature branches
-- `hotfix/*` - Hotfix branches
-
-### CI/CD Pipeline
-
-**GitHub Actions Workflow:**
-```yaml
-# .github/workflows/ci-cd.yml
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.24.2'
-      - run: go mod download
-      - run: go test ./... -coverprofile=coverage.out
-      - run: go tool cover -html=coverage.out -o coverage.html
-  
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: localisationgo:latest
-```
-
-### Versioning
-
-**Semantic Versioning:** `MAJOR.MINOR.PATCH`
-- `MAJOR`: Breaking changes
-- `MINOR`: New features
-- `PATCH`: Bug fixes
-
-**Version Tags:**
-```bash
-git tag v1.2.3
-git push origin v1.2.3
-```
-
-### Deployment
-
-**Docker Compose (Development):**
-```yaml
-version: '3.8'
-services:
-  localisationgo:
-    build: .
-    ports:
-      - "8088:8088"
-    environment:
-      - DB_HOST=postgres
-      - REDIS_HOST=redis
-    depends_on:
-      - postgres
-      - redis
-  
-  postgres:
-    image: postgres:13
-    environment:
-      - POSTGRES_DB=localization
-      - POSTGRES_PASSWORD=password
-  
-  redis:
-    image: redis:6-alpine
-```
-
-**Kubernetes (Production):**
-```yaml
-# k8s/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: localisationgo
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: localisationgo
-  template:
-    metadata:
-      labels:
-        app: localisationgo
-    spec:
-      containers:
-      - name: localisationgo
-        image: localisationgo:latest
-        ports:
-        - containerPort: 8088
-        env:
-        - name: DB_HOST
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: host
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8088
-          initialDelaySeconds: 30
-          periodSeconds: 10
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### Database Connection Issues
-
-**Error:** `could not connect to the database`
-
-**Solutions:**
-1. Verify PostgreSQL is running
-2. Check connection string
-3. Verify database exists
-4. Check firewall settings
-
-**Debug:**
-```bash
-# Test database connection
-psql -h localhost -U postgres -d localization
-```
-
-#### Cache Connection Issues
-
-**Error:** `redis: connection refused`
-
-**Solutions:**
-1. Verify Redis is running
-2. Check Redis configuration
-3. Verify network connectivity
-4. Check Redis authentication
-
-**Debug:**
-```bash
-# Test Redis connection
-redis-cli ping
-```
-
-#### High Memory Usage
-
-**Symptoms:** Service consuming excessive memory
-
-**Causes:**
-- Large dataset loaded in memory
-- Cache not properly configured
-- Memory leaks in application code
-
-**Solutions:**
-1. Review cache configuration
-2. Implement cache TTL
-3. Monitor memory usage
-4. Check for goroutine leaks
-
-#### Slow API Responses
-
-**Symptoms:** API calls taking longer than expected
-
-**Diagnosis:**
-1. Check database query performance
-2. Monitor cache hit/miss ratios
-3. Review connection pool settings
-4. Check network latency
-
-**Solutions:**
-1. Add database indexes
-2. Optimize queries
-3. Increase cache TTL
-4. Scale horizontally
-
-### Debug Mode
-
-**Enable Debug Logging:**
-```bash
-export LOG_LEVEL=debug
-go run ./cmd/server
-```
-
-**Enable SQL Query Logging:**
-```bash
-// In configuration
-DB_DEBUG=true
-```
-
-### Monitoring Queries
-
-**Database Performance:**
-```sql
--- Slow queries
-SELECT * FROM pg_stat_statements 
-ORDER BY total_time DESC 
-LIMIT 10;
-
--- Connection count
-SELECT count(*) FROM pg_stat_activity;
-```
-
-**Redis Performance:**
-```bash
-# Cache statistics
-redis-cli info stats
-
-# Memory usage
-redis-cli info memory
-```
-
-### Log Analysis
-
-**Common Log Patterns:**
-```bash
-# Search for errors
-grep "ERROR" application.log
-
-# Find slow requests
-grep "duration_ms" application.log | sort -k3 -n
-
-# Analyze by endpoint
-grep "/localization/messages" application.log | head -20
-```
-
-## FAQ
-
-### General Questions
-
-**Q: How does multi-tenancy work?**
-A: Each tenant's data is isolated using tenant_id in all database queries and cache keys.
-
-**Q: What's the difference between upsert and update?**
-A: Upsert creates or updates records, while update only modifies existing records.
-
-**Q: How does caching improve performance?**
-A: Frequently accessed messages are stored in Redis, reducing database load and improving response times.
-
-### Technical Questions
-
-**Q: Can I use different cache backends?**
-A: Yes, implement the MessageCache interface for custom cache providers.
-
-**Q: How do I add a new locale?**
-A: Just insert messages with the new locale code - no schema changes required.
-
-**Q: What's the maximum message size?**
-A: Limited by PostgreSQL TEXT field (1GB) and Redis value size limits.
-
-### Operational Questions
-
-**Q: How do I backup the data?**
-A: Use PostgreSQL pg_dump for database backup and Redis RDB/AOF for cache backup.
-
-**Q: Can I run multiple instances?**
-A: Yes, the service is stateless and supports horizontal scaling.
-
-**Q: How do I monitor the service?**
-A: Use the /health endpoint, Prometheus metrics, and application logs.
-
-## References
-
-### Related Repositories
-
-- [DIGIT Platform](https://github.com/digitnxt/digit-platform) - Main DIGIT platform
-- [DIGIT UI](https://github.com/digitnxt/digit-ui) - Frontend application
-- [DIGIT Commons](https://github.com/digitnxt/digit-commons) - Shared utilities
-
-### External Documentation
-
-- [Go Documentation](https://golang.org/doc/) - Go programming language
-- [Gin Framework](https://gin-gonic.com/docs/) - Web framework documentation
-- [GORM Documentation](https://gorm.io/docs/) - ORM documentation
-- [PostgreSQL Manual](https://www.postgresql.org/docs/) - Database documentation
-- [Redis Documentation](https://redis.io/documentation) - Cache documentation
-
-### Standards & Specifications
-
-- [Semantic Versioning](https://semver.org/) - Versioning standard
-- [OpenAPI Specification](https://swagger.io/specification/) - API documentation standard
-- [Protocol Buffers](https://developers.google.com/protocol-buffers) - gRPC serialization
-
-### Support Channels
-
-- **Slack:** #digit-platform-support
-- **Email:** digit-support@egov.org.in
-- **Documentation:** [DIGIT Wiki](https://digit-discuss.atlassian.net/wiki)
-
----
-
-**Last Updated:** January 2024
-**Version:** 1.0.0
-**Maintainer:** DIGIT Platform Team
