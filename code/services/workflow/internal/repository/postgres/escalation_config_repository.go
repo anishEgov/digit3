@@ -2,97 +2,63 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
 	"digit.org/workflow/internal/models"
 	"digit.org/workflow/internal/repository"
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
 
 type escalationConfigRepository struct {
-	db *sqlx.DB
+	db *gorm.DB
 }
 
 // NewEscalationConfigRepository creates a new instance of EscalationConfigRepository.
-func NewEscalationConfigRepository(db *sqlx.DB) repository.EscalationConfigRepository {
+func NewEscalationConfigRepository(db *gorm.DB) repository.EscalationConfigRepository {
 	return &escalationConfigRepository{db: db}
 }
 
 // CreateEscalationConfig creates a new escalation configuration.
 func (r *escalationConfigRepository) CreateEscalationConfig(ctx context.Context, config *models.EscalationConfig) (*models.EscalationConfig, error) {
-	query := `
-		INSERT INTO escalation_configs (
-			tenant_id, process_id, state_code, escalation_action, 
-			state_sla_minutes, process_sla_minutes,
-			created_by, created_at, modified_by, modified_at
-		) VALUES (
-			:tenant_id, :process_id, :state_code, :escalation_action,
-			:state_sla_minutes, :process_sla_minutes,
-			:created_by, :created_at, :modified_by, :modified_at
-		) RETURNING id`
-
-	stmt, err := r.db.PrepareNamedContext(ctx, query)
+	err := r.db.WithContext(ctx).Create(config).Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to prepare escalation config creation query: %w", err)
-	}
-	defer stmt.Close()
-
-	var id string
-	if err := stmt.GetContext(ctx, &id, config); err != nil {
 		return nil, fmt.Errorf("failed to create escalation config: %w", err)
 	}
-
-	config.ID = id
 	return config, nil
 }
 
 // GetEscalationConfigByID retrieves an escalation configuration by ID.
 func (r *escalationConfigRepository) GetEscalationConfigByID(ctx context.Context, tenantID, id string) (*models.EscalationConfig, error) {
-	query := `
-		SELECT id, tenant_id, process_id, state_code, escalation_action,
-			   state_sla_minutes, process_sla_minutes,
-			   created_by, created_at, modified_by, modified_at
-		FROM escalation_configs 
-		WHERE tenant_id = $1 AND id = $2`
-
 	var config models.EscalationConfig
-	if err := r.db.GetContext(ctx, &config, query, tenantID, id); err != nil {
-		if err == sql.ErrNoRows {
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND id = ?", tenantID, id).
+		First(&config).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("escalation config not found")
 		}
 		return nil, fmt.Errorf("failed to get escalation config: %w", err)
 	}
-
 	return &config, nil
 }
 
 // GetEscalationConfigsByProcessID retrieves escalation configurations for a process.
 func (r *escalationConfigRepository) GetEscalationConfigsByProcessID(ctx context.Context, tenantID, processID string, stateCode string, isActive *bool) ([]*models.EscalationConfig, error) {
-	query := `
-		SELECT id, tenant_id, process_id, state_code, escalation_action,
-			   state_sla_minutes, process_sla_minutes,
-			   created_by, created_at, modified_by, modified_at
-		FROM escalation_configs 
-		WHERE tenant_id = $1 AND process_id = $2`
+	var configs []*models.EscalationConfig
 
-	args := []interface{}{tenantID, processID}
-	argIndex := 2
+	query := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND process_id = ?", tenantID, processID)
 
 	if stateCode != "" {
-		argIndex++
-		query += fmt.Sprintf(" AND state_code = $%d", argIndex)
-		args = append(args, stateCode)
+		query = query.Where("state_code = ?", stateCode)
 	}
 
 	// Note: isActive parameter is ignored since we removed the column
 	// We keep the parameter for API compatibility but don't use it
 
-	query += " ORDER BY state_code, escalation_action"
-
-	var configs []*models.EscalationConfig
-	if err := r.db.SelectContext(ctx, &configs, query, args...); err != nil {
+	err := query.Order("state_code, escalation_action").Find(&configs).Error
+	if err != nil {
 		return nil, fmt.Errorf("failed to get escalation configs: %w", err)
 	}
 
@@ -124,17 +90,10 @@ func (r *escalationConfigRepository) UpdateEscalationConfig(ctx context.Context,
 	existing.AuditDetail.ModifiedBy = config.AuditDetail.ModifiedBy
 	existing.AuditDetail.ModifiedTime = config.AuditDetail.ModifiedTime
 
-	query := `
-		UPDATE escalation_configs SET
-			state_code = :state_code,
-			escalation_action = :escalation_action,
-			state_sla_minutes = :state_sla_minutes,
-			process_sla_minutes = :process_sla_minutes,
-			modified_by = :modified_by,
-			modified_at = :modified_at
-		WHERE tenant_id = :tenant_id AND id = :id`
-
-	if _, err := r.db.NamedExecContext(ctx, query, existing); err != nil {
+	err = r.db.WithContext(ctx).
+		Where("tenant_id = ? AND id = ?", existing.TenantID, existing.ID).
+		Updates(existing).Error
+	if err != nil {
 		return nil, fmt.Errorf("failed to update escalation config: %w", err)
 	}
 
@@ -143,19 +102,15 @@ func (r *escalationConfigRepository) UpdateEscalationConfig(ctx context.Context,
 
 // DeleteEscalationConfig deletes an escalation configuration.
 func (r *escalationConfigRepository) DeleteEscalationConfig(ctx context.Context, tenantID, id string) error {
-	query := `DELETE FROM escalation_configs WHERE tenant_id = $1 AND id = $2`
+	result := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND id = ?", tenantID, id).
+		Delete(&models.EscalationConfig{})
 
-	result, err := r.db.ExecContext(ctx, query, tenantID, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete escalation config: %w", err)
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete escalation config: %w", result.Error)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
+	if result.RowsAffected == 0 {
 		return errors.New("escalation config not found")
 	}
 
@@ -165,16 +120,12 @@ func (r *escalationConfigRepository) DeleteEscalationConfig(ctx context.Context,
 // GetActiveEscalationConfigs retrieves all escalation configurations for a tenant.
 // Note: Method name kept for compatibility, but returns all configs since isActive was removed.
 func (r *escalationConfigRepository) GetActiveEscalationConfigs(ctx context.Context, tenantID string) ([]*models.EscalationConfig, error) {
-	query := `
-		SELECT id, tenant_id, process_id, state_code, escalation_action,
-			   state_sla_minutes, process_sla_minutes,
-			   created_by, created_at, modified_by, modified_at
-		FROM escalation_configs 
-		WHERE tenant_id = $1
-		ORDER BY process_id, state_code`
-
 	var configs []*models.EscalationConfig
-	if err := r.db.SelectContext(ctx, &configs, query, tenantID); err != nil {
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ?", tenantID).
+		Order("process_id, state_code").
+		Find(&configs).Error
+	if err != nil {
 		return nil, fmt.Errorf("failed to get escalation configs: %w", err)
 	}
 

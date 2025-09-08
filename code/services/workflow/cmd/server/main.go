@@ -21,12 +21,18 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize database connection
+	// Initialize GORM database connection
 	db, err := postgres.NewDB(cfg.DB)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+
+	// Get underlying sql.DB for migrations (migrations still use raw SQL)
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get underlying sql.DB: %v", err)
+	}
+	defer sqlDB.Close()
 
 	// Run database migrations
 	migrationConfig := &migration.Config{
@@ -35,7 +41,7 @@ func main() {
 		Timeout: cfg.Migration.Timeout,
 	}
 
-	migrationRunner := migration.NewRunner(db, migrationConfig)
+	migrationRunner := migration.NewRunner(sqlDB, migrationConfig)
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Migration.Timeout)
 	defer cancel()
 

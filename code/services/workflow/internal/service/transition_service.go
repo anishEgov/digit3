@@ -501,14 +501,10 @@ func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID st
 		return existingInstance, nil
 	}
 
-	// Entity doesn't exist - check if we should create a new instance
-	// If an action is being performed, we should NOT auto-create instances
-	if instance.Action != "" {
-		return nil, fmt.Errorf("no process instance found for entity '%s'. Cannot perform action '%s' on non-existent entity", instance.EntityID, instance.Action)
-	}
+	// Entity doesn't exist - create a new instance in initial state
+	// This allows both initialization and first transition in one API call
 
-	// Only create new instance if NO action is being performed (just initialization)
-	// Get the initial state to check if creation is allowed
+	// Get the initial state to create the instance
 	states, err := s.stateRepo.GetStatesByProcessID(ctx, tenantID, instance.ProcessID)
 	if err != nil || len(states) == 0 {
 		return nil, errors.New("cannot find any states for this process definition")
@@ -524,14 +520,18 @@ func (s *transitionService) getOrCreateInstance(ctx context.Context, tenantID st
 		return nil, errors.New("no initial state configured for this process")
 	}
 
-	// Create new instance in initial state for initialization only
+	// Create new instance in initial state (ready for transition)
 	newInstance := &models.ProcessInstance{
 		ProcessID:    instance.ProcessID,
 		EntityID:     instance.EntityID,
 		CurrentState: initialState.ID,
 		Status:       "ACTIVE",
 		TenantID:     tenantID,
-		// This is just instance creation - no action performed
+		Attributes:   instance.Attributes, // Include attributes for validation
+		Comment:      instance.Comment,    // Include comment
+		Documents:    instance.Documents,  // Include documents
+		Assigner:     instance.Assigner,   // Include assigner
+		Assignees:    instance.Assignees,  // Include assignees
 	}
 
 	// Set audit details for new instance

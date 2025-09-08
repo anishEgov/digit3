@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"crypto/md5"
+	"database/sql"
 	"fmt"
 	"io/fs"
 	"log"
@@ -12,18 +13,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jmoiron/sqlx"
 )
 
 // Runner handles database migrations
 type Runner struct {
-	db     *sqlx.DB
+	db     *sql.DB
 	config *Config
 }
 
 // NewRunner creates a new migration runner
-func NewRunner(db *sqlx.DB, config *Config) *Runner {
+func NewRunner(db *sql.DB, config *Config) *Runner {
 	return &Runner{
 		db:     db,
 		config: config,
@@ -217,7 +216,7 @@ func (r *Runner) executeMigration(migration *Migration) error {
 	}
 
 	// Start transaction
-	tx, err := r.db.Beginx()
+	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
