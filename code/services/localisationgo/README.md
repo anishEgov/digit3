@@ -13,7 +13,7 @@ A Go-based implementation of the DIGIT localization service using the Gin framew
 ## Architecture
 
 **Tech Stack:**
-- Go 1.24.2
+- Go 1.24
 - Gin Web Framework
 - PostgreSQL (via GORM)
 - Redis (via go-redis/v9)
@@ -27,14 +27,11 @@ A Go-based implementation of the DIGIT localization service using the Gin framew
 - Efficient caching with Redis for performance
 - PostgreSQL persistence with optimized queries
 - REST and gRPC API interfaces
-- Database migrations management
-- Cache busting functionality
-- Missing message detection
+- Missing message API
 
 **Dependencies:**
-- PostgreSQL 12+ for persistent storage
+- PostgreSQL 15
 - Redis 6+ for caching
-- Other DIGIT services (via REST/gRPC APIs)
 
 ### Diagrams
 
@@ -121,46 +118,11 @@ graph TB
 
 ## Installation & Setup
 
-### Local Development (Docker Compose)
-
-**Prerequisites:**
-- Docker & Docker Compose
-- Go 1.24.2+ (for local development)
-- Git
-
-**Steps:**
-
-1. Clone the repository
-   ```bash
-   git clone https://github.com/yourusername/localisationgo.git
-   cd localisationgo
-   ```
-
-2. Start dependencies with Docker Compose
-   ```bash
-   docker-compose up -d postgres redis
-   ```
-
-3. Install Go dependencies
-   ```bash
-   go mod download
-   ```
-
-4. Run database migrations
-   ```bash
-   go run ./cmd/server --migrate
-   ```
-
-5. Start the service
-   ```bash
-   go run ./cmd/server
-   ```
-
 ### Local Development (Manual Setup)
 
 **Prerequisites:**
-- Go 1.24.2+
-- PostgreSQL 12+
+- Go 1.24+
+- PostgreSQL 15
 - Redis 6+
 
 **Steps:**
@@ -696,43 +658,6 @@ redis-cli ping
 redis-cli keys "localization:*"
 ```
 
-## Security
-
-### Authentication & Authorization
-
-**Current Implementation:** Header-based authentication
-- `X-User-ID`: User identifier
-- `X-Tenant-ID`: Tenant identifier (required for multi-tenancy)
-
-**Recommended:** Implement JWT-based authentication for production
-
-### Data Protection
-
-**Database Security:**
-- SSL/TLS encryption in transit (`DB_SSL_MODE=require`)
-- Database credentials via environment variables
-- Principle of least privilege for database user
-
-**Cache Security:**
-- Redis AUTH with password
-- Network isolation for Redis instance
-
-**API Security:**
-- Input validation and sanitization
-- Rate limiting (recommended)
-- CORS configuration for web clients
-
-### Sensitive Data Handling
-
-**Environment Variables:**
-- Database passwords
-- Redis passwords
-- API keys
-
-**Recommendations:**
-- Use Docker secrets or Kubernetes secrets
-- Rotate credentials regularly
-- Audit access logs
 
 ## Testing
 
@@ -800,118 +725,6 @@ service := services.NewMessageService(repo, cache)
 messages, err := service.SearchMessages(ctx, tenantID, module, locale)
 ```
 
-## Development Guide
-
-### Coding Standards
-
-**Go Standards:**
-- Follow standard Go formatting (`gofmt`)
-- Use `goimports` for import organization
-- Follow Go naming conventions
-- Use `golangci-lint` for code quality
-
-**Project Standards:**
-- Clean Architecture principles
-- Dependency injection
-- Interface-based design
-- Comprehensive error handling
-- Unit test coverage > 80%
-
-### Common Utilities
-
-#### Retry Logic
-```go
-// Exponential backoff retry utility
-func retryWithBackoff(operation func() error, maxRetries int) error {
-    // Implementation with exponential backoff
-}
-```
-
-#### Cache Abstraction
-```go
-// Cache interface
-type MessageCache interface {
-    Get(ctx context.Context, key string) (interface{}, error)
-    Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
-    Delete(ctx context.Context, key string) error
-}
-```
-
-#### Database Connection
-```go
-// Database configuration helper
-func newDatabaseConnection(config *Config) (*sql.DB, error) {
-    // Connection pooling and configuration
-}
-```
-
-### Adding New API Endpoints
-
-**Step-by-step guide:**
-
-1. **Define the domain model** (if needed):
-   ```go
-   // internal/core/domain/newmodel.go
-   type NewModel struct {
-       // fields
-   }
-   ```
-
-2. **Add repository interface**:
-   ```go
-   // internal/core/ports/repository.go
-   type NewRepository interface {
-       Create(ctx context.Context, model *NewModel) error
-       GetByID(ctx context.Context, id string) (*NewModel, error)
-   }
-   ```
-
-3. **Implement repository**:
-   ```go
-   // internal/repositories/postgres/newrepository.go
-   type newRepository struct {
-       db *gorm.DB
-   }
-   ```
-
-4. **Add service interface and implementation**:
-   ```go
-   // internal/core/ports/service.go
-   type NewService interface {
-       Process(ctx context.Context, data interface{}) error
-   }
-   
-   // internal/core/services/newservice.go
-   type newService struct {
-       repo NewRepository
-   }
-   ```
-
-5. **Add HTTP handler**:
-   ```go
-   // internal/handlers/newhandler.go
-   func (h *NewHandler) ProcessNewRequest(c *gin.Context) {
-       // Handler implementation
-   }
-   ```
-
-6. **Register routes**:
-   ```go
-   // internal/handlers/newhandler.go
-   func (h *NewHandler) RegisterRoutes(router *gin.RouterGroup) {
-       router.POST("/new-endpoint", h.ProcessNewRequest)
-   }
-   ```
-
-7. **Update main.go**:
-   ```go
-   // cmd/server/main.go
-   newHandler := handlers.NewNewHandler(newService)
-   apiGroup := router.Group("/api")
-   newHandler.RegisterRoutes(apiGroup)
-   ```
-
-8. **Add tests** for all layers
 
 ### Project Structure
 
@@ -942,60 +755,16 @@ localisationgo/
 ### Branching Strategy
 
 **Git Flow:**
-- `main` - Production releases
+- `master` - Production releases
 - `develop` - Development integration
-- `feature/*` - Feature branches
-- `hotfix/*` - Hotfix branches
 
 ### CI/CD Pipeline
 
-**GitHub Actions Workflow:**
-```yaml
-# .github/workflows/ci-cd.yml
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.24.2'
-      - run: go mod download
-      - run: go test ./... -coverprofile=coverage.out
-      - run: go tool cover -html=coverage.out -o coverage.html
-  
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: localisationgo:latest
-```
+TBD
 
 ### Versioning
 
-**Semantic Versioning:** `MAJOR.MINOR.PATCH`
-- `MAJOR`: Breaking changes
-- `MINOR`: New features
-- `PATCH`: Bug fixes
-
-**Version Tags:**
-```bash
-git tag v1.2.3
-git push origin v1.2.3
-```
+TBD
 
 ### Deployment
 
@@ -1111,21 +880,6 @@ redis-cli ping
 3. Monitor memory usage
 4. Check for goroutine leaks
 
-#### Slow API Responses
-
-**Symptoms:** API calls taking longer than expected
-
-**Diagnosis:**
-1. Check database query performance
-2. Monitor cache hit/miss ratios
-3. Review connection pool settings
-4. Check network latency
-
-**Solutions:**
-1. Add database indexes
-2. Optimize queries
-3. Increase cache TTL
-4. Scale horizontally
 
 ### Debug Mode
 
@@ -1179,27 +933,16 @@ grep "/localization/messages" application.log | head -20
 
 ## FAQ
 
-### General Questions
-
-**Q: How does multi-tenancy work?**
-A: Each tenant's data is isolated using tenant_id in all database queries and cache keys.
-
-**Q: What's the difference between upsert and update?**
-A: Upsert creates or updates records, while update only modifies existing records.
-
-**Q: How does caching improve performance?**
-A: Frequently accessed messages are stored in Redis, reducing database load and improving response times.
-
 ### Technical Questions
 
 **Q: Can I use different cache backends?**
-A: Yes, implement the MessageCache interface for custom cache providers.
+A: Yes, implement the MessageCache interface for custom cache providers. redis is provided by default set CACHE=IN_MEMORY in .env file if you do not want to use redis cache.
 
 **Q: How do I add a new locale?**
-A: Just insert messages with the new locale code - no schema changes required.
+A: Just insert messages with the new locale code
 
 **Q: What's the maximum message size?**
-A: Limited by PostgreSQL TEXT field (1GB) and Redis value size limits.
+A: ideally every localisation object takes on average 200-250 bytes.
 
 ### Operational Questions
 
@@ -1214,34 +957,14 @@ A: Use the /health endpoint, Prometheus metrics, and application logs.
 
 ## References
 
-### Related Repositories
-
-- [DIGIT Platform](https://github.com/digitnxt/digit-platform) - Main DIGIT platform
-- [DIGIT UI](https://github.com/digitnxt/digit-ui) - Frontend application
-- [DIGIT Commons](https://github.com/digitnxt/digit-commons) - Shared utilities
-
-### External Documentation
-
-- [Go Documentation](https://golang.org/doc/) - Go programming language
-- [Gin Framework](https://gin-gonic.com/docs/) - Web framework documentation
-- [GORM Documentation](https://gorm.io/docs/) - ORM documentation
-- [PostgreSQL Manual](https://www.postgresql.org/docs/) - Database documentation
-- [Redis Documentation](https://redis.io/documentation) - Cache documentation
-
-### Standards & Specifications
-
-- [Semantic Versioning](https://semver.org/) - Versioning standard
-- [OpenAPI Specification](https://swagger.io/specification/) - API documentation standard
-- [Protocol Buffers](https://developers.google.com/protocol-buffers) - gRPC serialization
+TBD
 
 ### Support Channels
 
-- **Slack:** #digit-platform-support
-- **Email:** digit-support@egov.org.in
-- **Documentation:** [DIGIT Wiki](https://digit-discuss.atlassian.net/wiki)
+TBD
 
 ---
 
-**Last Updated:** January 2024
+**Last Updated:** September 2025
 **Version:** 1.0.0
 **Maintainer:** DIGIT Platform Team
