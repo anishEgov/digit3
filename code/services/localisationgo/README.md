@@ -433,6 +433,7 @@ sequenceDiagram
         Handler-->>Client: 404 Not Found
     end
 ```
+
 ##### Sequence Diagram: Delete Messages
 
 ```mermaid
@@ -458,6 +459,7 @@ sequenceDiagram
     Service-->>Handler: Success response
     Handler-->>Client: 200 OK with success status
 ```
+
 ##### Sequence Diagram: Find Missing Messages
 
 ```mermaid
