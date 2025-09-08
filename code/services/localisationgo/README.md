@@ -278,8 +278,41 @@ CACHE_TYPE=redis
 ```
 - **Response**: `201 Created` with created/updated messages
 
+**Sequence Diagram:**
 
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+    participant Repository
+    participant Database
 
+    Client->>Handler: PUT /messages/_upsert
+    Handler->>Service: UpsertMessages(messages)
+    
+    Service->>Repository: Check existing messages
+    Repository->>Database: SELECT query for existing records
+    Database-->>Repository: Existing records check
+    Repository-->>Service: Existing message data
+    
+    alt Messages exist
+        Service->>Repository: Update existing messages
+        Repository->>Database: UPDATE queries
+    else Messages don't exist
+        Service->>Repository: Insert new messages
+        Repository->>Database: INSERT queries
+    end
+    
+    Database-->>Repository: Operation results
+    Repository-->>Service: Upserted message data
+    
+    Service->>Cache: Update cache with new data
+    Cache-->>Service: Cache update confirmation
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 201 Created with upserted messages
 ```
 
 #### 2. Search Messages
