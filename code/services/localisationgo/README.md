@@ -365,7 +365,8 @@ sequenceDiagram
     
     Service-->>Handler: Formatted message response
     Handler-->>Client: 200 OK with messages
-
+```
+```
 ##### Sequence Diagram: Create Messages
 
 ```mermaid
@@ -430,21 +431,6 @@ sequenceDiagram
     else Messages not found
         Service-->>Handler: Not found error
         Handler-->>Client: 404 Not Found
-    end
-```
-    Database-->>Repository: Check results
-    Repository-->>Service: Conflict check results
-    
-    alt No conflicts
-        Service->>Repository: Insert new messages
-        Repository->>Database: INSERT queries
-        Database-->>Repository: Success confirmation
-        Repository-->>Service: Created message data
-        Service-->>Handler: Success response
-        Handler-->>Client: 201 Created with messages
-    else Conflicts exist
-        Service-->>Handler: Conflict error
-        Handler-->>Client: 409 Conflict
     end
 ```
 ##### Sequence Diagram: Delete Messages
@@ -523,49 +509,78 @@ sequenceDiagram
     Handler-->>Client: 200 OK with success message
 ```
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Handler
-    participant Service
-    participant Cache
-    participant Repository
-    participant Database
+#### 2. Search Messages
+- **Endpoint**: `GET /localization/messages`
+- **Description**: Searches for localization messages
+- **Query Parameters**:
+  - `tenantId` (required)
+  - `module` (optional)
+  - `locale` (optional)
+  - `codes` (optional, comma-separated)
+  - `limit` (optional, default: 20)
+  - `offset` (optional, default: 0)
+- **Response**: `200 OK` with matching messages
 
-    Client->>Handler: POST /messages/v1/_missing
-    Handler->>Service: FindMissingMessages(module)
-    
-    alt Module specified
-        Service->>Service: Load all messages for module
-    else All modules
-        Service->>Service: Load all messages
-    end
-    
-    Service->>Repository: Query all messages
-    Repository->>Database: SELECT all messages
-    Database-->>Repository: All message records
-    Repository-->>Service: Message data
-    
-    Service->>Service: Analyze message coverage
-    Service->>Service: Identify missing translations
-    
-    Service-->>Handler: Missing messages analysis
-    Handler-->>Client: 200 OK with missing codes by module/locale
+#### 3. Create Messages
+- **Endpoint**: `POST /localization/messages/v1/_create`
+- **Description**: Creates new localization messages (fails if exists)
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**: Same as upsert
+- **Response**: `201 Created` with created messages
+
+#### 4. Update Messages
+- **Endpoint**: `PUT /localization/messages/v1/_update`
+- **Description**: Updates existing localization messages
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "module": "auth",
+  "locale": "en_US",
+  "messages": [
+    {
+      "code": "welcome.message",
+      "message": "Updated welcome message"
+    }
+  ]
+}
 ```
+- **Response**: `200 OK` with updated messages
 
-    
-    Service->>Repository: Delete messages
-    Repository->>Database: DELETE queries
-    Database-->>Repository: Deletion results
-    Repository-->>Service: Deletion confirmation
-    
-    Service->>Cache: Invalidate related cache keys
-    Cache-->>Service: Cache invalidation complete
-    
-    Service-->>Handler: Success response
-    Handler-->>Client: 200 OK with success status
+#### 5. Delete Messages
+- **Endpoint**: `DELETE /localization/messages/v1/_delete`
+- **Description**: Deletes localization messages
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "messages": [
+    {
+      "module": "auth",
+      "locale": "en_US",
+      "code": "welcome.message"
+    }
+  ]
+}
 ```
+- **Response**: `200 OK` with success status
 
+#### 6. Cache Bust
+- **Endpoint**: `DELETE /localization/messages/cache-bust`
+- **Description**: Clears the entire message cache
+- **Response**: `200 OK` with success message
+
+#### 7. Find Missing Messages
+- **Endpoint**: `POST /localization/messages/v1/_missing`
+- **Description**: Finds missing localization messages
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "module": "auth"
+}
+```
+- **Response**: `200 OK` with missing message codes by module/locale
 
 ### gRPC API
 
@@ -574,7 +589,7 @@ The service also provides a gRPC API with identical functionality. The protobuf 
 ### Error Codes
 
 | HTTP Status | Error Code | Description |
-|-------------|------------|-------------|
+|-------------|------------|-----------|
 | 400 | BAD_REQUEST | Invalid request parameters |
 | 401 | UNAUTHORIZED | Authentication required |
 | 403 | FORBIDDEN | Insufficient permissions |
@@ -592,6 +607,7 @@ The service also provides a gRPC API with identical functionality. The protobuf 
 **Framework:** Standard Go log with context support
 
 **Log Levels:** DEBUG, INFO, WARN, ERROR
+
 
 **Example Log:**
 ```json
