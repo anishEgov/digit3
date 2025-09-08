@@ -103,35 +103,6 @@ graph TB
     M1 --> DB
 ```
 
-#### Sequence Diagram for Message Search
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Handler
-    participant Service
-    participant Cache
-    participant Repository
-    participant Database
-
-    Client->>Handler: Search Messages Request
-    Handler->>Service: SearchMessages(tenant, module, locale, codes)
-    
-    Service->>Cache: Get cached messages
-    Cache-->>Service: Cache miss
-    
-    Service->>Repository: Query messages from DB
-    Repository->>Database: SELECT query with filters
-    
-    Database-->>Repository: Message results
-    Repository-->>Service: Domain objects
-    
-    Service->>Cache: Store results in cache
-    Service-->>Handler: Formatted response
-    
-    Handler-->>Client: JSON response with messages
-```
-
 ## Features
 
 - ✅ Store and retrieve locale-specific messages with key-value pairs
@@ -310,12 +281,6 @@ CACHE_TYPE=redis
 
 
 ```
-
-
-
-
-
-
 
 #### 2. Search Messages
 - **Endpoint**: `GET /localization/messages`
