@@ -398,6 +398,7 @@ sequenceDiagram
     end
 ```
 
+
 ##### Sequence Diagram: Update Messages
 
 ```mermaid
