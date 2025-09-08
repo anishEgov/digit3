@@ -935,3 +935,575 @@ TBD
 **Last Updated:** January 2025
 **Version:** 3.0.0
 **Maintainer:** DIGIT Platform Team
+
+#### 7. Get Processes
+- **Endpoint**: `GET /workflow/v3/process`
+- **Description**: Retrieves a list of processes with optional filtering
+- **Query Parameters**:
+  - `id` (optional, array)
+  - `name` (optional, array)
+- **Response**: `200 OK` with list of processes
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /process (with query params)
+    Handler->>Service: GetProcesses(tenantId, ids, names)
+    
+    Service->>Repository: Query processes with filters
+    Repository->>Database: SELECT processes with WHERE conditions
+    Database-->>Repository: Process results
+    Repository-->>Service: Process list
+    
+    Service-->>Handler: Process list
+    Handler-->>Client: 200 OK with processes
+```
+
+#### 8. Get Process by ID
+- **Endpoint**: `GET /workflow/v3/process/{id}`
+- **Description**: Retrieves a specific process by its ID
+- **Response**: `200 OK` with process details
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /process/{id}
+    Handler->>Service: GetProcessByID(tenantId, id)
+    
+    Service->>Repository: Get process by ID
+    Repository->>Database: SELECT process WHERE id = ?
+    Database-->>Repository: Process data
+    Repository-->>Service: Process object
+    
+    Service-->>Handler: Process details
+    Handler-->>Client: 200 OK with process
+```
+
+#### 9. Update Process
+- **Endpoint**: `PUT /workflow/v3/process/{id}`
+- **Description**: Updates an existing process
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**: Process object with updated fields
+- **Response**: `200 OK` with updated process
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: PUT /process/{id}
+    Handler->>Service: UpdateProcess(process)
+    
+    Service->>Service: Validate process data
+    Service->>Repository: Update process
+    Repository->>Database: UPDATE process SET ... WHERE id = ?
+    Database-->>Repository: Updated process
+    Repository-->>Service: Process data
+    
+    Service-->>Handler: Updated process
+    Handler-->>Client: 200 OK with updated process
+```
+
+#### 10. Delete Process
+- **Endpoint**: `DELETE /workflow/v3/process/{id}`
+- **Description**: Deletes a process and its associated states/actions
+- **Response**: `204 No Content`
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: DELETE /process/{id}
+    Handler->>Service: DeleteProcess(tenantId, id)
+    
+    Service->>Repository: Check for dependent records
+    Repository->>Database: SELECT COUNT(*) FROM states WHERE process_id = ?
+    Database-->>Repository: Count result
+    Repository-->>Service: Dependency check
+    
+    alt Has dependencies
+        Service-->>Handler: Conflict error
+        Handler-->>Client: 409 Conflict
+    else No dependencies
+        Service->>Repository: Delete process
+        Repository->>Database: DELETE FROM processes WHERE id = ?
+        Database-->>Repository: Deletion confirmation
+        Repository-->>Service: Success
+        
+        Service-->>Handler: Success response
+        Handler-->>Client: 204 No Content
+    end
+```
+
+#### 11. Get States
+- **Endpoint**: `GET /workflow/v3/process/{processId}/state`
+- **Description**: Retrieves all states for a specific process
+- **Response**: `200 OK` with list of states
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /process/{id}/state
+    Handler->>Service: GetStatesByProcessID(tenantId, processId)
+    
+    Service->>Repository: Get states by process ID
+    Repository->>Database: SELECT states WHERE process_id = ?
+    Database-->>Repository: State results
+    Repository-->>Service: State list
+    
+    Service-->>Handler: State list
+    Handler-->>Client: 200 OK with states
+```
+
+#### 12. Get State by ID
+- **Endpoint**: `GET /workflow/v3/state/{id}`
+- **Description**: Retrieves a specific state by its ID
+- **Response**: `200 OK` with state details
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /state/{id}
+    Handler->>Service: GetStateByID(tenantId, id)
+    
+    Service->>Repository: Get state by ID
+    Repository->>Database: SELECT state WHERE id = ?
+    Database-->>Repository: State data
+    Repository-->>Service: State object
+    
+    Service-->>Handler: State details
+    Handler-->>Client: 200 OK with state
+```
+
+#### 13. Update State
+- **Endpoint**: `PUT /workflow/v3/state/{id}`
+- **Description**: Updates an existing state
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**: State object with updated fields
+- **Response**: `200 OK` with updated state
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: PUT /state/{id}
+    Handler->>Service: UpdateState(state)
+    
+    Service->>Service: Validate state data
+    Service->>Repository: Update state
+    Repository->>Database: UPDATE states SET ... WHERE id = ?
+    Database-->>Repository: Updated state
+    Repository-->>Service: State data
+    
+    Service-->>Handler: Updated state
+    Handler-->>Client: 200 OK with updated state
+```
+
+#### 14. Delete State
+- **Endpoint**: `DELETE /workflow/v3/state/{id}`
+- **Description**: Deletes a state and its associated actions
+- **Response**: `204 No Content`
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: DELETE /state/{id}
+    Handler->>Service: DeleteState(tenantId, id)
+    
+    Service->>Repository: Check for dependent records
+    Repository->>Database: SELECT COUNT(*) FROM actions WHERE current_state_id = ? OR next_state_id = ?
+    Database-->>Repository: Count result
+    Repository-->>Service: Dependency check
+    
+    alt Has dependencies
+        Service-->>Handler: Conflict error
+        Handler-->>Client: 409 Conflict
+    else No dependencies
+        Service->>Repository: Delete state
+        Repository->>Database: DELETE FROM states WHERE id = ?
+        Database-->>Repository: Deletion confirmation
+        Repository-->>Service: Success
+        
+        Service-->>Handler: Success response
+        Handler-->>Client: 204 No Content
+    end
+```
+
+#### 15. Get Actions
+- **Endpoint**: `GET /workflow/v3/state/{stateId}/action`
+- **Description**: Retrieves all actions for a specific state
+- **Query Parameters**:
+  - `currentState` (optional)
+  - `nextState` (optional)
+- **Response**: `200 OK` with list of actions
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /state/{id}/action (with query params)
+    Handler->>Service: GetActionsByStateID(tenantId, stateId, filters)
+    
+    Service->>Repository: Get actions by state ID with filters
+    Repository->>Database: SELECT actions WHERE current_state_id = ? AND filters
+    Database-->>Repository: Action results
+    Repository-->>Service: Action list
+    
+    Service-->>Handler: Action list
+    Handler-->>Client: 200 OK with actions
+```
+
+#### 16. Get Action by ID
+- **Endpoint**: `GET /workflow/v3/action/{id}`
+- **Description**: Retrieves a specific action by its ID
+- **Response**: `200 OK` with action details
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /action/{id}
+    Handler->>Service: GetActionByID(tenantId, id)
+    
+    Service->>Repository: Get action by ID
+    Repository->>Database: SELECT action WHERE id = ?
+    Database-->>Repository: Action data
+    Repository-->>Service: Action object
+    
+    Service-->>Handler: Action details
+    Handler-->>Client: 200 OK with action
+```
+
+#### 17. Update Action
+- **Endpoint**: `PUT /workflow/v3/action/{id}`
+- **Description**: Updates an existing action
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**: Action object with updated fields
+- **Response**: `200 OK` with updated action
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: PUT /action/{id}
+    Handler->>Service: UpdateAction(action)
+    
+    Service->>Service: Validate action data
+    Service->>Repository: Update action
+    Repository->>Database: UPDATE actions SET ... WHERE id = ?
+    Database-->>Repository: Updated action
+    Repository-->>Service: Action data
+    
+    Service-->>Handler: Updated action
+    Handler-->>Client: 200 OK with updated action
+```
+
+#### 18. Delete Action
+- **Endpoint**: `DELETE /workflow/v3/action/{id}`
+- **Description**: Deletes an action
+- **Response**: `204 No Content`
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: DELETE /action/{id}
+    Handler->>Service: DeleteAction(tenantId, id)
+    
+    Service->>Repository: Delete action
+    Repository->>Database: DELETE FROM actions WHERE id = ?
+    Database-->>Repository: Deletion confirmation
+    Repository-->>Service: Success
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 204 No Content
+```
+
+#### 19. Get Transitions
+- **Endpoint**: `GET /workflow/v3/transition`
+- **Description**: Retrieves process instance transitions/history
+- **Query Parameters**:
+  - `entityId` (required)
+  - `processId` (optional)
+  - `history` (optional, boolean)
+- **Response**: `200 OK` with transition history
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /transition (with query params)
+    Handler->>Service: GetTransitions(tenantId, entityId, processId, history)
+    
+    Service->>Repository: Get transitions by entity
+    Repository->>Database: SELECT process_instances WHERE entity_id = ? AND filters
+    Database-->>Repository: Instance results
+    Repository-->>Service: Instance list
+    
+    Service-->>Handler: Transition history
+    Handler-->>Client: 200 OK with transitions
+```
+
+#### 20. Create Escalation Config
+- **Endpoint**: `POST /workflow/v3/process/{processId}/escalation`
+- **Description**: Creates a new escalation configuration for a process
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "processId": "process-uuid",
+  "stateCode": "PENDING_REVIEW",
+  "escalationAction": "AUTO_APPROVE",
+  "stateSlaMinutes": 60,
+  "processSlaMinutes": 1440
+}
+```
+- **Response**: `201 Created` with created escalation config
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: POST /process/{id}/escalation
+    Handler->>Service: CreateEscalationConfig(config)
+    
+    Service->>Service: Validate escalation config
+    Service->>Repository: Create escalation config
+    Repository->>Database: INSERT escalation_configs
+    Database-->>Repository: Created config
+    Repository-->>Service: Config data
+    
+    Service-->>Handler: Created config
+    Handler-->>Client: 201 Created with config
+```
+
+#### 21. Get Escalation Configs
+- **Endpoint**: `GET /workflow/v3/process/{processId}/escalation`
+- **Description**: Retrieves escalation configurations for a process
+- **Response**: `200 OK` with list of escalation configs
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /process/{id}/escalation
+    Handler->>Service: GetEscalationConfigsByProcessID(tenantId, processId)
+    
+    Service->>Repository: Get escalation configs by process
+    Repository->>Database: SELECT escalation_configs WHERE process_id = ?
+    Database-->>Repository: Config results
+    Repository-->>Service: Config list
+    
+    Service-->>Handler: Escalation configs
+    Handler-->>Client: 200 OK with configs
+```
+
+#### 22. Get Escalation Config by ID
+- **Endpoint**: `GET /workflow/v3/escalation/{id}`
+- **Description**: Retrieves a specific escalation configuration by its ID
+- **Response**: `200 OK` with escalation config details
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /escalation/{id}
+    Handler->>Service: GetEscalationConfigByID(tenantId, id)
+    
+    Service->>Repository: Get escalation config by ID
+    Repository->>Database: SELECT escalation_configs WHERE id = ?
+    Database-->>Repository: Config data
+    Repository-->>Service: Config object
+    
+    Service-->>Handler: Config details
+    Handler-->>Client: 200 OK with config
+```
+
+#### 23. Update Escalation Config
+- **Endpoint**: `PUT /workflow/v3/escalation/{id}`
+- **Description**: Updates an existing escalation configuration
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**: Escalation config object with updated fields
+- **Response**: `200 OK` with updated escalation config
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: PUT /escalation/{id}
+    Handler->>Service: UpdateEscalationConfig(config)
+    
+    Service->>Service: Validate escalation config
+    Service->>Repository: Update escalation config
+    Repository->>Database: UPDATE escalation_configs SET ... WHERE id = ?
+    Database-->>Repository: Updated config
+    Repository-->>Service: Config data
+    
+    Service-->>Handler: Updated config
+    Handler-->>Client: 200 OK with updated config
+```
+
+#### 24. Delete Escalation Config
+- **Endpoint**: `DELETE /workflow/v3/escalation/{id}`
+- **Description**: Deletes an escalation configuration
+- **Response**: `204 No Content`
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: DELETE /escalation/{id}
+    Handler->>Service: DeleteEscalationConfig(tenantId, id)
+    
+    Service->>Repository: Delete escalation config
+    Repository->>Database: DELETE FROM escalation_configs WHERE id = ?
+    Database-->>Repository: Deletion confirmation
+    Repository-->>Service: Success
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 204 No Content
+```
+
+#### 25. Search Escalated Applications
+- **Endpoint**: `GET /workflow/v3/auto/_search`
+- **Description**: Searches for escalated process instances
+- **Query Parameters**:
+  - `processId` (optional)
+  - `limit` (optional, default: 20)
+  - `offset` (optional, default: 0)
+- **Response**: `200 OK` with escalated instances
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+
+    Client->>Handler: GET /auto/_search (with query params)
+    Handler->>Service: SearchEscalatedApplications(tenantId, processId, limit, offset)
+    
+    Service->>Repository: Search escalated instances
+    Repository->>Database: SELECT process_instances WHERE escalated = true AND filters
+    Database-->>Repository: Instance results
+    Repository-->>Service: Instance list
+    
+    Service-->>Handler: Escalated instances
+    Handler-->>Client: 200 OK with escalated applications
+```
+
