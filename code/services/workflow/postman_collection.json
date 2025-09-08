@@ -1,0 +1,1704 @@
+{
+  "info": {
+    "name": "Workflow Service API Tests",
+    "description": "Comprehensive test collection for Workflow Service APIs including Process, State, Action, Transition, and Auto-Escalation management with complete workflow examples. Updated with escalation functionality following Java service pattern.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/workflow/v3"
+    },
+    {
+      "key": "tenantId",
+      "value": "test-tenant"
+    },
+    {
+      "key": "processId",
+      "value": ""
+    },
+    {
+      "key": "stateId",
+      "value": ""
+    },
+    {
+      "key": "actionId",
+      "value": ""
+    },
+    {
+      "key": "buildingPermitProcessId",
+      "value": "8491c7ed-c8ee-4fd0-89a2-b0ef35d0f570"
+    },
+    {
+      "key": "escalationConfigId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Process Management",
+      "item": [
+        {
+          "name": "Create Process",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('processId', response.id);",
+                  "    pm.test('Process created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.name).to.equal('Test Process');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Process\",\n  \"code\": \"TEST_PROCESS\",\n  \"description\": \"A test process for API validation\",\n  \"version\": \"1.0\",\n  \"sla\": 86400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Processes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Process",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Test Process\",\n  \"description\": \"Updated description for test process\",\n  \"version\": \"1.1\",\n  \"sla\": 72000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Process Definitions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/definition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "definition"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "State Management",
+      "item": [
+        {
+          "name": "Create Initial State (APPLIED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('stateId', response.id);",
+                  "    pm.test('State created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.code).to.equal('APPLIED');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPLIED\",\n  \"name\": \"Application Submitted\",\n  \"isInitial\": true,\n  \"isParallel\": false,\n  \"isJoin\": false,\n  \"sla\": 86400\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Verification State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"VERIFY\",\n  \"name\": \"Under Verification\",\n  \"isInitial\": false,\n  \"isParallel\": false,\n  \"isJoin\": false,\n  \"sla\": 72000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Approved State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"APPROVED\",\n  \"name\": \"Application Approved\",\n  \"isInitial\": false,\n  \"isParallel\": false,\n  \"isJoin\": false,\n  \"sla\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Rejected State",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"REJECTED\",\n  \"name\": \"Application Rejected\",\n  \"isInitial\": false,\n  \"isParallel\": false,\n  \"isJoin\": false,\n  \"sla\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get States for Process",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/state",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "state"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get State by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update State",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Under Verification - Updated\",\n  \"sla\": 48000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Action Management",
+      "item": [
+        {
+          "name": "Create Submit for Verification Action",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('actionId', response.id);",
+                  "    pm.test('Action created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.name).to.equal('Submit for Verification');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Submit for Verification\",\n  \"currentState\": \"{{stateId}}\",\n  \"nextState\": \"VERIFY\",\n  \"roles\": [\"APPLICANT\"],\n  \"attributeValidation\": {\n    \"assigneeCheck\": false\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}",
+                "action"
+              ]
+            },
+            "description": "Creates action from APPLIED state to VERIFY state"
+          }
+        },
+        {
+          "name": "Create Approve Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Approve\",\n  \"currentState\": \"VERIFY_STATE_ID\",\n  \"nextState\": \"APPROVED\",\n  \"roles\": [\"VERIFIER\"],\n  \"attributeValidation\": {\n    \"assigneeCheck\": false\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/VERIFY_STATE_ID/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "VERIFY_STATE_ID",
+                "action"
+              ]
+            },
+            "description": "NOTE: Replace VERIFY_STATE_ID with actual verification state ID"
+          }
+        },
+        {
+          "name": "Create Reject Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Reject\",\n  \"currentState\": \"VERIFY_STATE_ID\",\n  \"nextState\": \"REJECTED\",\n  \"roles\": [\"VERIFIER\"],\n  \"attributeValidation\": {\n    \"assigneeCheck\": false\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/VERIFY_STATE_ID/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "VERIFY_STATE_ID",
+                "action"
+              ]
+            },
+            "description": "NOTE: Replace VERIFY_STATE_ID with actual verification state ID"
+          }
+        },
+        {
+          "name": "Create Send Back Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Send Back\",\n  \"currentState\": \"VERIFY_STATE_ID\",\n  \"nextState\": \"{{stateId}}\",\n  \"roles\": [\"VERIFIER\"],\n  \"attributeValidation\": {\n    \"assigneeCheck\": false\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/state/VERIFY_STATE_ID/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "VERIFY_STATE_ID",
+                "action"
+              ]
+            },
+            "description": "NOTE: Replace VERIFY_STATE_ID with actual verification state ID"
+          }
+        },
+        {
+          "name": "Get Actions for State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}/action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}",
+                "action"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Action by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/action/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "action",
+                "{{actionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Action (⚠️ Response Format Issue)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Approve Application\",\n  \"roles\": [\"VERIFIER\", \"SUPERVISOR\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/action/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "action",
+                "{{actionId}}"
+              ]
+            },
+            "description": "⚠️ Note: API works but response format may show null values"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complete Linear Workflow Test (API Validated)",
+      "item": [
+        {
+          "name": "Step 1: APPLIED → VERIFY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-applicant"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-001\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Testing API transition - submit application\",\n  \"attributes\": {\n    \"applicationType\": [\"New License\"],\n    \"priority\": [\"High\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ TESTED: Creates first transition from APPLIED to VERIFY state"
+          }
+        },
+        {
+          "name": "Step 2: VERIFY → APPROVED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-001\",\n  \"action\": \"Approve\",\n  \"comment\": \"Application meets all requirements - approved\",\n  \"attributes\": {\n    \"verificationStatus\": [\"Complete\"],\n    \"approvedBy\": [\"John Doe\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ TESTED: Approves application from VERIFY to APPROVED state"
+          }
+        },
+        {
+          "name": "Alternative: VERIFY → REJECTED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-reject\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Testing reject flow\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "First submit, then use 'Execute Reject' below"
+          }
+        },
+        {
+          "name": "Execute Reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-reject\",\n  \"action\": \"Reject\",\n  \"comment\": \"Application does not meet requirements - rejected\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ TESTED: Rejects application from VERIFY to REJECTED state"
+          }
+        },
+        {
+          "name": "Send Back Flow - Step 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-applicant-2"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-sendback\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Testing send back flow\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Back Flow - Execute Send Back",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-sendback\",\n  \"action\": \"Send Back\",\n  \"comment\": \"Missing documents - sending back for correction\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ TESTED: Sends back from VERIFY to APPLIED state"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transition APIs",
+      "item": [
+        {
+          "name": "Get Process Instance WITH History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=api-test-entity-001&processId={{processId}}&history=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "api-test-entity-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                },
+                {
+                  "key": "history",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "✅ TESTED: Returns complete audit trail of all transitions"
+          }
+        },
+        {
+          "name": "Get Process Instance WITHOUT History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=api-test-entity-001&processId={{processId}}&history=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "api-test-entity-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                },
+                {
+                  "key": "history",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "✅ TESTED: Returns only the latest process instance"
+          }
+        },
+        {
+          "name": "Error Test - Invalid Action Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{processId}}\",\n  \"entityId\": \"api-test-entity-error\",\n  \"action\": \"Invalid Action\",\n  \"comment\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "❌ TESTED: Should fail with 'action not valid for current state' error"
+          }
+        },
+        {
+          "name": "Error Test - Invalid Process ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"invalid-process-id\",\n  \"entityId\": \"api-test-entity-error\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "❌ TESTED: Should fail with 'cannot find any states for this process definition' error"
+          }
+        },
+        {
+          "name": "Error Test - Missing Tenant Header",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/process",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process"
+              ]
+            },
+            "description": "❌ TESTED: Should fail with 'X-Tenant-ID header is required' error"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Building Permit Workflow (WORKING EXAMPLE)",
+      "item": [
+        {
+          "name": "Get Building Permit Process Definition",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/definition?id={{buildingPermitProcessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "definition"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{buildingPermitProcessId}}"
+                }
+              ]
+            },
+            "description": "Shows complete process with all states and actions"
+          }
+        },
+        {
+          "name": "Step 1: APPLIED → VERIFY",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-applicant"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-001\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Submitting building permit for verification via Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: No assignee check required for this action"
+          }
+        },
+        {
+          "name": "Step 2: VERIFY → APPROVED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-001\",\n  \"action\": \"Approve\",\n  \"comment\": \"Approving building permit after verification\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: Transitions from VERIFY to APPROVED state"
+          }
+        },
+        {
+          "name": "Alternative: VERIFY → REJECTED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-reject\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"Step 1 for reject test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "First submit, then use the 'Reject Application' test below"
+          }
+        },
+        {
+          "name": "Reject Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-reject\",\n  \"action\": \"Reject\",\n  \"comment\": \"Rejecting building permit - does not meet requirements\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: Transitions from VERIFY to REJECTED state"
+          }
+        },
+        {
+          "name": "Send Back for Corrections",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-sendback\",\n  \"action\": \"Submit for Verification\",\n  \"comment\": \"First submit\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "First submit, then send back to APPLIED state"
+          }
+        },
+        {
+          "name": "Execute Send Back",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "building-verifier"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processId\": \"{{buildingPermitProcessId}}\",\n  \"entityId\": \"building-permit-postman-sendback\",\n  \"action\": \"Send Back\",\n  \"comment\": \"Sending back for missing documents\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transition",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ]
+            },
+            "description": "✅ WORKS: Sends application back from VERIFY to APPLIED state"
+          }
+        },
+        {
+          "name": "Get Latest Status (No History)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=building-permit-postman-001&processId={{buildingPermitProcessId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "building-permit-postman-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{buildingPermitProcessId}}"
+                }
+              ]
+            },
+            "description": "Returns only the latest process instance"
+          }
+        },
+        {
+          "name": "Get Full History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transition?entityId=building-permit-postman-001&processId={{buildingPermitProcessId}}&history=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "transition"
+              ],
+              "query": [
+                {
+                  "key": "entityId",
+                  "value": "building-permit-postman-001"
+                },
+                {
+                  "key": "processId",
+                  "value": "{{buildingPermitProcessId}}"
+                },
+                {
+                  "key": "history",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Returns complete audit trail of all transitions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Escalation Configuration Management",
+      "item": [
+        {
+          "name": "Create Escalation Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('escalationConfigId', response.id);",
+                  "    pm.test('Escalation config created successfully', () => {",
+                  "        pm.expect(response.id).to.exist;",
+                  "        pm.expect(response.stateCode).to.equal('REVIEW');",
+                  "        pm.expect(response.escalationAction).to.equal('AUTO_ESCALATE');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateCode\": \"REVIEW\",\n  \"escalationAction\": \"AUTO_ESCALATE\",\n  \"stateSlaMinutes\": 60,\n  \"processSlaMinutes\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/escalation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "escalation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Escalation Configs for Process",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}/escalation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}",
+                "escalation"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Escalation Config by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escalation/{{escalationConfigId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escalation",
+                "{{escalationConfigId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Escalation Config",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stateCode\": \"REVIEW\",\n  \"escalationAction\": \"AUTO_ESCALATE\",\n  \"stateSlaMinutes\": 120,\n  \"processSlaMinutes\": 240\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/escalation/{{escalationConfigId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escalation",
+                "{{escalationConfigId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Escalation Config",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escalation/{{escalationConfigId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escalation",
+                "{{escalationConfigId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auto-Escalation Operations",
+      "item": [
+        {
+          "name": "Trigger Auto-Escalation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.test('Auto-escalation executed successfully', () => {",
+                  "        pm.expect(response.totalFound).to.be.a('number');",
+                  "        pm.expect(response.totalEscalated).to.be.a('number');",
+                  "        pm.expect(response.totalEscalated).to.be.at.most(response.totalFound);",
+                  "    });",
+                  "    if (response.escalatedInstances && response.escalatedInstances.length > 0) {",
+                  "        pm.test('Escalated instances have correct structure', () => {",
+                  "            const instance = response.escalatedInstances[0];",
+                  "            pm.expect(instance.escalated).to.be.true;",
+                  "            pm.expect(instance.action).to.include('ESCALATE');",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-admin"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attributes\": {\n    \"roles\": [\"AUTO_ESCALATE\", \"ADMIN\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auto/DOC_APPROVAL/_escalate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auto",
+                "DOC_APPROVAL",
+                "_escalate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Escalated Applications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.test('Search escalated applications successful', () => {",
+                  "        pm.expect(response).to.be.an('array');",
+                  "    });",
+                  "    if (response.length > 0) {",
+                  "        pm.test('Escalated instances have correct escalated field', () => {",
+                  "            response.forEach(instance => {",
+                  "                pm.expect(instance.escalated).to.be.true;",
+                  "                pm.expect(instance.id).to.exist;",
+                  "                pm.expect(instance.processId).to.exist;",
+                  "            });",
+                  "        });",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auto/_search?processId={{processId}}&limit=50&offset=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auto",
+                "_search"
+              ],
+              "query": [
+                {
+                  "key": "processId",
+                  "value": "{{processId}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search All Escalated Applications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "api-test-user"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auto/_search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auto",
+                "_search"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "Delete Action",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/action/{{actionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "action",
+                "{{actionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete State",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/state/{{stateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "state",
+                "{{stateId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Process",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Tenant-ID",
+                "value": "{{tenantId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/process/{{processId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "process",
+                "{{processId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 
