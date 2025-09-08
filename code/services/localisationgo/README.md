@@ -289,7 +289,7 @@ CACHE_TYPE=redis
 ### REST API Endpoints
 
 #### 1. Upsert Messages
-- **Endpoint**: `POST /localization/messages/v1/_upsert`
+- **Endpoint**: `PUT /localization/messages/_upsert`
 - **Description**: Creates or updates localization messages
 - **Headers**: `X-Tenant-ID: {tenantId}`
 - **Request Body**:
@@ -308,38 +308,28 @@ CACHE_TYPE=redis
 - **Response**: `201 Created` with created/updated messages
 
 
-##### Sequence Diagram: Upsert Messages
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Handler
-    participant Service
-    participant Cache
-    participant Repository
-    participant Database
-
-    Client->>Handler: POST /messages/v1/_upsert
-    Handler->>Service: UpsertMessages(messages)
-    
-    Service->>Repository: Check existing messages
-    Repository->>Database: SELECT query for existing records
-    Database-->>Repository: Existing records
-    Repository-->>Service: Existing message data
-    
-    Service->>Repository: Insert/Update messages
-    Repository->>Database: INSERT/UPDATE queries
-    Database-->>Repository: Success confirmation
-    Repository-->>Service: Operation results
-    
-    Service->>Cache: Invalidate related cache keys
-    Cache-->>Service: Cache invalidation complete
-    
-    Service-->>Handler: Success response
-    Handler-->>Client: 201 Created with messages
 ```
 
-##### Sequence Diagram: Search Messages
+
+
+
+
+
+
+#### 2. Search Messages
+- **Endpoint**: `GET /localization/messages`
+- **Description**: Searches for localization messages
+- **Query Parameters**:
+  - `tenantId` (required)
+  - `module` (optional)
+  - `locale` (optional)
+  - `codes` (optional, comma-separated)
+  - `limit` (optional, default: 20)
+  - `offset` (optional, default: 0)
+- **Response**: `200 OK` with matching messages
+
+**Sequence Diagram:**
 
 ```mermaid
 sequenceDiagram
@@ -366,8 +356,16 @@ sequenceDiagram
     Service-->>Handler: Formatted message response
     Handler-->>Client: 200 OK with messages
 ```
-```
-##### Sequence Diagram: Create Messages
+
+
+#### 3. Create Messages
+- **Endpoint**: `POST /localization/messages`
+- **Description**: Creates new localization messages (fails if exists)
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**: Same as upsert
+- **Response**: `201 Created` with created messages
+
+**Sequence Diagram:**
 
 ```mermaid
 sequenceDiagram
@@ -377,7 +375,7 @@ sequenceDiagram
     participant Repository
     participant Database
 
-    Client->>Handler: POST /messages/v1/_create
+    Client->>Handler: POST /messages
     Handler->>Service: CreateMessages(messages)
     
     Service->>Repository: Check for existing messages
@@ -399,8 +397,26 @@ sequenceDiagram
 ```
 
 
+#### 4. Update Messages
+- **Endpoint**: `PUT /localization/messages`
+- **Description**: Updates existing localization messages
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "module": "auth",
+  "locale": "en_US",
+  "messages": [
+    {
+      "code": "welcome.message",
+      "message": "Updated welcome message"
+    }
+  ]
+}
+```
+- **Response**: `200 OK` with updated messages
 
-##### Sequence Diagram: Update Messages
+**Sequence Diagram:**
 
 ```mermaid
 sequenceDiagram
@@ -411,7 +427,7 @@ sequenceDiagram
     participant Repository
     participant Database
 
-    Client->>Handler: PUT /messages/v1/_update
+    Client->>Handler: PUT /messages
     Handler->>Service: UpdateMessages(module, locale, messages)
     
     Service->>Repository: Check existing messages
@@ -436,7 +452,26 @@ sequenceDiagram
     end
 ```
 
-##### Sequence Diagram: Delete Messages
+
+#### 5. Delete Messages
+- **Endpoint**: `DELETE /localization/messages`
+- **Description**: Deletes localization messages
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "messages": [
+    {
+      "module": "auth",
+      "locale": "en_US",
+      "code": "welcome.message"
+    }
+  ]
+}
+```
+- **Response**: `200 OK` with success status
+
+**Sequence Diagram:**
 
 ```mermaid
 sequenceDiagram
@@ -447,7 +482,7 @@ sequenceDiagram
     participant Repository
     participant Database
 
-    Client->>Handler: DELETE /messages/v1/_delete
+    Client->>Handler: DELETE /messages
     Handler->>Service: DeleteMessages(messages)
     
     Service->>Repository: Delete messages
@@ -462,7 +497,45 @@ sequenceDiagram
     Handler-->>Client: 200 OK with success status
 ```
 
-##### Sequence Diagram: Find Missing Messages
+
+
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Cache
+
+    Client->>Handler: DELETE /cache/_bust
+    Handler->>Service: BustCache()
+    
+    Service->>Cache: Clear all cache keys
+    Cache-->>Service: Cache clearing confirmation
+    
+    Service-->>Handler: Success response
+    Handler-->>Client: 200 OK with success message
+```
+
+#### 6. Cache Bust
+- **Endpoint**: `DELETE /localization/cache/_bust`
+- **Description**: Clears the entire message cache
+- **Response**: `200 OK` with success message
+
+#### 7. Find Missing Messages
+- **Endpoint**: `POST /localization/messages/_missing`
+- **Description**: Finds missing localization messages
+- **Headers**: `X-Tenant-ID: {tenantId}`
+- **Request Body**:
+```json
+{
+  "module": "auth"
+}
+```
+- **Response**: `200 OK` with missing message codes by module/locale
+
+**Sequence Diagram:**
 
 ```mermaid
 sequenceDiagram
@@ -473,7 +546,7 @@ sequenceDiagram
     participant Repository
     participant Database
 
-    Client->>Handler: POST /messages/v1/_missing
+    Client->>Handler: POST /messages/_missing
     Handler->>Service: FindMissingMessages(module)
     
     alt Module specified
@@ -494,97 +567,6 @@ sequenceDiagram
     Handler-->>Client: 200 OK with missing codes by module/locale
 ```
 
-##### Sequence Diagram: Cache Bust
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Handler
-    participant Service
-    participant Cache
-
-    Client->>Handler: DELETE /messages/cache-bust
-    Handler->>Service: BustCache()
-    
-    Service->>Cache: Clear all cache keys
-    Cache-->>Service: Cache clearing confirmation
-    
-    Service-->>Handler: Success response
-    Handler-->>Client: 200 OK with success message
-```
-
-#### 2. Search Messages
-- **Endpoint**: `GET /localization/messages`
-- **Description**: Searches for localization messages
-- **Query Parameters**:
-  - `tenantId` (required)
-  - `module` (optional)
-  - `locale` (optional)
-  - `codes` (optional, comma-separated)
-  - `limit` (optional, default: 20)
-  - `offset` (optional, default: 0)
-- **Response**: `200 OK` with matching messages
-
-#### 3. Create Messages
-- **Endpoint**: `POST /localization/messages/v1/_create`
-- **Description**: Creates new localization messages (fails if exists)
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**: Same as upsert
-- **Response**: `201 Created` with created messages
-
-#### 4. Update Messages
-- **Endpoint**: `PUT /localization/messages/v1/_update`
-- **Description**: Updates existing localization messages
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**:
-```json
-{
-  "module": "auth",
-  "locale": "en_US",
-  "messages": [
-    {
-      "code": "welcome.message",
-      "message": "Updated welcome message"
-    }
-  ]
-}
-```
-- **Response**: `200 OK` with updated messages
-
-#### 5. Delete Messages
-- **Endpoint**: `DELETE /localization/messages/v1/_delete`
-- **Description**: Deletes localization messages
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**:
-```json
-{
-  "messages": [
-    {
-      "module": "auth",
-      "locale": "en_US",
-      "code": "welcome.message"
-    }
-  ]
-}
-```
-- **Response**: `200 OK` with success status
-
-#### 6. Cache Bust
-- **Endpoint**: `DELETE /localization/messages/cache-bust`
-- **Description**: Clears the entire message cache
-- **Response**: `200 OK` with success message
-
-#### 7. Find Missing Messages
-- **Endpoint**: `POST /localization/messages/v1/_missing`
-- **Description**: Finds missing localization messages
-- **Headers**: `X-Tenant-ID: {tenantId}`
-- **Request Body**:
-```json
-{
-  "module": "auth"
-}
-```
-- **Response**: `200 OK` with missing message codes by module/locale
 
 ### gRPC API
 
