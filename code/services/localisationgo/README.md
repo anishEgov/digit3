@@ -144,9 +144,9 @@ graph TB
    redis-server
    ```
 
-4. Run migrations
+4. Run database migrations
    ```bash
-   go run ./cmd/server --migrate
+   ./scripts/migrate.sh
    ```
 
 5. Start service
@@ -156,18 +156,58 @@ graph TB
 
 ### Docker Production Setup
 
-**Build the image:**
+**Build the images:**
 ```bash
+# Build migration image
+docker build -f Dockerfile.migrator -t localisationgo-migrator:latest .
+
+# Build main service image
 docker build -t localisationgo:latest .
 ```
 
-**Run with environment variables:**
+**Run migrations first:**
+```bash
+docker run --rm \
+  -e DB_HOST=your-db-host \
+  -e DB_PORT=5432 \
+  -e DB_USER=your-db-user \
+  -e DB_PASSWORD=your-db-password \
+  -e DB_NAME=your-db-name \
+  localisationgo-migrator:latest
+```
+
+**Then run the main service:**
 ```bash
 docker run -p 8088:8088 \
   -e DB_HOST=your-db-host \
   -e DB_PASSWORD=your-db-password \
   -e REDIS_HOST=your-redis-host \
   localisationgo:latest
+```
+
+**Or use as init container in Kubernetes:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: localisationgo
+spec:
+  template:
+    spec:
+      initContainers:
+      - name: migrator
+        image: localisationgo-migrator:latest
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: password
+      containers:
+      - name: localisationgo
+        image: localisationgo:latest
 ```
 
 ## Configuration
@@ -621,11 +661,20 @@ export OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14268/api/traces
 
 #### Running Migrations
 ```bash
-# Automatic (on startup)
-go run ./cmd/server
+# Local development
+./scripts/migrate.sh
 
-# Manual migration
-go run ./internal/migration --path ./migrations
+# Check migration status
+./scripts/migrate.sh info
+
+# Docker (migration container)
+docker run --rm \
+  -e DB_HOST=localhost \
+  -e DB_PASSWORD=your-password \
+  localisationgo-migrator:latest
+
+# Kubernetes (init container)
+# Migrations run automatically before service starts
 ```
 
 #### Backup Strategy
@@ -733,6 +782,10 @@ localisationgo/
 ├── api/proto/                    # Protocol buffer definitions
 ├── cmd/server/                   # Application entrypoint
 ├── configs/                      # Configuration management
+├── db/                          # Database migration files
+│   ├── migrations/             # SQL migration files (Flyway)
+│   ├── config/                 # Flyway configuration files
+│   └── tools/                  # Migration tools (auto-downloaded)
 ├── internal/                     # Private application code
 │   ├── cache/                   # Cache implementations
 │   ├── common/                  # Shared utilities
@@ -741,10 +794,8 @@ localisationgo/
 │   │   ├── ports/              # Interfaces
 │   │   └── services/           # Business logic
 │   ├── handlers/               # HTTP/gRPC handlers
-│   ├── migration/              # Database migrations
 │   ├── platform/               # Platform-specific code
 │   └── repositories/           # Data access layer
-├── migrations/                  # SQL migration files
 ├── pkg/dtos/                    # Data transfer objects
 ├── scripts/                     # Build/utility scripts
 └── tests/                       # Integration tests

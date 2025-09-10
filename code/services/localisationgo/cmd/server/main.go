@@ -23,7 +23,6 @@ import (
 	"localisationgo/internal/core/ports"
 	"localisationgo/internal/core/services"
 	"localisationgo/internal/handlers"
-	"localisationgo/internal/migration"
 	dbpostgres "localisationgo/internal/repositories/postgres"
 )
 
@@ -53,18 +52,6 @@ func main() {
 	sqlDB.SetMaxOpenConns(25)                 // Maximum number of open connections
 	sqlDB.SetMaxIdleConns(10)                 // Maximum number of idle connections
 	sqlDB.SetConnMaxLifetime(5 * time.Minute) // Maximum connection lifetime
-
-	// Apply database migrations
-	migrationConfig := &migration.Config{
-		Enabled: true,
-		Path:    "migrations",
-		Timeout: 30 * time.Second,
-	}
-	migrationRunner := migration.NewRunner(sqlDB, migrationConfig)
-	if err := migrationRunner.Run(context.Background()); err != nil {
-		log.Fatalf("failed to apply migrations: %v", err)
-	}
-	log.Println("Database migrations applied successfully")
 
 	// Initialize Cache
 	var messageCache ports.MessageCache
