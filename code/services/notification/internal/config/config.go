@@ -84,7 +84,7 @@ func Load() *Config {
 
 		//Migration script configuration
 		MigrationScriptPath: getEnv("MIGRATION_SCRIPT_PATH", "./db/migrations"),
-		MigrationEnabled:    getEnvAsBool("MIGRATION_ENABLED", true),
+		MigrationEnabled:    getEnvAsBool("MIGRATION_ENABLED", false),
 		MigrationTimeout:    getEnvAsDuration("MIGRATION_TIMEOUT", 5*time.Minute),
 
 		//Template config configuration

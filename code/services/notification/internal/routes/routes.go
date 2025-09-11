@@ -32,10 +32,10 @@ func SetupRoutes(db *gorm.DB, cfg *config.Config) (*gin.Engine, *service.EmailSe
 		// Notification Template Management Routes
 		template := api.Group("/template")
 		{
-			template.POST("/", templateHandler.CreateTemplate)
-			template.PUT("/", templateHandler.UpdateTemplate)
-			template.GET("/", templateHandler.SearchTemplates)
-			template.DELETE("/", templateHandler.DeleteTemplate)
+			template.POST("", templateHandler.CreateTemplate)
+			template.PUT("", templateHandler.UpdateTemplate)
+			template.GET("", templateHandler.SearchTemplates)
+			template.DELETE("", templateHandler.DeleteTemplate)
 			template.POST("/preview", templateHandler.PreviewTemplate)
 		}
 
