@@ -1,0 +1,284 @@
+{
+	"info": {
+		"_postman_id": "8217e07e-191e-482a-ba8c-a76ae68e3b18",
+		"name": "Notification",
+		"description": "APIs to manage notification templates with dynamic placeholder rendering, and to send notifications via Email and SMS.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32125612"
+	},
+	"item": [
+		{
+			"name": "Templates",
+			"item": [
+				{
+					"name": "Create notification template",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {}
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "pg",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"templateId\": \"user-notify\",\n  \"version\": \"1.0.0\",\n  \"type\": \"EMAIL\",\n  \"subject\": \"Welcome to DIGIT\",\n  \"content\": \"Hello {{ .name }}, your account is ready.\",\n  \"isHTML\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/notification/template",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"notification",
+								"template"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update notification template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "pg"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"c637121b-2ca9-40da-9e36-15c500631c94\",\n    \"templateId\": \"user-notify\",\n    \"tenantId\": \"pg\",\n    \"version\": \"1.0.0\",\n    \"type\": \"EMAIL\",\n    \"subject\": \"Welcome to DIGIT\",\n    \"content\": \"Hello {{ .name }}, your account is ready.\",\n    \"isHTML\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/notification/template",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"notification",
+								"template"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search notification templates",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "pg",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/notification/template?ids=dc5a16b4-3c57-4d9d-b786-467afa2ae95e&templateId=user-notify&version=1.0.0&type=SMS",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"notification",
+								"template"
+							],
+							"query": [
+								{
+									"key": "ids",
+									"value": "dc5a16b4-3c57-4d9d-b786-467afa2ae95e"
+								},
+								{
+									"key": "templateId",
+									"value": "user-notify"
+								},
+								{
+									"key": "version",
+									"value": "1.0.0"
+								},
+								{
+									"key": "type",
+									"value": "SMS"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete notification template",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "pg"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8080/notification/template?templateId=user-notify&version=1.0.0",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"notification",
+								"template"
+							],
+							"query": [
+								{
+									"key": "templateId",
+									"value": "user-notify"
+								},
+								{
+									"key": "version",
+									"value": "1.0.0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Preview notification template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tenant-ID",
+								"value": "pg"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"templateId\": \"user-notify\",\n  \"version\": \"1.0.0\",\n  \"enrich\": false,\n  \"payload\": {\n    \"name\": \"Varun\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/notification/template/preview",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"notification",
+								"template",
+								"preview"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for managing notification templates"
+		},
+		{
+			"name": "Send email notification",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"templateId\": \"welcome-to-sandbox\",\n  \"version\": \"1.0.0\",\n  \"emailIds\": [\"nvkreddy01@gmail.com\"],\n  \"enrich\": false,\n  \"payload\": {\n    \"name\": \"Varun\"\n  },\n  \"attachments\": [\"5ff9a1a9-903c-4bd3-9d2d-c5f3781b69d4\",\"d3cdd9e4-6bd4-42b0-a6fd-7e4fe29ef4db\"]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/notification/email/send",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"notification",
+						"email",
+						"send"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Send SMS notification",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"templateId\": \"sms-otp-login\",\n  \"version\": \"1.0.0\",\n  \"mobileNumbers\": [\"+919361385175\"],\n  \"enrich\": false,\n  \"payload\": {\n    \"otp\": \"123456\"\n  },\n  \"category\": \"OTP\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/notification/sms/send",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"notification",
+						"sms",
+						"send"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
