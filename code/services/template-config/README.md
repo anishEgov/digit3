@@ -106,8 +106,8 @@ graph TB
 
 1. Clone and setup
    ```bash
-   git clone https://github.com/yourusername/template-config.git
-   cd template-config
+   git clone https://github.com/digitnxt/digit3.git
+   cd code/services/template-config
    go mod download
    ```
 
@@ -316,7 +316,7 @@ sequenceDiagram
 
 #### 3. Search Template Configs
 - Endpoint: `GET /{SERVER_CONTEXT_PATH}/config`
-- Headers: `X-Tenant-ID: {tenantId}`, `X-Client-Id: {clientId}`
+- Headers: `X-Tenant-ID: {tenantId}`
 - Query Parameters: `templateId`, `version`, `uuids`
 - Description: Searches for template configurations
 - Responses: `200 OK`, `400 Bad Request`, `500 Internal Server Error`
@@ -343,7 +343,7 @@ sequenceDiagram
 
 #### 4. Delete Template Config
 - Endpoint: `DELETE /{SERVER_CONTEXT_PATH}/config`
-- Headers: `X-Tenant-ID: {tenantId}`, `X-Client-Id: {clientId}`
+- Headers: `X-Tenant-ID: {tenantId}`
 - Query Parameters: `templateId` (required), `version` (required)
 - Description: Deletes a template configuration
 - Responses: `200 OK`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`
@@ -379,7 +379,7 @@ sequenceDiagram
 
 #### 5. Render (Enrich) Payload
 - Endpoint: `POST /{SERVER_CONTEXT_PATH}/render`
-- Headers: `X-Tenant-ID: {tenantId}`, `X-Client-Id: {clientId}`
+- Headers: `X-Tenant-ID: {tenantId}`
 - Description: Applies field mappings and enrichment API calls to return enriched data
 - Request Body:
 ```json
@@ -585,7 +585,7 @@ go test -v ./...
 
 #### Unit Tests
 Located in the same package with `_test.go` suffix:
-- `internal/services/template_config_service_test.go` - Business logic tests
+- `internal/service/template_config_service_test.go` - Business logic tests
 - `internal/repository/template_config_repo_test.go` - Database layer tests
 - `internal/handlers/template_config_handler_test.go` - HTTP handler tests
 
@@ -612,7 +612,7 @@ mock.ExpectQuery("SELECT (.+) FROM template_config").
 
 // Service test
 service := services.NewTemplateConfigService(repo)
-boundaries, err := service.Search(templateConfigSearch)
+templateConfigDBList, err := service.Search(templateConfigSearch)
 ```
 
 ## Project Structure
