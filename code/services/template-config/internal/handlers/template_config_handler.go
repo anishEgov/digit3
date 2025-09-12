@@ -23,6 +23,10 @@ func getTenantIDFromHeader(c *gin.Context) string {
 	return c.GetHeader("X-Tenant-ID")
 }
 
+func getClientIDFromHeader(c *gin.Context) string {
+	return c.GetHeader("X-Client-ID")
+}
+
 // CreateTemplateConfig handles POST /template-config
 func (h *TemplateConfigHandler) CreateTemplateConfig(c *gin.Context) {
 	var config models.TemplateConfig
@@ -35,6 +39,7 @@ func (h *TemplateConfigHandler) CreateTemplateConfig(c *gin.Context) {
 		return
 	}
 	config.TenantID = getTenantIDFromHeader(c)
+	config.AuditDetails.CreatedBy = getClientIDFromHeader(c)
 
 	// Validate full template config (fieldMapping, apiMapping, etc.)
 	if err := h.validator.ValidateTemplateConfig(&config); err != nil {
@@ -78,6 +83,7 @@ func (h *TemplateConfigHandler) UpdateTemplateConfig(c *gin.Context) {
 		return
 	}
 	config.TenantID = getTenantIDFromHeader(c)
+	config.AuditDetails.LastModifiedBy = getClientIDFromHeader(c)
 
 	// Validate full template config (fieldMapping, apiMapping, etc.)
 	if err := h.validator.ValidateTemplateConfig(&config); err != nil {
