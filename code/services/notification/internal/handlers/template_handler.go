@@ -23,6 +23,10 @@ func getTenantIDFromHeader(c *gin.Context) string {
 	return c.GetHeader("X-Tenant-ID")
 }
 
+func getClientIDFromHeader(c *gin.Context) string {
+	return c.GetHeader("X-Client-ID")
+}
+
 // Create template handles POST /template
 func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	var template models.Template
@@ -35,6 +39,7 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		return
 	}
 	template.TenantID = getTenantIDFromHeader(c)
+	template.AuditDetails.CreatedBy = getClientIDFromHeader(c)
 
 	// Validate full template
 	if err := h.validator.ValidateTemplate(&template); err != nil {
@@ -78,6 +83,7 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 		return
 	}
 	template.TenantID = getTenantIDFromHeader(c)
+	template.AuditDetails.LastModifiedBy = getClientIDFromHeader(c)
 
 	// Validate template
 	if err := h.validator.ValidateTemplate(&template); err != nil {
