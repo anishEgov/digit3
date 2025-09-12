@@ -130,6 +130,15 @@ func (h *TemplateConfigHandler) SearchTemplateConfigs(c *gin.Context) {
 		search.IDs = strings.Split(uuidsStr, ",")
 	}
 	search.TenantID = getTenantIDFromHeader(c)
+	if search.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	configs, err := h.service.Search(&search)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.Error{
