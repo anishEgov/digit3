@@ -215,26 +215,34 @@ MIGRATION_TIMEOUT=5m
 sequenceDiagram
     participant Client
     participant Handler
+    participant Validator
     participant Service
     participant Repository
     participant Database
 
     Client->>Handler: POST /{ctx}/config
-    Handler->>Service: Create(config)
+    Handler->>Validator: Validate(config)
 
-    Service->>Repository: Check existing (templateId, tenantId, version)
-    Repository->>Database: SELECT ...
-    Database-->>Repository: Result
+    alt Validation Error
+        Validator-->>Handler: Invalid config
+        Handler-->>Client: 400 Bad Request
+    else Validation Success
+        Handler->>Service: Create(config)
+        Service->>Repository: Check existing (templateId, tenantId, version)
+        Repository->>Database: SELECT ... WHERE templateId AND tenantId AND version
+        Database-->>Repository: Result
 
-    alt Exists
-        Service-->>Handler: Conflict error
-        Handler-->>Client: 409 Conflict
-    else Not exists
-        Service->>Repository: Insert config
-        Repository->>Database: INSERT ...
-        Database-->>Repository: Created
-        Service-->>Handler: Created config
-        Handler-->>Client: 201 Created with created config
+        alt Config Exists
+            Service-->>Handler: Conflict error
+            Handler-->>Client: 409 Conflict
+        else Config Not Found
+            Service->>Repository: Insert config
+            Repository->>Database: INSERT ... VALUES (...)
+            Database-->>Repository: Created row
+            Repository-->>Service: Created entity
+            Service-->>Handler: Created config
+            Handler-->>Client: 201 Created { created config }
+        end
     end
 ```
 
@@ -275,26 +283,34 @@ sequenceDiagram
 sequenceDiagram
     participant Client
     participant Handler
+    participant Validator
     participant Service
     participant Repository
     participant Database
 
     Client->>Handler: PUT /{ctx}/config
-    Handler->>Service: Update(config)
+    Handler->>Validator: Validate(config)
 
-    Service->>Repository: Check existing (templateId, tenantId, version)
-    Repository->>Database: SELECT ...
-    Database-->>Repository: Result
+    alt Validation Error
+        Validator-->>Handler: Invalid config
+        Handler-->>Client: 400 Bad Request
+    else Validation Success
+        Handler->>Service: Update(config)
+        Service->>Repository: Check existing (templateId, tenantId, version)
+        Repository->>Database: SELECT ... WHERE templateId AND tenantId AND version
+        Database-->>Repository: Result
 
-    alt Not Exists
-        Service-->>Handler: Not Found error
-        Handler-->>Client: 404 Not Found
-    else Exists
-        Service->>Repository: Update config
-        Repository->>Database: UPDATE ...
-        Database-->>Repository: Updated
-        Service-->>Handler: Updated config
-        Handler-->>Client: 200 OK with updated config
+        alt Config Not Found
+            Service-->>Handler: Not Found error
+            Handler-->>Client: 404 Not Found
+        else Config Exists
+            Service->>Repository: Update config
+            Repository->>Database: UPDATE ... SET fields
+            Database-->>Repository: Updated row
+            Repository-->>Service: Updated entity
+            Service-->>Handler: Updated config
+            Handler-->>Client: 200 OK { updated config }
+        end
     end
 ```
 
@@ -316,12 +332,13 @@ sequenceDiagram
 
     Client->>Handler: GET /{ctx}/config?templateId=&version=&uuids=
     Handler->>Service: Search(params)
-    Service->>Repository: Build query
+
+    Service->>Repository: Build query with filters (tenantId, templateId, version, uuids)
     Repository->>Database: SELECT ... WHERE tenantId AND filters
-    Database-->>Repository: Rows
-    Repository-->>Service: Configs
-    Service-->>Handler: DTOs
-    Handler-->>Client: 200 OK with configs
+    Database-->>Repository: Result rows
+    Repository-->>Service: Config entities
+    Service-->>Handler: Map to DTOs
+    Handler-->>Client: 200 OK { configs }
 ```
 
 #### 4. Delete Template Config
@@ -343,17 +360,18 @@ sequenceDiagram
     Client->>Handler: DELETE /{ctx}/config
     Handler->>Service: Delete(config)
 
-    Service->>Repository: Check existing (templateId, tenantId, version)
+    Service->>Repository: Find template (templateId, tenantId, version)
     Repository->>Database: SELECT ...
     Database-->>Repository: Result
 
-    alt Not Exists
-        Service-->>Handler: Not Found error
+    alt Template not found
+        Service-->>Handler: Error (Not Found)
         Handler-->>Client: 404 Not Found
-    else Exists
-        Service->>Repository: Delete config
+    else Template found
+        Service->>Repository: Delete template
         Repository->>Database: DELETE ...
-        Database-->>Repository: Deleted
+        Database-->>Repository: Success
+        Repository-->>Service: Deleted confirmation
         Service-->>Handler: Deleted config
         Handler-->>Client: 200 OK
     end
@@ -397,6 +415,40 @@ sequenceDiagram
     "params": ["https://api.example.com/users/123", "GET"]
   }
 ]
+```
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler
+    participant Service
+    participant Repository
+    participant Database
+    participant E as External API(s)
+
+    Client->>Handler: POST /{ctx}/config/render
+
+    Handler->>Service: Render(config)
+    Service->>Repository: Find template (templateId, tenantId, version)
+    Repository->>Database: SELECT ...
+    Database-->>Repository: Result
+
+    alt Template not found
+        Service-->>Handler: Error (Not Found)
+        Handler-->>Client: 422 Unprocessable Entity
+    else Template found
+        Service->>Service: Apply fieldMapping (JSONPath on payload)
+        par Data Enrichment (in parallel)
+            Service->>E: GET base+path (path/query from JSONPath)
+            E-->>Service: API response
+            Service->>Service: Apply responseMapping (JSONPath on API response)
+        and Additional Enrichment
+            Service->>E: GET ...
+            E-->>Service: API response
+        end
+        Service-->>Handler: Enriched data / errors
+        Handler-->>Client: 200 OK { data } or 422 with errors
+    end
 ```
 
 ### Error Codes
