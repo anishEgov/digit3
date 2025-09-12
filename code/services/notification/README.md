@@ -4,7 +4,7 @@ A Go-based DIGIT service for template-driven email and SMS notifications. It man
 
 ## Overview
 
-**Service Name:** notification
+**Service Name:** Notification
 
 **Purpose:** Provide multi-tenant notification templating, enrichment, rendering, and delivery for email and SMS channels, with REST API for template lifecycle and synchronous send, and optional async consumption from message brokers.
 
