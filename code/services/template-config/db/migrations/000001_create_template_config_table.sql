@@ -1,5 +1,5 @@
 -- Create the template_config table
-CREATE TABLE template_config (
+CREATE TABLE IF NOT EXISTS template_config (
     id UUID PRIMARY KEY,
     templateid VARCHAR(256) NOT NULL,
     tenantid VARCHAR(256) NOT NULL,
@@ -10,5 +10,5 @@ CREATE TABLE template_config (
     lastmodifiedby VARCHAR(64),
     createdtime BIGINT,
     lastmodifiedtime BIGINT,
-    UNIQUE (templateid, tenantid, version)
+    UNIQUE (tenantid, templateid, version)
 );

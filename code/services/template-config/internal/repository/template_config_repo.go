@@ -33,7 +33,7 @@ func (r *TemplateConfigRepository) GetByID(uuid string) (*models.TemplateConfigD
 
 func (r *TemplateConfigRepository) GetByTemplateIDAndVersion(templateID, tenantID, version string) (*models.TemplateConfigDB, error) {
 	var config models.TemplateConfigDB
-	err := r.db.Where("templateid = ? AND tenantid = ? AND version = ?", templateID, tenantID, version).First(&config).Error
+	err := r.db.Where("tenantid = ? AND templateid = ? AND version = ?", tenantID, templateID, version).First(&config).Error
 	if err != nil {
 		return nil, err
 	}
@@ -61,5 +61,5 @@ func (r *TemplateConfigRepository) Search(search *models.TemplateConfigSearch) (
 }
 
 func (r *TemplateConfigRepository) Delete(templateID, tenantID, version string) error {
-	return r.db.Where("templateid = ? AND tenantid = ? AND version = ?", templateID, tenantID, version).Delete(&models.TemplateConfigDB{}).Error
+	return r.db.Where("tenantid = ? AND templateid = ? AND version = ?", tenantID, templateID, version).Delete(&models.TemplateConfigDB{}).Error
 }
