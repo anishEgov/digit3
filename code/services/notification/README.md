@@ -1,134 +1,956 @@
-# Notification Service
+# Notification Service (Go)
 
-The Notification Service is a robust and scalable microservice designed to handle all aspects of user notifications within a multi-tenant architecture. It provides a comprehensive solution for managing notification templates, sending emails and SMS messages, and enriching notification content with dynamic data.
+A Go-based DIGIT service for template-driven email and SMS notifications. It manages notification templates, enriches payloads via the Template Config service, renders content, and delivers messages through email and SMS providers. It also supports background consumption from Kafka or Redis.
+
+## Overview
+
+**Service Name:** notification
+
+**Purpose:** Provide multi-tenant notification templating, enrichment, rendering, and delivery for email and SMS channels, with REST API for template lifecycle and synchronous send, and optional async consumption from message brokers.
+
+**Owner/Team:** DIGIT Platform Team
+
+## Architecture
+
+**Tech Stack:**
+- Go 1.23
+- Gin Web Framework
+- PostgreSQL (via GORM)
+- SMTP (email), SMSCountry (SMS)
+- Kafka or Redis consumer (optional)
+- Docker
+
+**Core Responsibilities:**
+- Manage notification templates (create, update, search, delete, preview)
+- Enrich payloads by calling Template Config service before rendering
+- Render subject/content using Go templates (text/HTML)
+- Send email (SMTP) with attachments via Filestore
+- Send SMS via provider integration
+- Optionally consume email/SMS messages from Kafka or Redis
+- Multi-tenant scoping via `X-Tenant-ID`
+- Database migrations
+
+**Dependencies:**
+- PostgreSQL 15
+- Template Config service for enrichment
+- Filestore service for attachments
+- SMTP server (for email)
+- SMS provider (default SMSCountry)
+- Kafka or Redis (if broker consumption enabled)
+
+### Diagrams
+
+#### High-level Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Clients"
+        C1[Mobile Apps]
+        C2[Web Apps]
+        C3[Other Services]
+    end
+
+    subgraph "API Gateway"
+        GW[API Gateway]
+    end
+
+    subgraph "Notification Service"
+        subgraph "REST API"
+            H1[Template Handler]
+            H2[Notification Handler]
+        end
+
+        subgraph "Business Logic"
+            S1[Template Service]
+            S2[Email Service]
+            S3[SMS Service]
+        end
+
+        subgraph "Data Layer"
+            R1[Template Repository]
+        end
+
+        subgraph "Integrations"
+            E1[Template Config Enrichment]
+            E2[Filestore]
+            E3[SMTP]
+            E4[SMS Provider]
+            B1[Kafka/Redis Consumer]
+        end
+
+        subgraph "Infrastructure"
+            M1[Migration Runner]
+            CFG[Configuration]
+        end
+    end
+
+    subgraph "External Systems"
+        DB[(PostgreSQL)]
+        TC[Template Config]
+        FS[Filestore]
+        SMTP[(SMTP Server)]
+        SMS[(SMS Provider)]
+        K[Kafka]
+        RD[Redis]
+    end
+
+    C1 --> GW
+    C2 --> GW
+    C3 --> GW
+
+    GW --> H1
+    GW --> H2
+
+    H1 --> S1
+    H2 --> S2
+    H2 --> S3
+
+    S1 --> R1
+    R1 --> DB
+
+    S1 --> E1
+    E1 --> TC
+
+    S2 --> E2
+    E2 --> FS
+    S2 --> E3
+    E3 --> SMTP
+
+    S3 --> E4
+    E4 --> SMS
+
+    B1 --> S2
+    B1 --> S3
+
+    M1 --> DB
+```
 
 ## Features
 
-- **Template Management**: CRUD operations for notification templates (both Email and SMS).
-- **Multi-Channel Notifications**: Supports sending notifications via Email and SMS.
-- **Synchronous and Asynchronous Sending**:
-  - **Sync**: Send notifications on-demand via REST API endpoints.
-  - **Async**: Consume messages from Kafka or Redis message brokers to send notifications asynchronously.
-- **Dynamic Content Enrichment**: Integrates with a `template-config` service to enrich notification payloads with additional data before rendering.
-- **Template Preview**: Preview rendered templates with or without data enrichment to ensure correctness.
-- **Multi-Tenancy**: Supports multi-tenant environments using the `X-Tenant-ID` header.
-- **Configurable Providers**: Easily configure SMTP providers for email and providers for SMS.
-- **Database Migrations**: Automated database migration support.
-- **File Store Integration**: Upload files and include them as attachments in notifications.
+- ✅ CRUD lifecycle for notification templates (EMAIL/SMS)
+- ✅ Preview rendering with optional enrichment
+- ✅ Go templates for subject/content (HTML or text)
+- ✅ Email sending over SMTP with attachments (via Filestore)
+- ✅ SMS sending via provider (default: SMSCountry)
+- ✅ Async consumption from Kafka or Redis
+- ✅ Multi-tenant support via headers
+- ✅ Database migrations with uniqueness on `(templateId, tenantId, version)`
+- ✅ Docker containerization
 
-## How it Works
+## Installation & Setup
 
-### 1. Template Management
+### Local Development (Manual Setup)
 
-The service allows you to create, read, update, and delete notification templates. Each template has a `type` (EMAIL or SMS), `subject` (for emails), `content`, and can be designated as HTML or plain text.
+**Prerequisites:**
+- Go 1.23+
+- PostgreSQL 15
 
-### 2. Notification Sending
+**Steps:**
+1. Clone and setup
+   ```bash
+   git clone https://github.com/digitnxt/digit3.git
+   cd code/services/notification
+   go mod download
+   ```
+2. Setup PostgreSQL database
+   ```bash
+   createdb notification_db
+   ```
+3. Start service (migrations run automatically if enabled)
+   ```bash
+   go run ./cmd/server
+   ```
 
-You can send notifications in two ways:
+### Docker
 
-- **Synchronous API Calls**: For immediate, on-demand notifications, you can use the `/email/send` and `/sms/send` endpoints.
-- **Asynchronous Message Handling**: For high-throughput or non-critical notifications, the service can consume events from a message broker (Kafka or Redis). It listens on specific topics for email and SMS requests, processes them, and sends the notifications.
+**Build the image:**
+```bash
+docker build -t notification:latest .
+```
 
-### 3. Payload Enrichment
-
-When sending a notification or previewing a template, you can enable the `enrich` option. If enabled, the service will:
-1. Call the `template-config` service with the initial payload.
-2. The `template-config` service enriches the payload by adding more data (e.g., user profile information, account details).
-3. The enriched payload is then used to render the notification template, resulting in highly personalized content.
-
-## API Endpoints
-
-All endpoints are prefixed with the `SERVER_CONTEXT_PATH` (default: `/notification`).
-
-### Template Management
-
-- `POST /template`: Create a new notification template.
-- `PUT /template`: Update an existing notification template.
-- `GET /template`: Search for notification templates.
-- `DELETE /template`: Delete a notification template.
-- `POST /template/preview`: Preview a rendered template.
-
-### Notification Sending
-
-- `POST /email/send`: Send an email synchronously.
-- `POST /sms/send`: Send an SMS synchronously.
-
-### Example: Create and Preview a Template
-
-1.  **Create a template:**
-    ```bash
-    curl -X POST http://localhost:8080/notification/template \
-      -H "Content-Type: application/json" \
-      -H "X-Tenant-ID: tenant1" \
-      -d '{
-        "templateId": "welcome-email",
-        "version": "1.0",
-        "type": "EMAIL",
-        "subject": "Welcome {{.userName}}!",
-        "content": "<h1>Hello, {{.userName}}!</h1><p>Welcome to our platform.</p>",
-        "isHTML": true
-      }'
-    ```
-
-2.  **Preview the template:**
-    ```bash
-    curl -X POST http://localhost:8080/notification/template/preview \
-      -H "Content-Type: application/json" \
-      -H "X-Tenant-ID: tenant1" \
-      -d '{
-        "templateId": "welcome-email",
-        "version": "1.0",
-        "payload": {
-          "userName": "JohnDoe"
-        }
-      }'
-    ```
+**Run with environment variables:**
+```bash
+docker run -p 8080:8080 \
+  -e DB_HOST=your-db-host \
+  -e DB_PASSWORD=your-db-password \
+  -e MIGRATION_ENABLED=true \
+  notification:latest
+```
 
 ## Configuration
 
-The service is configured using environment variables.
+### Environment Variables
 
-| Environment Variable          | Default Value                               | Description                                                 |
-| ----------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
-| `HTTP_PORT`                   | `8080`                                      | Port for the HTTP server.                                   |
-| `SERVER_CONTEXT_PATH`         | `/notification`                             | Base path for the API endpoints.                            |
-| `DB_HOST`                     | `localhost`                                 | Database host.                                              |
-| `DB_PORT`                     | `5432`                                      | Database port.                                              |
-| `DB_USER`                     | `postgres`                                  | Database username.                                          |
-| `DB_PASSWORD`                 | `postgres`                                  | Database password.                                          |
-| `DB_NAME`                     | `notification_template`                     | Database name.                                              |
-| `DB_SSL_MODE`                 | `disable`                                   | Database SSL mode.                                          |
-| `MIGRATION_ENABLED`           | `false`                                     | Enable/disable database migrations on startup.              |
-| `MIGRATION_SCRIPT_PATH`       | `./migrations`                              | Path to the database migration scripts.                     |
-| `TEMPLATE_CONFIG_HOST`        | `http://localhost:8082`                     | Base URL of the template-config service.                    |
-| `TEMPLATE_CONFIG_PATH`        | `/template-config/v1/render`                | Path for the template-config render endpoint.               |
-| `FILESTORE_HOST`              | `http://localhost:8083`                     | Base URL of the filestore service.                          |
-| `FILESTORE_PATH`              | `/filestore/v1/upload`                      | Path for the filestore upload endpoint.                     |
-| `SMTP_HOST`                   | `smtp.gmail.com`                            | SMTP server host.                                           |
-| `SMTP_PORT`                   | `587`                                       | SMTP server port.                                           |
-| `SMTP_USERNAME`               | `username`                                  | SMTP username.                                              |
-| `SMTP_PASSWORD`               | `password`                                  | SMTP password.                                              |
-| `SMTP_FROM_ADDRESS`           | `notification@example.com`                  | Default "from" email address.                               |
-| `SMTP_FROM_NAME`              | `Notification Service`                      | Default "from" name.                                        |
-| `SMS_PROVIDER_URL`            | `https://smscountry.com/api/v3/sendsms/plain` | URL of the SMS provider.                                    |
-| `SMS_PROVIDER_USERNAME`       | `username`                                  | SMS provider username.                                      |
-| `SMS_PROVIDER_PASSWORD`       | `password`                                  | SMS provider password.                                      |
-| `SMS_PROVIDER_CONTENT_TYPE`   | `application/x-www-form-urlencoded`         | Content type for the SMS provider API.                      |
-| `MESSAGE_BROKER_ENABLED`      | `false`                                     | Enable/disable the message broker consumer.                 |
-| `MESSAGE_BROKER_TYPE`         | `kafka`                                     | Type of message broker (`kafka` or `redis`).                |
-| `KAFKA_BROKERS`               | `localhost:9092`                            | Comma-separated list of Kafka brokers.                      |
-| `KAFKA_CONSUMER_GROUP`        | `notification-consumer-group`               | Kafka consumer group ID.                                    |
-| `REDIS_ADDR`                  | `localhost:6379`                            | Redis server address.                                       |
-| `REDIS_PASSWORD`              | `""`                                        | Redis password.                                             |
-| `REDIS_DB`                    | `0`                                         | Redis database number.                                      |
-| `EMAIL_TOPIC`                 | `notification-email`                        | Topic/channel for email notifications.                      |
-| `SMS_TOPIC`                   | `notification-sms`                          | Topic/channel for SMS notifications.                        |
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `HTTP_PORT` | Port for REST API server | `8080` | No |
+| `SERVER_CONTEXT_PATH` | Base path for API routes | `/notification` | No |
+| `DB_HOST` | PostgreSQL host | `localhost` | Yes |
+| `DB_PORT` | PostgreSQL port | `5432` | No |
+| `DB_USER` | PostgreSQL username | `postgres` | No |
+| `DB_PASSWORD` | PostgreSQL password | `postgres` | Yes |
+| `DB_NAME` | PostgreSQL database | `notification_db` | No |
+| `DB_SSL_MODE` | PostgreSQL SSL mode | `disable` | No |
+| `MIGRATION_SCRIPT_PATH` | Path to SQL migrations | `./db/migrations` | No |
+| `MIGRATION_ENABLED` | Run migrations on startup | `false` | No |
+| `MIGRATION_TIMEOUT` | Migration timeout (Go duration) | `5m` | No |
+| `TEMPLATE_CONFIG_HOST` | Template Config host | `http://localhost:8082` | Yes |
+| `TEMPLATE_CONFIG_PATH` | Template Config render path | `/template-config/v1/render` | Yes |
+| `FILESTORE_HOST` | Filestore host | `http://localhost:8083` | Yes |
+| `FILESTORE_PATH` | Filestore upload path | `/filestore/v1/upload` | Yes |
+| `SMTP_HOST` | SMTP server host | `smtp.gmail.com` | Yes |
+| `SMTP_PORT` | SMTP server port | `587` | No |
+| `SMTP_USERNAME` | SMTP username | `username` | Yes |
+| `SMTP_PASSWORD` | SMTP password | `password` | Yes |
+| `SMTP_FROM_ADDRESS` | From email address | `notification@example.com` | Yes |
+| `SMTP_FROM_NAME` | From display name | `Notification Service` | No |
+| `SMS_PROVIDER_URL` | SMS provider endpoint | `https://smscountry.com/api/v3/sendsms/plain` | Yes |
+| `SMS_PROVIDER_USERNAME` | SMS provider username | `username` | Yes |
+| `SMS_PROVIDER_PASSWORD` | SMS provider password | `password` | Yes |
+| `SMS_PROVIDER_CONTENT_TYPE` | SMS request content type | `application/x-www-form-urlencoded` | No |
+| `MESSAGE_BROKER_ENABLED` | Enable broker consumer | `false` | No |
+| `MESSAGE_BROKER_TYPE` | `kafka` or `redis` | `kafka` | No |
+| `KAFKA_BROKERS` | Kafka brokers (comma-separated) | `localhost:9092` | If Kafka |
+| `KAFKA_CONSUMER_GROUP` | Kafka consumer group | `notification-consumer-group` | If Kafka |
+| `REDIS_ADDR` | Redis address | `localhost:6379` | If Redis |
+| `REDIS_PASSWORD` | Redis password | `` | If Redis |
+| `REDIS_DB` | Redis DB index | `0` | If Redis |
+| `EMAIL_TOPIC` | Topic/channel for email | `notification-email` | If broker |
+| `SMS_TOPIC` | Topic/channel for SMS | `notification-sms` | If broker |
 
-## Running the Service
+### Example .env file
 
-1.  **Set up the environment variables** as described in the configuration section.
-2.  **Ensure the database and other dependencies (like Kafka/Redis, template-config service) are running.**
-3.  **Start the service:**
-    ```bash
-    go run cmd/server/main.go
-    ```
+```bash
+HTTP_PORT=8080
+SERVER_CONTEXT_PATH=/notification
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=secure_password
+DB_NAME=notification_db
+DB_SSL_MODE=disable
+
+MIGRATION_SCRIPT_PATH=./db/migrations
+MIGRATION_ENABLED=true
+MIGRATION_TIMEOUT=5m
+
+TEMPLATE_CONFIG_HOST=http://localhost:8082
+TEMPLATE_CONFIG_PATH=/template-config/v1/render
+FILESTORE_HOST=http://localhost:8083
+FILESTORE_PATH=/filestore/v1/upload
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-username
+SMTP_PASSWORD=your-password
+SMTP_FROM_ADDRESS=no-reply@example.com
+SMTP_FROM_NAME="DIGIT Notifications"
+
+SMS_PROVIDER_URL=https://smscountry.com/api/v3/sendsms/plain
+SMS_PROVIDER_USERNAME=your-sms-user
+SMS_PROVIDER_PASSWORD=your-sms-pass
+SMS_PROVIDER_CONTENT_TYPE=application/x-www-form-urlencoded
+
+MESSAGE_BROKER_ENABLED=false
+MESSAGE_BROKER_TYPE=kafka
+KAFKA_BROKERS=localhost:9092
+KAFKA_CONSUMER_GROUP=notification-consumer-group
+EMAIL_TOPIC=notification-email
+SMS_TOPIC=notification-sms
+```
+
+## API Reference
+
+Base path is `SERVER_CONTEXT_PATH` (default `/notification`).
+
+### Template Management
+
+#### 1) Create Template
+- Endpoint: `POST /{ctx}/template`
+- Headers: `X-Tenant-ID`, `X-Client-ID`
+- Description: Creates a new notification template (EMAIL or SMS)
+- Request Body:
+```json
+{
+  "templateId": "user-welcome",
+  "version": "v1",
+  "type": "EMAIL",
+  "subject": "Welcome {{ .name }}",
+  "content": "Hello {{ .name }}, your account is ready.",
+  "isHTML": false
+}
+```
+- Responses: `201 Created`, `400 Bad Request`, `409 Conflict`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as TemplateHandler
+    participant Validator as TemplateValidator
+    participant Service as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+
+    Client->>Handler: POST /{ctx}/template
+    Handler->>Validator: ValidateTemplate(template)
+    alt Validation fails
+        Validator-->>Handler: error
+        Handler-->>Client: 400 Bad Request
+    else Validation ok
+        Handler->>Service: Create(template)
+        Service->>Repo: GetByTemplateIDAndVersion()
+        Repo->>DB: SELECT by (templateId, tenantId, version)
+        DB-->>Repo: result
+        alt Exists
+            Service-->>Handler: conflict
+            Handler-->>Client: 409 Conflict
+        else Not found
+            Service->>Repo: Create(template)
+            Repo->>DB: INSERT
+            DB-->>Repo: created
+            Service-->>Handler: created entity
+            Handler-->>Client: 201 Created
+        end
+    end
+```
+
+#### 2) Update Template
+- Endpoint: `PUT /{ctx}/template`
+- Headers: `X-Tenant-ID`, `X-Client-ID`
+- Description: Updates an existing template for a tenant and version
+- Request Body:
+```json
+{
+  "id": "0b01a433-9f05-47b1-b055-026ab4b4a90f",
+  "templateId": "user-welcome",
+  "version": "v1",
+  "type": "EMAIL",
+  "subject": "Welcome {{ .name }}",
+  "content": "Hello {{ .name }}, your account is ready.",
+  "isHTML": false
+}
+```
+- Responses: `200 OK`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as TemplateHandler
+    participant Validator as TemplateValidator
+    participant Service as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+
+    Client->>Handler: PUT /{ctx}/template
+    Handler->>Validator: ValidateTemplate(template)
+    alt Validation fails
+        Validator-->>Handler: error
+        Handler-->>Client: 400 Bad Request
+    else Validation ok
+        Handler->>Service: Update(template)
+        Service->>Repo: GetByTemplateIDAndVersion()
+        Repo->>DB: SELECT
+        DB-->>Repo: template or not found
+        alt Not found
+            Service-->>Handler: error
+            Handler-->>Client: 404 Not Found
+        else Found
+            Service->>Repo: Update(template)
+            Repo->>DB: UPDATE
+            DB-->>Repo: updated
+            Service-->>Handler: updated entity
+            Handler-->>Client: 200 OK
+        end
+    end
+```
+
+#### 3) Search Templates
+- Endpoint: `GET /{ctx}/template`
+- Headers: `X-Tenant-ID`
+- Description: Searches templates for a tenant
+- Request (Query Parameters): `templateId` (optional), `version` (optional), `type` (optional), `ids` (optional, CSV)
+- Responses: `200 OK`, `400 Bad Request`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as TemplateHandler
+    participant Service as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+
+    Client->>Handler: GET /{ctx}/template?templateId=&version=&type=&ids=
+    Handler->>Service: Search(params with tenantId)
+    Service->>Repo: Search(params)
+    Repo->>DB: SELECT with filters
+    DB-->>Repo: rows
+    Repo-->>Service: templates
+    Service-->>Handler: DTO mapping
+    Handler-->>Client: 200 OK [templates]
+```
+
+#### 4) Delete Template
+- Endpoint: `DELETE /{ctx}/template`
+- Headers: `X-Tenant-ID`
+- Description: Deletes a template by `templateId` and `version`
+- Request (Query Parameters): `templateId` (required), `version` (required)
+- Responses: `200 OK`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as TemplateHandler
+    participant Service as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+
+    Client->>Handler: DELETE /{ctx}/template?templateId=&version=
+    Handler->>Service: Delete(request)
+    Service->>Repo: GetByTemplateIDAndVersion()
+    Repo->>DB: SELECT
+    DB-->>Repo: result
+    alt Not found
+        Service-->>Handler: error
+        Handler-->>Client: 404 Not Found
+    else Found
+        Service->>Repo: Delete(templateId, tenantId, version)
+        Repo->>DB: DELETE
+        DB-->>Repo: ok
+        Service-->>Handler: ok
+        Handler-->>Client: 200 OK
+    end
+```
+
+#### 5) Preview Template
+- Endpoint: `POST /{ctx}/template/preview`
+- Headers: `X-Tenant-ID`
+- Description: Renders a template with an optional enrichment step via Template Config
+- Request Body:
+```json
+{
+  "templateId": "user-welcome",
+  "version": "v1",
+  "enrich": true,
+  "payload": {"name": "John"}
+}
+```
+- Responses: `200 OK` with `{ type, isHTML, renderedSubject, renderedContent }`, `400 Bad Request`, `404 Not Found`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as TemplateHandler
+    participant Service as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+    participant TC as Template Config
+
+    Client->>Handler: POST /{ctx}/template/preview
+    Handler->>Service: Preview(request)
+    Service->>Repo: GetByTemplateIDAndVersion()
+    Repo->>DB: SELECT
+    DB-->>Repo: template
+    alt enrich == true
+        Service->>TC: POST /template-config/v1/render
+        TC-->>Service: enriched data
+        Service->>Service: Render subject/content
+    else enrich == false
+        Service->>Service: Render with raw payload
+    end
+    Service-->>Handler: { type, isHTML, renderedSubject, renderedContent }
+    Handler-->>Client: 200 OK
+```
+
+### Notification Sending
+
+#### 6) Send Email
+- Endpoint: `POST /{ctx}/email/send`
+- Headers: `X-Tenant-ID`
+- Description: Renders an EMAIL template and sends via SMTP; supports attachments fetched from Filestore
+- Request Body:
+```json
+{
+  "templateId": "user-welcome",
+  "version": "v1",
+  "emailIds": ["user@example.com"],
+  "enrich": true,
+  "payload": {"name": "John"},
+  "attachments": ["file-id-1", "file-id-2"]
+}
+```
+- Responses: `200 OK`, `400 Bad Request`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as NotificationHandler
+    participant EmailSvc as EmailService
+    participant TmplSvc as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+    participant TC as Template Config
+    participant FS as Filestore
+    participant SMTP as SMTP Server
+
+    Client->>Handler: POST /{ctx}/email/send
+    Handler->>EmailSvc: SendEmail(request)
+    EmailSvc->>TmplSvc: Preview(templateId, tenantId, version, payload, enrich)
+    TmplSvc->>Repo: GetByTemplateIDAndVersion()
+    Repo->>DB: SELECT
+    DB-->>Repo: template
+    alt enrich == true
+        TmplSvc->>TC: POST /template-config/v1/render
+        TC-->>TmplSvc: enriched data
+    end
+    TmplSvc->>TmplSvc: Render subject/content
+    alt attachments present
+        loop each attachment
+            EmailSvc->>FS: GET /filestore/v1/upload (by fileId)
+            FS-->>EmailSvc: temp file path
+            EmailSvc->>EmailSvc: read file, collect attachment
+        end
+    end
+    EmailSvc->>SMTP: SendMail(from, to, subject, body, attachments)
+    SMTP-->>EmailSvc: 250 OK
+    EmailSvc-->>Handler: success
+    Handler-->>Client: 200 OK
+```
+
+#### 7) Send SMS
+- Endpoint: `POST /{ctx}/sms/send`
+- Headers: `X-Tenant-ID`
+- Description: Renders an SMS template and sends via configured SMS provider
+- Request Body:
+```json
+{
+  "templateId": "otp-template",
+  "version": "v1",
+  "mobileNumbers": ["9876543210"],
+  "enrich": false,
+  "payload": {"otp": "123456"},
+  "category": "OTP"
+}
+```
+- Responses: `200 OK`, `400 Bad Request`, `500 Internal Server Error`
+
+**Sequence Diagram:**
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as NotificationHandler
+    participant SMSSvc as SMSService
+    participant TmplSvc as TemplateService
+    participant Repo as TemplateRepository
+    participant DB as PostgreSQL
+    participant TC as Template Config
+    participant SMS as SMS Provider
+
+    Client->>Handler: POST /{ctx}/sms/send
+    Handler->>SMSSvc: SendSMS(request)
+    SMSSvc->>TmplSvc: Preview(templateId, tenantId, version, payload, enrich)
+    TmplSvc->>Repo: GetByTemplateIDAndVersion()
+    Repo->>DB: SELECT
+    DB-->>Repo: template
+    alt enrich == true
+        TmplSvc->>TC: POST /template-config/v1/render
+        TC-->>TmplSvc: enriched data
+    end
+    TmplSvc->>TmplSvc: Render content (text)
+    loop each mobileNumber
+        SMSSvc->>SMS: POST {message}
+        SMS-->>SMSSvc: 200 OK
+    end
+    SMSSvc-->>Handler: success
+    Handler-->>Client: 200 OK
+```
+
+### Error Codes
+
+| HTTP Status | Error Code | Description |
+|-------------|------------|-------------|
+| 400 | BAD_REQUEST | Invalid request parameters/body |
+| 401 | UNAUTHORIZED | Authentication required (via gateway) |
+| 403 | FORBIDDEN | Insufficient permissions (via gateway) |
+| 404 | NOT_FOUND | Resource not found |
+| 409 | CONFLICT | Resource already exists |
+| 422 | ENRICHMENT_FAILED | Enrichment or rendering failed |
+| 500 | INTERNAL_SERVER_ERROR | Server error |
+
+## Observability
+
+### Logging
+
+**Format:** JSON structured logging with request correlation IDs
+
+**Framework:** Standard Go log with context support
+
+**Log Levels:** DEBUG, INFO, WARN, ERROR
+
+**Example Log:**
+```json
+{
+  "level": "INFO",
+  "tenant_id": "DEFAULT",
+  "method": "POST",
+  "path": "/notification/template"
+}
+```
+
+### Metrics
+
+**Framework:** Prometheus metrics exposed on `/metrics` endpoint
+
+**Key Metrics:**
+- `http_requests_total{path, method, status}` - Total HTTP requests
+- `http_request_duration_seconds{path, method}` - Request duration histogram
+- `db_connections_active` - Active database connections
+- `templates_created_total` - Total templates created
+- `templates_updated_total` - Total templates updated
+
+### Tracing
+
+**Framework:** OpenTelemetry with Jaeger integration
+
+**Configuration:**
+```bash
+export OTEL_TRACES_EXPORTER=jaeger
+export OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14268/api/traces
+export OTEL_SERVICE_NAME=template-config-service
+```
+
+**Trace Context:** Automatic trace propagation with W3C trace context headers
+
+## Operations
+
+### Health Checks
+
+#### REST Health Check
+- **Endpoint**: `GET /health`
+- **Response**: `200 OK` with service status
+
+#### Ready Check
+- **Endpoint**: `GET /ready`
+- **Response**: `200 OK` when service is ready to accept traffic
+
+### Scaling Guidelines
+
+**Resource Requirements:**
+- **CPU:** 0.5-1 core per 1000 RPS
+- **Memory:** 512MB base + 100MB per 1000 active instances
+- **Storage:** 1GB per 100k process instances
+
+**Recommended Replicas:** 2-3 for production
+
+**Horizontal Scaling:** Stateless design supports horizontal scaling
+
+### Database
+
+#### Running Migrations
+```bash
+# Automatic (on startup when `MIGRATION_ENABLED=true`)
+go run ./cmd/server
+```
+
+#### Backup Strategy
+```bash
+# PostgreSQL backup
+pg_dump template_config_db > backup.sql
+
+# Restore
+psql template_config_db < backup.sql
+```
+
+#### Connection Pool Settings
+- Configure via GORM defaults or extend as needed in `internal/db`.
+
+### Broker Consumption
+- Enable by setting `MESSAGE_BROKER_ENABLED=true`
+- For Kafka: set `KAFKA_BROKERS`, `KAFKA_CONSUMER_GROUP`, topics `EMAIL_TOPIC`, `SMS_TOPIC`
+- For Redis: set `REDIS_ADDR`, `REDIS_PASSWORD`, `REDIS_DB`, and same topics
+- Consumers expect JSON bodies matching `EmailRequest`/`SMSRequest`
+
+## Testing
+
+### Running Tests
+
+**All Tests:**
+```bash
+go test ./...
+```
+
+**Unit Tests Only:**
+```bash
+go test ./internal/...
+```
+
+**Integration Tests Only:**
+```bash
+go test ./tests/...
+```
+
+**With Coverage:**
+```bash
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+**With Verbose Output:**
+```bash
+go test -v ./...
+```
+
+### Test Structure
+
+#### Unit Tests
+Located in the same package with `_test.go` suffix:
+- `internal/service/template_service_test.go` - Business logic tests
+- `internal/repository/template_repository_test.go` - Database layer tests
+- `internal/handlers/template_handler_test.go` - HTTP handler tests
+
+#### Integration Tests
+End-to-end tests in `tests/` directory:
+- `tests/integration_test.go` - Complete API flow tests
+
+### Test Dependencies
+
+- **Testify:** `github.com/stretchr/testify` - Assertions and mocks
+- **SQLMock:** `github.com/DATA-DOG/go-sqlmock` - Database mocking
+- **SQLite:** `github.com/mattn/go-sqlite3` - In-memory database for integration tests
+
+### Mock Setup
+
+```go
+// Database mock example
+db, mock, err := sqlmock.New()
+defer db.Close()
+
+mock.ExpectQuery("SELECT (.+) FROM notification_template").
+    WithArgs(tenantID, templateID, version).
+    WillReturnRows(rows)
+
+// Service test
+service := services.NewTemplateService(repo, cfg)
+templateDBList, err := service.Search(templateSearch)
+```
+
+## Project Structure
+
+```
+notification/
+├── cmd/server/                  # Entrypoint
+├── db/migrations/               # SQL migrations
+├── internal/
+│   ├── config/                  # Env config
+│   ├── database/                # Postgres connection
+│   ├── email/                   # Email providers
+│   ├── handlers/                # HTTP handlers
+│   ├── messaging/               # Kafka/Redis consumers
+│   ├── migration/               # Migration runner
+│   ├── models/                  # API & DB models
+│   ├── repository/              # Data access layer
+│   ├── routes/                  # Route setup
+│   ├── service/                 # Business logic
+│   └── sms/                     # SMS providers
+└── go.mod / go.sum
+```
+
+## Release & Deployment
+
+### Branching Strategy
+
+**Git Flow:**
+- `master` - Production releases
+- `develop` - Development integration
+
+### CI/CD Pipeline
+
+TBD
+
+### Versioning
+
+TBD
+
+### Deployment
+
+**Docker Compose (Development):**
+```yaml
+version: '3.8'
+services:
+  notification:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PASSWORD=password
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=notification_db
+      - POSTGRES_PASSWORD=password
+```
+
+**Kubernetes (Production):**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+    spec:
+      containers:
+      - name: notification
+        image: notification:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: host
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### Database Connection Issues
+
+**Error:** `could not connect to the database`
+
+**Solutions:**
+1. Verify PostgreSQL is running
+2. Check connection string
+3. Verify database exists
+4. Check firewall settings
+
+**Debug:**
+```bash
+# Test database connection
+psql -h localhost -U postgres -d bound
+```
+
+#### Event Publishing Issues
+
+**Error:** `failed to publish event`
+
+**Solutions:**
+1. Verify Kafka/Redis is running
+2. Check publisher configuration
+3. Verify network connectivity
+4. Check authentication credentials
+
+**Debug:**
+```bash
+# Test Kafka connection
+kafka-topics --bootstrap-server localhost:9092 --list
+
+# Test Redis connection
+redis-cli ping
+```
+
+#### Service-Specific Errors (SMTP/SMS/Template/Filestore)
+
+- SMTP auth errors: verify host/port/credentials and allow app passwords if using Gmail
+- SMS failures: check provider URL/credentials; inspect HTTP status and response body
+- 422 on preview/send with enrich=true: verify Template Config availability and template mappings
+- Filestore attachment issues: ensure FILESTORE_* envs and file IDs are valid
+
+### Debug Mode
+
+**Enable Debug Logging:**
+```bash
+export LOG_LEVEL=debug
+go run ./cmd/server
+```
+
+**Enable SQL Query Logging:**
+```bash
+# In configuration
+DB_DEBUG=true
+```
+
+### Monitoring Queries
+
+**Database Performance:**
+```sql
+-- Slow queries
+SELECT * FROM pg_stat_statements 
+ORDER BY total_time DESC 
+LIMIT 10;
+
+-- Connection count
+SELECT count(*) FROM pg_stat_activity;
+```
+
+**Event Publishing Performance:**
+```bash
+# Kafka lag monitoring
+kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group notification-consumer
+
+# Redis stream info
+redis-cli XINFO STREAM notification-stream
+```
+
+### Log Analysis
+
+**Common Log Patterns:**
+```bash
+# Search for errors
+grep "ERROR" application.log
+
+# Find slow requests
+grep "duration_ms" application.log | sort -k3 -n
+
+# Analyze by endpoint
+grep "/notification/email/send" application.log | head -20
+```
+
+## FAQ
+
+**Q: How are templates rendered?**
+A: Using Go `text/template` or `html/template` depending on `isHTML`.
+
+**Q: Can I add new email/SMS providers?**
+A: Implement `EmailProvider` or `SMSProvider` interfaces and wire in `routes.SetupRoutes`.
+
+**Q: How do enrichments work?**
+A: The service calls Template Config `render` to transform payloads before template rendering when `enrich=true`.
+
+## References
+
+TBD
+
+### Support Channels
+
+TBD
+
+---
+**Last Updated:** September 2025
+**Version:** 1.0.0
+**Maintainer:** DIGIT Platform Team
