@@ -1,0 +1,196 @@
+{
+	"info": {
+		"_postman_id": "19ea6d71-f635-4cc4-926c-546e483e8140",
+		"name": "template-config",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32125612"
+	},
+	"item": [
+		{
+			"name": "Create template config",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"templateId\": \"user-notify\",\n  \"version\": \"1.0.0\",\n  \"fieldMapping\": {\n    \"name\": \"$.name\",\n    \"age\": \"$.age\"\n  },\n  \"apiMapping\": [\n    {\n      \"method\": \"GET\",\n      \"endpoint\": {\n        \"base\": \"https://api.example.com\",\n        \"path\": \"/orgs/{{orgId}}/users/{{userId}}/status\",\n        \"pathParams\": {\n          \"orgId\": \"$.organization.id\",\n          \"userId\": \"$.user.id\"\n        },\n        \"queryParams\": {\n          \"role\": \"$.user.role\",\n          \"active\": \"$.user.active\"\n        }\n      },\n      \"responseMapping\": {\n        \"userStatus\": \"$.status\",\n        \"userExperience\": \"$.user.experience\"\n      }\n    }\n  ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/template-config/v1/config",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"template-config",
+						"v1",
+						"config"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Render template config",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"templateId\": \"path-param\",\n    \"version\": \"1.0.0\",\n    \"payload\": {\n        \"id\": 123\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/template-config/v1/render",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"template-config",
+						"v1",
+						"render"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update template config",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"id\": \"44f3b080-7de1-47dc-82d3-2d528d12a0f9\",\n    \"templateId\": \"path-query-param\",\n    \"tenantId\": \"pg\",\n    \"version\": \"1.0.0\",\n    \"fieldMapping\": {\n        \"item\": \"$.itemId\",\n        \"order\": \"$.orderId\"\n    },\n    \"apiMapping\": [\n        {\n            \"method\": \"GET\",\n            \"endpoint\": {\n                \"base\": \"http://localhost:8081\",\n                \"path\": \"/order/{{orderId}}/item\",\n                \"pathParams\": {\n                    \"orderId\": \"$.orderId\"\n                },\n                \"queryParams\": {\n                    \"itemId\": \"$.itemId\"\n                }\n            },\n            \"responseMapping\": {\n                \"itemId\": \"$.itemId\",\n                \"message\": \"$.message\",\n                \"orderId\": \"$.orderId\"\n            }\n        }\n    ],\n    \"auditDetails\": {\n        \"createdBy\": \"\",\n        \"createdTime\": 1752494385,\n        \"lastModifiedBy\": \"\",\n        \"lastModifiedTime\": 1752494385\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/template-config/v1/config",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"template-config",
+						"v1",
+						"config"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search template config",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/template-config/v1/config?templateId=path-param&version=1.0.0",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"template-config",
+						"v1",
+						"config"
+					],
+					"query": [
+						{
+							"key": "ids",
+							"value": "a45c310c-e314-4aa7-83e3-a58e82ad54fd",
+							"disabled": true
+						},
+						{
+							"key": "templateId",
+							"value": "path-param"
+						},
+						{
+							"key": "version",
+							"value": "1.0.0"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete template config",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "X-Tenant-ID",
+						"value": "pg"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/template-config/v1/config?templateId=path-param-3&version=1.0.0",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"template-config",
+						"v1",
+						"config"
+					],
+					"query": [
+						{
+							"key": "templateId",
+							"value": "path-param-3"
+						},
+						{
+							"key": "version",
+							"value": "1.0.0"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
