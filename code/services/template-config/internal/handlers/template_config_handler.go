@@ -39,6 +39,15 @@ func (h *TemplateConfigHandler) CreateTemplateConfig(c *gin.Context) {
 		return
 	}
 	config.TenantID = getTenantIDFromHeader(c)
+	if config.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	config.AuditDetails.CreatedBy = getClientIDFromHeader(c)
 
 	// Validate full template config (fieldMapping, apiMapping, etc.)
@@ -83,6 +92,15 @@ func (h *TemplateConfigHandler) UpdateTemplateConfig(c *gin.Context) {
 		return
 	}
 	config.TenantID = getTenantIDFromHeader(c)
+	if config.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	config.AuditDetails.LastModifiedBy = getClientIDFromHeader(c)
 
 	// Validate full template config (fieldMapping, apiMapping, etc.)
@@ -168,6 +186,15 @@ func (h *TemplateConfigHandler) DeleteTemplateConfig(c *gin.Context) {
 		return
 	}
 	deleteReq.TenantID = getTenantIDFromHeader(c)
+	if deleteReq.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	if err := h.service.Delete(deleteReq.TemplateID, deleteReq.TenantID, deleteReq.Version); err != nil {
 		if strings.Contains(err.Error(), "record not found") {
 			c.JSON(http.StatusNotFound, models.Error{
@@ -199,6 +226,15 @@ func (h *TemplateConfigHandler) RenderTemplateConfig(c *gin.Context) {
 		return
 	}
 	request.TenantID = getTenantIDFromHeader(c)
+	if request.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	response, errors := h.service.Render(&request)
 	if len(errors) > 0 {
 		c.JSON(http.StatusUnprocessableEntity, errors)
