@@ -24,7 +24,7 @@ func (r *TemplateRepository) Update(template *models.TemplateDB) error {
 
 func (r *TemplateRepository) GetByTemplateIDAndVersion(templateID, tenantID, version string) (*models.TemplateDB, error) {
 	var template models.TemplateDB
-	err := r.db.Where("templateid = ? AND tenantid = ? AND version = ?", templateID, tenantID, version).First(&template).Error
+	err := r.db.Where("tenantid = ? AND templateid = ? AND version = ?", tenantID, templateID, version).First(&template).Error
 	if err != nil {
 		return nil, err
 	}
@@ -60,5 +60,5 @@ func (r *TemplateRepository) Search(searchReq *models.TemplateSearch) ([]models.
 }
 
 func (r *TemplateRepository) Delete(templateID, tenantID, version string) error {
-	return r.db.Where("templateid = ? AND tenantid = ? AND version = ?", templateID, tenantID, version).Delete(&models.TemplateDB{}).Error
+	return r.db.Where("tenantid = ? AND templateid = ? AND version = ?", tenantID, templateID, version).Delete(&models.TemplateDB{}).Error
 }

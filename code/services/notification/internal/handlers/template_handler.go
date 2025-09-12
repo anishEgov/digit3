@@ -39,6 +39,15 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 		return
 	}
 	template.TenantID = getTenantIDFromHeader(c)
+	if template.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	template.AuditDetails.CreatedBy = getClientIDFromHeader(c)
 
 	// Validate full template
@@ -83,6 +92,15 @@ func (h *TemplateHandler) UpdateTemplate(c *gin.Context) {
 		return
 	}
 	template.TenantID = getTenantIDFromHeader(c)
+	if template.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	template.AuditDetails.LastModifiedBy = getClientIDFromHeader(c)
 
 	// Validate template
@@ -128,6 +146,15 @@ func (h *TemplateHandler) SearchTemplates(c *gin.Context) {
 	}
 
 	searchReq.TenantID = getTenantIDFromHeader(c)
+	if searchReq.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	templateDBList, err := h.service.Search(&searchReq)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.Error{
@@ -157,6 +184,15 @@ func (h *TemplateHandler) DeleteTemplate(c *gin.Context) {
 		return
 	}
 	deleteReq.TenantID = getTenantIDFromHeader(c)
+	if deleteReq.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	if err := h.service.Delete(&deleteReq); err != nil {
 		if strings.Contains(err.Error(), "record not found") {
 			c.JSON(http.StatusNotFound, models.Error{
@@ -188,6 +224,15 @@ func (h *TemplateHandler) PreviewTemplate(c *gin.Context) {
 		return
 	}
 	request.TenantID = getTenantIDFromHeader(c)
+	if request.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
+
 	response, errors := h.service.Preview(&request)
 	if len(errors) > 0 {
 		c.JSON(http.StatusInternalServerError, errors)

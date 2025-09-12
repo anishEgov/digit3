@@ -30,6 +30,14 @@ func (h *NotificationHandler) SendEmail(c *gin.Context) {
 	}
 
 	emailReq.TenantID = getTenantIDFromHeader(c)
+	if emailReq.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
 
 	if errs := h.emailService.SendEmail(c.Request.Context(), &emailReq); errs != nil {
 		c.JSON(http.StatusInternalServerError, errs)
@@ -52,6 +60,14 @@ func (h *NotificationHandler) SendSMS(c *gin.Context) {
 	}
 
 	smsReq.TenantID = getTenantIDFromHeader(c)
+	if smsReq.TenantID == "" {
+		c.JSON(http.StatusBadRequest, models.Error{
+			Code:        "BAD_REQUEST",
+			Message:     "Missing required tenantId",
+			Description: "Request must include tenantId in headers",
+		})
+		return
+	}
 
 	if errs := h.smsService.SendSMS(c.Request.Context(), &smsReq); errs != nil {
 		c.JSON(http.StatusInternalServerError, errs)
