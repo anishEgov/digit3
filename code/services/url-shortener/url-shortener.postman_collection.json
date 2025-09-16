@@ -1,0 +1,59 @@
+{
+	"info": {
+		"_postman_id": "aec25321-57ce-4a6c-abbc-c7b3395706a5",
+		"name": "UrlShortener",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32125612"
+	},
+	"item": [
+		{
+			"name": "shorten",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"url\": \"https://share.google/images/G46gWtYVu2zNG8tty\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/url-shortener/shortener",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"url-shortener",
+						"shortener"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "redirect",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/url-shortener/qadH",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"url-shortener",
+						"qadH"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
