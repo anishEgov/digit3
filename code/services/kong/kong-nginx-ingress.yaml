@@ -1,0 +1,56 @@
+---
+# Kong Admin API Ingress (Internal/Development use)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-admin-ingress
+  namespace: egov
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  tls:
+  - hosts:
+    - digit-lts.digit.org
+    secretName: digit-lts.digit.org-tls-certs
+  rules:
+  - host: digit-lts.digit.org
+    http:
+      paths:
+      - path: /kong-admin/(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-db-proxy
+            port:
+              number: 8001
+---
+# Kong Proxy API Ingress (Routes gateway traffic via Kong)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-gateway-ingress
+  namespace: egov
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Preserve host header for Kong routing
+    nginx.ingress.kubernetes.io/upstream-vhost: "digit-lts.digit.org"
+spec:
+  tls:
+  - hosts:
+    - digit-lts.digit.org
+    secretName: digit-lts.digit.org-tls-certs
+  rules:
+  - host: digit-lts.digit.org
+    http:
+      paths:
+      - path: /kong-gateway/(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-db-proxy
+            port:
+              number: 80 

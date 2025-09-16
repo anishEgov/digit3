@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-new-service
+  namespace: egov
+  annotations:
+    # Kong plugins to apply to this route
+    konghq.com/plugins: dynamic-jwt,keycloak-rbac,header-enrichment
+    # Preserve the original Host header when routing to backend
+    konghq.com/preserve-host: "true"
+    # Remove the path prefix before sending to backend service
+    konghq.com/strip-path: "true"
+    # Optional: Configure custom timeouts
+    konghq.com/connect-timeout: "60000"
+    konghq.com/read-timeout: "60000" 
+    konghq.com/write-timeout: "60000"
+spec:
+  # IMPORTANT: Use 'kong' ingress class to route through Kong Gateway
+  ingressClassName: kong
+  rules:
+  - host: digit-lts.digit.org
+    http:
+      paths:
+      - path: /example-service
+        pathType: Prefix
+        backend:
+          service:
+            name: example-service-name
+            port:
+              number: 8080 

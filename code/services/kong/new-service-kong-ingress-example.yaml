@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-new-service
+  namespace: my-namespace
+  labels:
+    app: my-new-service
+  annotations:
+    # Point to Kong Gateway (not old Kong)
+    kubernetes.io/ingress.class: kong
+    # Apply Kong plugins
+    konghq.com/plugins: dynamic-jwt,keycloak-rbac,header-enrichment,rate-limiting,opentelemetry
+    # Kong-specific configurations
+    konghq.com/strip-path: "true"
+    konghq.com/preserve-host: "true"
+spec:
+  rules:
+  - host: digit-lts.digit.org  # Your domain
+    http:
+      paths:
+      - backend:
+          service:
+            name: my-new-service
+            port:
+              number: 8080
+        path: /my-service
+        pathType: Prefix
+  tls:
+  - hosts:
+    - digit-lts.digit.org
+    secretName: digit-lts.digit.org-tls-certs 
