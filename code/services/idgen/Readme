@@ -1,0 +1,80 @@
+## IdGen
+
+A tiny Go service and library to generate IDs from templates, backed by Postgres.
+
+### Features
+
+- Templates like: `{ORG}-{DATE:yyyyMMdd}-{SEQ}-{RAND}`
+- Tokens: DATE (with format), SEQ (daily/global with padding), RAND (random charset), and custom variables
+- HTTP API + Go library; migrations auto-run
+
+### Quick start (Docker)
+
+1. Create `.env` in project root:
+
+```env
+POSTGRES_DSN=postgres://postgres:password@postgres:5432/idgen?sslmode=disable
+```
+
+2. Start:
+
+```bash
+docker-compose up -d --build
+```
+
+3. Service at `http://localhost:8080`
+
+### HTTP API
+
+- Register/Update a template
+
+```bash
+curl -X POST http://localhost:8080/template \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "templateId": "tax",
+  "config": {
+    "template": "{ORG}-{DATE:yyyyMMdd}-{SEQ}-{RAND}",
+    "sequence": {
+      "scope": "daily",
+      "start": 1,
+      "padding": { "length": 4, "char": "0" }
+    },
+    "random": {
+      "length": 2,
+      "charset": "A-Z0-9"
+    }
+  }
+}'
+```
+
+- Generate an ID
+
+```bash
+curl -X POST http://localhost:8080/generate \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "templateId": "tax",
+  "variables": { "ORG": "egov" }
+}'
+# => {"id":"egov-20250820-0001-ZT"}
+```
+
+### Library (Go)
+
+See `examples/library_usage.go` for a complete example.
+
+### Local run
+
+```bash
+# start only Postgres
+docker-compose up -d postgres
+
+# run service
+go run ./cmd/main.go
+```
+
+### Notes
+
+- Migrations run automatically (`internal/migrations`).
+- Default port: 8080. Configure DB via `POSTGRES_DSN`.
