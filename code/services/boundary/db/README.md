@@ -15,9 +15,9 @@ db/
 ## Files
 
 ### Migrations (`db/migrations/`)
-- `V1__Create_localisation_table.sql` - Initial table creation
-- `V2__Alter_user_id_type.sql` - Change user ID column type
-- `V3__Add_uuid_to_localisation.sql` - Add UUID column
+- `V20250917141530__create_boundary_table.sql` - boundary table creation
+- `V20250917142045__create_boundary_hierarchy_table.sql` - boundary_hierarchy table creation
+- `V20250917143210__create_boundary_relationship_table.sql` - boundary_relationship table creation
 
 ### Configuration (`db/config/`)
 - `flyway.conf` - Flyway configuration for local development
@@ -37,6 +37,17 @@ db/
 ./scripts/migrate.sh info
 ```
 
+### Docker
+```bash
+# Build migration image
+docker build -f Dockerfile.migrator -t localization-migrator .
+
+# Run migrations
+docker run --rm \
+  -e DB_HOST=localhost \
+  -e DB_PASSWORD=your-password \
+  localization-migrator
+```
 
 
 ### Adding New Migrations
@@ -49,7 +60,7 @@ db/
 2. Write your SQL migration:
    ```sql
    -- Add your migration SQL here
-   ALTER TABLE localisation ADD COLUMN new_field VARCHAR(255);
+   ALTER TABLE boundary ADD COLUMN new_field VARCHAR(255);
    ```
 
 3. Run the migration:
