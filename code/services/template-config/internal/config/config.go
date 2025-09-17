@@ -21,11 +21,6 @@ type Config struct {
 	DBPassword string
 	DBName     string
 	DBSSLMode  string
-
-	// Migration script configuration
-	MigrationScriptPath string
-	MigrationEnabled    bool
-	MigrationTimeout    time.Duration
 }
 
 func Load() *Config {
@@ -47,11 +42,6 @@ func Load() *Config {
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBName:     getEnv("DB_NAME", "template_config_db"),
 		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
-
-		//Migration script configuration
-		MigrationScriptPath: getEnv("MIGRATION_SCRIPT_PATH", "./db/migrations"),
-		MigrationEnabled:    getEnvAsBool("MIGRATION_ENABLED", true),
-		MigrationTimeout:    getEnvAsDuration("MIGRATION_TIMEOUT", 5*time.Minute),
 	}
 }
 
