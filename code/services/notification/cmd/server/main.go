@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
+	database "notification/db"
 	"notification/internal/config"
-	"notification/internal/database"
 	"notification/internal/messaging"
-	"notification/internal/migration"
 	"notification/internal/routes"
 	"notification/internal/service"
 	"notification/internal/validators"
@@ -53,21 +51,6 @@ func main() {
 	dbConn, err := database.ConnectDSN(dsn)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	// Run database migrations
-	migrationConfig := &migration.Config{
-		Enabled: cfg.MigrationEnabled,
-		Path:    cfg.MigrationScriptPath,
-		Timeout: cfg.MigrationTimeout,
-	}
-
-	migrationRunner := migration.NewRunner(dbConn, migrationConfig)
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.MigrationTimeout)
-	defer cancel()
-
-	if err := migrationRunner.Run(ctx); err != nil {
-		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 
 	// Register custom validators before setting up routes
