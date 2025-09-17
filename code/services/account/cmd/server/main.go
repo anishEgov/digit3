@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
+	"account/db"
 	"account/internal/config"
-	"account/internal/db"
 	"account/internal/routes"
 
 	"github.com/gin-gonic/gin"

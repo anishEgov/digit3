@@ -52,9 +52,9 @@ func LoadConfig() *Config {
 			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
 		},
 		Keycloak: KeycloakConfig{
-			BaseURL:         getEnv("KEYCLOAK_BASE_URL", "https://digit-lts.digit.org/keycloak-test"),
-			AdminUser:       getEnv("KEYCLOAK_ADMIN_USER", "digit"),
-			AdminPass:       getEnv("KEYCLOAK_ADMIN_PASS", "digit@321"),
+			BaseURL:                   getEnv("KEYCLOAK_BASE_URL", "https://digit-lts.digit.org/keycloak-test"),
+			AdminUser:                 getEnv("KEYCLOAK_ADMIN_USER", "digit"),
+			AdminPass:                 getEnv("KEYCLOAK_ADMIN_PASS", "digit@321"),
 			RealmConfigPath:           getEnv("KEYCLOAK_REALM_CONFIG_PATH", ""),
 			CitizenBrokerClientId:     getEnv("CITIZEN_BROKER_CLIENT_ID", "citizen-broker"),
 			CitizenBrokerClientSecret: getEnv("CITIZEN_BROKER_CLIENT_SECRET", "zjlrLxJCFpsRIemN9pJpUC9Wy9gjWS7m"),
@@ -83,4 +83,4 @@ func getEnvAsInt(key string, defaultValue int) int {
 		return defaultValue
 	}
 	return value
-} 
+}
