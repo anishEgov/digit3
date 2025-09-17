@@ -1,19 +1,16 @@
 # Migration Dockerfile using Flyway
-FROM flyway/flyway:9.22.3
+FROM flyway/flyway:11.12.0
 
 # Set working directory
 WORKDIR /flyway
 
 # Copy SQL migration files to Flyway's default location
-COPY db/migrations/ /flyway/sql/
+COPY migrations/ /flyway/sql/
 
 # Copy Flyway configuration file
-COPY db/config/flyway-docker.conf /flyway/conf/flyway.conf
+COPY config/flyway-docker.conf /flyway/conf/flyway.conf
 
-# Set default Flyway configuration (now handled by flyway.conf)
-# ENV variables removed - using config file approach
-
-# Create a script to wait for database and run migrations
+# Create a simple migration script for dev environment
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
@@ -25,17 +22,20 @@ while ! nc -z ${DB_HOST:-localhost} ${DB_PORT:-5432}; do\n\
 done\n\
 echo "Database is ready!"\n\
 \n\
-# Construct Flyway URL\n\
+# Construct Flyway URL and parameters\n\
 FLYWAY_URL="jdbc:postgresql://${DB_HOST:-localhost}:${DB_PORT:-5432}/${DB_NAME:-postgres}"\n\
+FLYWAY_PARAMS="-configFiles=/flyway/conf/flyway.conf -url=$FLYWAY_URL -user=${DB_USER:-postgres} -password=${DB_PASSWORD:-postgres}"\n\
 \n\
-# Run Flyway migrations\n\
-echo "Running database migrations..."\n\
-flyway \\\n\
-  -configFiles="/flyway/conf/flyway.conf" \\\n\
-  -url="$FLYWAY_URL" \\\n\
-  -user="${DB_USER:-postgres}" \\\n\
-  -password="${DB_PASSWORD:-postgres}" \\\n\
-  migrate\n\
+# Simple dev-friendly migration approach\n\
+echo "Running migrations (dev mode)..."\n\
+\n\
+# First try to repair any issues (safe for dev)\n\
+echo "Repairing migration history if needed..."\n\
+flyway $FLYWAY_PARAMS repair || true\n\
+\n\
+# Run migrations (idempotent - safe to run multiple times)\n\
+echo "Applying migrations..."\n\
+flyway $FLYWAY_PARAMS ${FLYWAY_COMMAND:-migrate}\n\
 \n\
 echo "Migrations completed successfully!"\n\
 ' > /flyway/migrate.sh && chmod +x /flyway/migrate.sh
@@ -51,5 +51,6 @@ RUN chown -R root:root /flyway
 # Run as root to avoid user permission issues
 USER root
 
-# Default command
-CMD ["/flyway/migrate.sh"] 
+# Override Flyway's entrypoint to run our custom migration script
+ENTRYPOINT ["/bin/bash"]
+CMD ["/flyway/migrate.sh"]

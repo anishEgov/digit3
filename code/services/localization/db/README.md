@@ -15,9 +15,9 @@ db/
 ## Files
 
 ### Migrations (`db/migrations/`)
-- `V1__Create_localisation_table.sql` - Initial table creation
-- `V2__Alter_user_id_type.sql` - Change user ID column type
-- `V3__Add_uuid_to_localisation.sql` - Add UUID column
+- `V20250917151545__Create_localisation_table.sql` - Initial table creation
+- `V20250917152115__Alter_user_id_type.sql` - Change user ID column type
+- `V20250917152640__Add_uuid_to_localisation.sql` - Add UUID column
 
 ### Configuration (`db/config/`)
 - `flyway.conf` - Flyway configuration for local development

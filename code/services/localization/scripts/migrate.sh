@@ -14,7 +14,7 @@ DB_PORT=${DB_PORT:-5433}
 DB_USER=${DB_USER:-postgres}
 DB_PASSWORD=${DB_PASSWORD:-postgres}
 DB_NAME=${DB_NAME:-postgres}
-FLYWAY_VERSION=${FLYWAY_VERSION:-9.22.3}
+FLYWAY_VERSION=${FLYWAY_VERSION:-11.12.0}
 
 # Flyway installation directory
 FLYWAY_DIR="./db/tools/flyway"
@@ -27,19 +27,19 @@ echo "================================"
 install_flyway() {
     if [ ! -f "$FLYWAY_BIN" ]; then
         echo -e "${YELLOW}📥 Flyway not found. Installing Flyway v$FLYWAY_VERSION...${NC}"
-        
+
         # Create directory
         mkdir -p "$FLYWAY_DIR"
-        
+
         # Download Flyway
         FLYWAY_URL="https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/$FLYWAY_VERSION/flyway-commandline-$FLYWAY_VERSION-linux-x64.tar.gz"
-        
+
         echo "Downloading from: $FLYWAY_URL"
         curl -L "$FLYWAY_URL" | tar xz --strip-components=1 -C "$FLYWAY_DIR"
-        
+
         # Make executable
         chmod +x "$FLYWAY_BIN"
-        
+
         echo -e "${GREEN}✅ Flyway installed successfully${NC}"
     else
         echo -e "${GREEN}✅ Flyway already installed${NC}"
@@ -49,21 +49,21 @@ install_flyway() {
 # Function to wait for database
 wait_for_database() {
     echo -e "${YELLOW}⏳ Waiting for database to be ready...${NC}"
-    
+
     max_attempts=30
     attempt=1
-    
+
     while [ $attempt -le $max_attempts ]; do
         if nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null; then
             echo -e "${GREEN}✅ Database is ready!${NC}"
             return 0
         fi
-        
+
         echo "Attempt $attempt/$max_attempts: Database not ready, waiting..."
         sleep 2
         attempt=$((attempt + 1))
     done
-    
+
     echo -e "${RED}❌ Database is not ready after $max_attempts attempts${NC}"
     exit 1
 }
@@ -71,10 +71,10 @@ wait_for_database() {
 # Function to run migrations
 run_migrations() {
     echo -e "${YELLOW}🔄 Running database migrations...${NC}"
-    
+
     # Construct database URL
     DB_URL="jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME"
-    
+
     # Run Flyway migrate using config file
     "$FLYWAY_BIN" \
         -configFiles=db/config/flyway.conf \
@@ -82,16 +82,16 @@ run_migrations() {
         -user="$DB_USER" \
         -password="$DB_PASSWORD" \
         migrate
-    
+
     echo -e "${GREEN}✅ Migrations completed successfully!${NC}"
 }
 
 # Function to show migration info
 show_info() {
     echo -e "${YELLOW}📊 Migration Status:${NC}"
-    
+
     DB_URL="jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME"
-    
+
     "$FLYWAY_BIN" \
         -configFiles=db/config/flyway.conf \
         -url="$DB_URL" \
@@ -105,7 +105,7 @@ main() {
     echo "Database: $DB_HOST:$DB_PORT/$DB_NAME"
     echo "User: $DB_USER"
     echo ""
-    
+
     # Check if netcat is available for database check
     if ! command -v nc &> /dev/null; then
         echo -e "${YELLOW}⚠️  netcat not found. Skipping database readiness check.${NC}"
@@ -113,9 +113,9 @@ main() {
     else
         wait_for_database
     fi
-    
+
     install_flyway
-    
+
     # Handle command line arguments
     case "${1:-migrate}" in
         "migrate")
