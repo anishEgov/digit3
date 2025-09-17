@@ -37,16 +37,23 @@ db/
 ./scripts/migrate.sh info
 ```
 
+
 ### Docker
 ```bash
+cd boundary/db
+
 # Build migration image
-docker build -f Dockerfile.migrator -t localization-migrator .
+docker build -t boundary-flyway:dev .
 
 # Run migrations
 docker run --rm \
-  -e DB_HOST=localhost \
-  -e DB_PASSWORD=your-password \
-  localization-migrator
+  -e DB_HOST=<your-db-host> \
+  -e DB_PORT=5432 \
+  -e DB_NAME=<your-db-name> \
+  -e DB_USER=<your-db-user> \
+  -e DB_PASSWORD=<your-db-password> \
+  boundary-flyway:dev
+
 ```
 
 
