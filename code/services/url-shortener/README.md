@@ -330,7 +330,6 @@ sequenceDiagram
 | 404 | NOT_FOUND | Short key not found |
 | 410 | GONE | URL expired or not yet active |
 | 500 | INTERNAL_ERROR | Server error |
-```
 
 ## Project Structure
 
