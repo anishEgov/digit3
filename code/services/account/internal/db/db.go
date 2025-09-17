@@ -1,58 +1,94 @@
 package db
 
 import (
-	"context"
+	"account/internal/config"
+	"database/sql"
+	"fmt"
+	"log"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/lib/pq"
 )
 
-var Pool *pgxpool.Pool
+var DB *sql.DB
 
-func Init(pool *pgxpool.Pool) {
-	Pool = pool
+func Connect() {
+	cfg := config.LoadConfig()
+	// Build DSN from config fields
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.DBName,
+		cfg.Database.SSLMode,
+	)
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	if err := db.Ping(); err != nil {
+		log.Fatalf("failed to ping database: %v", err)
+	}
+	DB = db
+	createTables(db)
+	fmt.Println("Database connection established and tables checked/created.")
 }
 
-func InitDB(pool *pgxpool.Pool) error {
-	ctx := context.Background()
+func createTables(db *sql.DB) {
+	tenantTable := `CREATE TABLE IF NOT EXISTS tenant_v1 (
+		id VARCHAR(128) PRIMARY KEY,
+		code VARCHAR(255) UNIQUE NOT NULL,
+		name VARCHAR(255) NOT NULL,
+		email VARCHAR(512) NOT NULL,
+		additionalAttributes JSONB,
+		isActive BOOLEAN NOT NULL,
+		tenantId VARCHAR(64),
+		createdBy VARCHAR(64),
+		lastModifiedBy VARCHAR(64),
+		createdTime BIGINT,
+		lastModifiedTime BIGINT
+	);`
 
-	_, err := pool.Exec(ctx, `
-	CREATE TABLE IF NOT EXISTS accounts (
-		id UUID PRIMARY KEY,
-		name TEXT NOT NULL,
-		domain TEXT NOT NULL,
-		status TEXT NOT NULL CHECK (status IN ('active', 'closed')),
-		administrator TEXT NOT NULL,
-		oidc_config JSONB NOT NULL,
-		created_by TEXT,
-		created_on TIMESTAMPTZ,
-		modified_by TEXT,
-		modified_on TIMESTAMPTZ
-	);
+	tenantConfigTable := `CREATE TABLE IF NOT EXISTS tenant_config_v1 (
+		id VARCHAR(128) PRIMARY KEY,
+		code VARCHAR(255) NOT NULL,
+		defaultLoginType VARCHAR(50),
+		otpLength VARCHAR(50),
+		name VARCHAR(255),
+		enableUserBasedLogin BOOLEAN,
+		additionalAttributes JSONB,
+		isActive BOOLEAN NOT NULL,
+		languages TEXT[],
+		createdBy VARCHAR(64),
+		lastModifiedBy VARCHAR(64),
+		createdTime BIGINT,
+		lastModifiedTime BIGINT
+	);`
 
-	CREATE TABLE IF NOT EXISTS users (
-		user_id UUID PRIMARY KEY,
-		account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
-		name TEXT,
-		email TEXT,
-		phone TEXT,
-		unique_id TEXT,
-		roles JSONB,
-		created_by TEXT,
-		created_on TIMESTAMPTZ,
-		modified_by TEXT,
-		modified_on TIMESTAMPTZ
-	);
+	tenantDocumentTable := `CREATE TABLE IF NOT EXISTS tenant_documents_v1 (
+		id VARCHAR(128) PRIMARY KEY DEFAULT gen_random_uuid(),
+		tenantConfigId VARCHAR(128) REFERENCES tenant_config_v1(id) ON DELETE CASCADE,
+		tenantId VARCHAR(255) NOT NULL,
+		type VARCHAR(255),
+		fileStoreId VARCHAR(255),
+		url VARCHAR(512),
+		isActive BOOLEAN NOT NULL,
+		createdBy VARCHAR(64),
+		lastModifiedBy VARCHAR(64),
+		createdTime BIGINT,
+		lastModifiedTime BIGINT
+	);`
 
-	CREATE TABLE IF NOT EXISTS roles (
-		role_id UUID PRIMARY KEY,
-		account_id UUID REFERENCES accounts(id) ON DELETE CASCADE,
-		name TEXT,
-		permissions JSONB,
-		created_by TEXT,
-		created_on TIMESTAMPTZ,
-		modified_by TEXT,
-		modified_on TIMESTAMPTZ
-	);`)
-
-	return err
+	_, err := db.Exec(tenantTable)
+	if err != nil {
+		log.Fatalf("failed to create tenant_v1 table: %v", err)
+	}
+	_, err = db.Exec(tenantConfigTable)
+	if err != nil {
+		log.Fatalf("failed to create tenant_config_v1 table: %v", err)
+	}
+	_, err = db.Exec(tenantDocumentTable)
+	if err != nil {
+		log.Fatalf("failed to create tenant_documents_v1 table: %v", err)
+	}
 }

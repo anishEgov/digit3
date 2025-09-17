@@ -1,30 +1,20 @@
-# Use an official Go build image
-FROM golang:1.22 AS builder
+# syntax=docker/dockerfile:1.4
 
-ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
-
+# --- Build stage ---
+FROM golang:1.22.3-alpine AS builder
 WORKDIR /app
-
-# Copy module files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
-
-# Copy source code
 COPY . .
+# Build for ARM64 architecture (matches your cluster nodes)
+RUN CGO_ENABLED=0 GOOS=linux  go build -o account cmd/server/main.go
 
-# Build the Go app with correct binary name
-RUN go build -o account ./cmd/main.go
-
-# --- Final stage ---
-FROM alpine:latest
-
-WORKDIR /root
-
-# Copy built binary from builder
-COPY --from=builder /app/account .
-
-# Expose service port
+# --- Final image ---
+FROM alpine:3.19
+WORKDIR /app
+COPY --from=builder /app/account ./account
+# Copy the realm config file to ensure it's available
+COPY internal/keycloak/realm_config.json ./realm_config.json
+COPY internal/db ./db
 EXPOSE 8080
-
-# Run the service
-ENTRYPOINT ["./account"]
+ENTRYPOINT ["./account"] 

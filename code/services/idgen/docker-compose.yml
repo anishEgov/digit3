@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: idgen_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: jagadees
+      POSTGRES_DB: idgen
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  idgen:
+    build: .
+    container_name: idgen_service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_DSN: postgres://postgres:jagadees@postgres:5432/idgen?sslmode=disable
+
+volumes:
+  pgdata:
