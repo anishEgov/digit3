@@ -332,12 +332,6 @@ sequenceDiagram
 | 500 | INTERNAL_ERROR | Server error |
 ```
 
-### Common Utilities
-
-**Key Generation:** Base62 encoding using UUID for uniqueness
-**URL Validation:** Built-in URL validation using Go's `url.ParseRequestURI`
-**Cache Interface:** Pluggable cache interface supporting multiple backends
-
 ## Project Structure
 
 ```
