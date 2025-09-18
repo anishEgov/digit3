@@ -22,11 +22,6 @@ type Config struct {
 	DBName     string
 	DBSSLMode  string
 
-	// Migration script configuration
-	MigrationScriptPath string
-	MigrationEnabled    bool
-	MigrationTimeout    time.Duration
-
 	// Cache configuration
 	CacheEnabled  bool
 	CacheType     string
@@ -59,11 +54,6 @@ func Load() *Config {
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBName:     getEnv("DB_NAME", "url_shortener_db"),
 		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
-
-		//Migration script configuration
-		MigrationScriptPath: getEnv("MIGRATION_SCRIPT_PATH", "./db/migrations"),
-		MigrationEnabled:    getEnvAsBool("MIGRATION_ENABLED", false),
-		MigrationTimeout:    getEnvAsDuration("MIGRATION_TIMEOUT", 5*time.Minute),
 
 		// Cache configuration
 		CacheEnabled:  getEnvAsBool("CACHE_ENABLED", false),
