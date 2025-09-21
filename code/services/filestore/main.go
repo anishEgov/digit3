@@ -1,17 +1,14 @@
 package main
 
 import (
-	"context"
 	"gin/config"
 	handler "gin/handlers"
-	"gin/migration"
 	"gin/repository"
 	"gin/service"
 	"gin/utils"
 	"gin/web"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -109,21 +106,9 @@ func main() {
 	connectionString := Config.GetConnectionString()
 	migrationDB, err := sqlx.Connect("postgres", connectionString)
 	if err != nil {
-		log.Fatalf("Failed to connect to database for migrations: %v", err)
+		log.Fatalf("Failed to connect to database : %v", err)
 	}
 	defer migrationDB.Close()
-
-	migrationConfig := &migration.Config{
-		Enabled: true,
-		Path:    "./migrations",
-		Timeout: 30 * time.Second,
-	}
-
-	migrationRunner := migration.NewRunner(migrationDB, migrationConfig)
-	log.Println("Running database migrations...")
-	if err := migrationRunner.Run(context.Background()); err != nil {
-		log.Fatalf("Failed to run database migrations: %v", err)
-	}
 
 	// Initialize GORM
 	gormConfig := &gorm.Config{
