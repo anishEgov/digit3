@@ -6,23 +6,17 @@ import (
 	"log"
 
 	"idgen"
-	"idgen/internal/migrations"
 
 	_ "github.com/lib/pq"
 )
 
 func main() {
 	// Connect to database
-db, err := sql.Open("postgres", "postgres://postgres:jagadees@localhost:5432/idgen?sslmode=disable")
+	db, err := sql.Open("postgres", "postgres://postgres:jagadees@localhost:5432/idgen?sslmode=disable")
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
-
-	// Run migrations to set up tables
-	if err := migrations.RunMigrations(db); err != nil {
-		log.Fatal("Failed to run migrations:", err)
-	}
 
 	// Create ID generator instance
 	generator := idgen.New(db)

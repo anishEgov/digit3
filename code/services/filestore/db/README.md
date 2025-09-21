@@ -15,9 +15,12 @@ db/
 ## Files
 
 ### Migrations (`db/migrations/`)
-- `V20250917151545__Create_localisation_table.sql` - Initial table creation
-- `V20250917152115__Alter_user_id_type.sql` - Change user ID column type
-- `V20250917152640__Add_uuid_to_localisation.sql` - Add UUID column
+- `V20250917153205__egfilestore_tenant_ddl.up.sql` - eg_filestoremap table creation
+- `V20250917153730__eg_filestore_alter_ddl.up.sql` - add column filesource
+- `V20250917154255__egfilestore_filename_dml.up.sql` - ALTER COLUMN filename TYPE
+- `V20250917154820__egfilestore_audit_details.up.sql` - add columns for audit details
+- `V20250917155345__egfilestore_seq_id.up.sql` - set default value for id
+- `V20250917155910__eg_doc_metadata.up.sql` - eg_doc_metadata table creation
 
 ### Configuration (`db/config/`)
 - `flyway.conf` - Flyway configuration for local development
@@ -39,15 +42,22 @@ db/
 
 ### Docker
 ```bash
+cd filestore/db
+
 # Build migration image
-docker build -f Dockerfile.migrator -t localization-migrator .
+docker build -t filestore:dev .
 
 # Run migrations
 docker run --rm \
-  -e DB_HOST=localhost \
-  -e DB_PASSWORD=your-password \
-  localization-migrator
+  -e DB_HOST=<your-db-host> \
+  -e DB_PORT=5432 \
+  -e DB_NAME=<your-db-name> \
+  -e DB_USER=<your-db-user> \
+  -e DB_PASSWORD=<your-db-password> \
+  filestore:dev
+
 ```
+
 
 ### Adding New Migrations
 
@@ -59,7 +69,7 @@ docker run --rm \
 2. Write your SQL migration:
    ```sql
    -- Add your migration SQL here
-   ALTER TABLE localisation ADD COLUMN new_field VARCHAR(255);
+   ALTER TABLE eg_filestoremap ADD COLUMN new_field VARCHAR(255);
    ```
 
 3. Run the migration:
@@ -69,7 +79,7 @@ docker run --rm \
 
 ## Notes
 
-- All migration files use Flyway naming convention: `V{version}__{description}.sql`
+- All migration files use Flyway naming convention: `V[YEAR][MONTH][DAY][HR][MIN][SEC]__modulecode_…_ddl.sql`
 - Migrations are executed in version order
 - The system supports out-of-order migrations for compatibility
 - Configuration files are optimized for Flyway Community Edition 
