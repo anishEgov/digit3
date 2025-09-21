@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -23,45 +22,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
-	"gorm.io/gorm"
 )
-
-func initDatabase(db *gorm.DB) error {
-	// Get underlying sql.DB to execute raw SQL migrations
-	sqlDB, err := db.DB()
-	if err != nil {
-		return fmt.Errorf("error getting underlying database: %v", err)
-	}
-
-	// Read and execute boundary table migration
-	boundarySQL, err := os.ReadFile("db/migrations/001_create_boundary_table.sql")
-	if err != nil {
-		return fmt.Errorf("error reading boundary migration: %v", err)
-	}
-	if _, err := sqlDB.Exec(string(boundarySQL)); err != nil {
-		return fmt.Errorf("error creating boundary table: %v", err)
-	}
-
-	// Read and execute boundary hierarchy table migration
-	hierarchySQL, err := os.ReadFile("db/migrations/002_create_boundary_hierarchy_table.sql")
-	if err != nil {
-		return fmt.Errorf("error reading hierarchy migration: %v", err)
-	}
-	if _, err := sqlDB.Exec(string(hierarchySQL)); err != nil {
-		return fmt.Errorf("error creating boundary hierarchy table: %v", err)
-	}
-
-	// Read and execute boundary relationship table migration
-	relationshipSQL, err := os.ReadFile("db/migrations/003_create_boundary_relationship_table.sql")
-	if err != nil {
-		return fmt.Errorf("error reading relationship migration: %v", err)
-	}
-	if _, err := sqlDB.Exec(string(relationshipSQL)); err != nil {
-		return fmt.Errorf("error creating boundary relationship table: %v", err)
-	}
-
-	return nil
-}
 
 // initTracer initializes OpenTelemetry tracing with Jaeger exporter
 func initTracer(cfg *config.Config) func() {
@@ -129,11 +90,6 @@ func main() {
 	}
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
-
-	// Initialize database tables
-	if err := initDatabase(db); err != nil {
-		log.Fatalf("Error initializing database: %v", err)
-	}
 
 	// Initialize cache
 	var cacheImpl cache.Cache
