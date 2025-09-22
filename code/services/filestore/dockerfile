@@ -1,45 +1,44 @@
-# ---------- Build stage ----------
-    FROM golang:1.24-alpine AS builder
+# -------------------------
+# Build stage
+# -------------------------
+    FROM golang:1.24-alpine AS build
 
-    # Install build dependencies
-    RUN apk add --no-cache gcc musl-dev
+    # Accept arguments
+    ARG WORK_DIR=.
+    ARG MAIN_PACKAGE=./cmd/server
     
-    # Set working directory
+    # Set binary name to always be "app"
+    ENV BINARY_NAME=app
     WORKDIR /app
     
-    # Copy go mod and sum files
-    COPY go.mod go.sum ./
-    
-    # Download dependencies
+    # Copy go.mod and go.sum first for caching
+    COPY ${WORK_DIR}/go.mod ${WORK_DIR}/go.sum ./
     RUN go mod download
     
     # Copy source code
-    COPY . .
+    COPY ${WORK_DIR} .
     
-    # Build with debug flags
-    RUN CGO_ENABLED=0 GOOS=linux go build -o filestore .
+    # Build the binary
+    RUN CGO_ENABLED=0 GOOS=linux go build -o ${BINARY_NAME} ${MAIN_PACKAGE}
     
-    # ---------- Final stage ----------
-    FROM alpine:latest
+    # -------------------------
+    # Runtime stage
+    # -------------------------
+    FROM alpine:3.19
     
-    # Install runtime dependencies and add ptrace capability
-    RUN apk add --no-cache ca-certificates tzdata libc6-compat
+    WORKDIR /opt/digit
     
-    # Set working directory
-    WORKDIR /app
+    # Use same binary name "app"
+    ENV BINARY_NAME=app
     
-    # Copy the binary and Delve
-    COPY --from=builder /app/filestore .
+    # Copy binary only
+    COPY --from=build /app/${BINARY_NAME} .
     
-    # Copy migrations directory
-    COPY --from=builder /app/migrations ./migrations
+    # Copy migrations
+    COPY migrations ./migrations
     
-    # Create directory for .env file
-    RUN mkdir -p /app/config
+    # Set permissions
+    RUN chmod +x /opt/digit/${BINARY_NAME}
     
-    # Expose app port
     EXPOSE 8080
-    
-    # Run with Delve
-    CMD ["./filestore"]
-    
+    ENTRYPOINT ["./app"]
