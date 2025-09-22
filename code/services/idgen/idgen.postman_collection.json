@@ -1,0 +1,74 @@
+{
+	"info": {
+		"_postman_id": "a2d22c9f-5971-4470-bfd8-2cc3a182d557",
+		"name": "IDGen-3.0",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32125612"
+	},
+	"item": [
+		{
+			"name": "Register Template",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "X-Client-ID",
+						"value": "550e8400-e29b-41d4-a716-446655440000",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"templateId\": \"orgId\",\n    \"config\": {\n        \"template\": \"{ORG}-{DATE:yyyyMMdd}-{SEQ}-{RAND}\",\n        \"sequence\": {\n            \"scope\": \"daily\",\n            \"start\": 1,\n            \"padding\": {\n                \"length\": 4,\n                \"char\": \"0\"\n            }\n        },\n        \"random\": {\n            \"length\": 2,\n            \"charset\": \"A-Z0-9\"\n        }\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/idgen/template",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"idgen",
+						"template"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Generate ID",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"templateId\": \"orgId\",\n    \"variables\": {\n        \"ORG\": \"PG\"\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8080/idgen/generate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"idgen",
+						"generate"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

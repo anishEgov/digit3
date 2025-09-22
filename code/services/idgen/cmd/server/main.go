@@ -1,40 +1,62 @@
 package main
 
 import (
+	"fmt"
+	"idgen/internal/config"
+	"idgen/internal/db"
+	"idgen/internal/migration"
+	"idgen/internal/routes"
 	"log"
-	"os"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
-
-	"idgen/internal"
+	"context"
 )
 
+func buildPostgresDSN(cfg *config.Config) string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.DBUser,
+		cfg.DBPassword,
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBName,
+		cfg.DBSSLMode,
+	)
+}
+
 func main() {
-	// Load .env file
-	err := godotenv.Load(".env")
+	// Load configuration
+	cfg := config.Load()
+
+	// Build DSN
+	dsn := buildPostgresDSN(cfg)
+
+	// Setup database
+	dbConn, err := db.ConnectDSN(dsn)
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Get Postgres DSN from env
-	dsn := os.Getenv("POSTGRES_DSN")
-	if dsn == "" {
-		log.Fatal("POSTGRES_DSN not set in environment")
+	// Run database migrations
+	migrationConfig := &migration.Config{
+		Enabled: cfg.MigrationEnabled,
+		Path:    cfg.MigrationScriptPath,
+		Timeout: cfg.MigrationTimeout,
 	}
-    log.Printf("connecting");
-	//Initialize DB connection here and pass the handlers    
-	db, err := internal.InitDB(dsn)
-	if err != nil {
-		log.Fatalf("DB init failed: %v", err)
+
+	migrationRunner := migration.NewRunner(dbConn, migrationConfig)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.MigrationTimeout)
+	defer cancel()
+
+	if err := migrationRunner.Run(ctx); err != nil {
+		log.Fatalf("Failed to run database migrations: %v", err)
 	}
-	defer db.Close()
 
-	r := gin.Default()
+	// Setup routes
+	router := routes.SetupRoutes(dbConn, cfg)
 
-	r.POST("/template", internal.RegisterTemplateHandler(db))
-	r.POST("/generate", internal.GenerateIdHandler(db))
-
-	log.Println("Starting server on :8080")
-	r.Run(":8080")
-} 
+	// Start server
+	log.Printf("Starting server on :%s", cfg.HTTPPort)
+	if err := router.Run(":" + cfg.HTTPPort); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}
