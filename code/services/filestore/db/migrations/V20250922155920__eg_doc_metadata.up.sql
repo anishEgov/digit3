@@ -1,4 +1,4 @@
-CREATE TABLE eg_doc_metadata (
+CREATE TABLE IF NOT EXISTS eg_doc_metadata_v2 (
     id bigint NOT NULL,
     tenantId character varying(256) NOT NULL,
     type character varying(256) NOT NULL,
@@ -13,4 +13,4 @@ CREATE TABLE eg_doc_metadata (
 );
 
 
-ALTER TABLE eg_doc_metadata ADD CONSTRAINT pk_doc_metadata PRIMARY KEY (id); 
+ALTER TABLE eg_doc_metadata_v2 ADD CONSTRAINT pk_doc_metadata PRIMARY KEY (id); 

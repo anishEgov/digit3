@@ -1,2 +1,0 @@
-ALTER TABLE eg_filestoremap
-ALTER COLUMN id SET DEFAULT nextval('SEQ_EG_FILESTOREMAP');
