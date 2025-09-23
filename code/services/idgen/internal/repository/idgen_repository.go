@@ -52,7 +52,7 @@ func (r *IDGenRepository) NextSequenceValue(templateID string) (int64, error) {
 func (r *IDGenRepository) EnsureScopeReset(templateID, scopeKey string, start int) error {
 	var count int64
 	err := r.db.Raw(
-		"SELECT COUNT(*) FROM idgen_sequence_resets WHERE templateid = ? AND scopekey = ?",
+		"SELECT COUNT(*) FROM idgen_sequence_resets_v2 WHERE templateid = ? AND scopekey = ?",
 		templateID, scopeKey,
 	).Scan(&count).Error
 	if err != nil {
@@ -69,7 +69,7 @@ func (r *IDGenRepository) EnsureScopeReset(templateID, scopeKey string, start in
 
 		// Track this reset so we don't reset again within the scope
 		return r.db.Exec(
-			"INSERT INTO idgen_sequence_resets (templateid, scopekey, lastvalue) VALUES (?, ?, ?)",
+			"INSERT INTO idgen_sequence_resets_v2 (templateid, scopekey, lastvalue) VALUES (?, ?, ?)",
 			templateID, scopeKey, 0,
 		).Error
 	}

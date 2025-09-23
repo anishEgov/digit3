@@ -2,13 +2,10 @@ package main
 
 import (
 	"fmt"
+	"idgen/db"
 	"idgen/internal/config"
-	"idgen/internal/db"
-	"idgen/internal/migration"
 	"idgen/internal/routes"
 	"log"
-
-	"context"
 )
 
 func buildPostgresDSN(cfg *config.Config) string {
@@ -34,21 +31,6 @@ func main() {
 	dbConn, err := db.ConnectDSN(dsn)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	// Run database migrations
-	migrationConfig := &migration.Config{
-		Enabled: cfg.MigrationEnabled,
-		Path:    cfg.MigrationScriptPath,
-		Timeout: cfg.MigrationTimeout,
-	}
-
-	migrationRunner := migration.NewRunner(dbConn, migrationConfig)
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.MigrationTimeout)
-	defer cancel()
-
-	if err := migrationRunner.Run(ctx); err != nil {
-		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 
 	// Setup routes

@@ -13,5 +13,5 @@ type IDGenTemplate struct {
 
 // TableName overrides the default (id_gen_templates) to match your table
 func (IDGenTemplate) TableName() string {
-	return "idgen_templates"
+	return "idgen_templates_v2"
 }
