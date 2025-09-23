@@ -15,5 +15,5 @@ type DocumentCategory struct {
 }
 
 func (*DocumentCategory) TableName() string {
-	return "eg_doc_metadata"
+	return "eg_doc_metadata_v2"
 }

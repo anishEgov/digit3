@@ -66,7 +66,7 @@ type ArtifactEntity struct {
 
 // TableName specifies the table name for ArtifactEntity
 func (ArtifactEntity) TableName() string {
-	return "eg_filestoremap"
+	return "eg_filestoremap_v2"
 }
 
 // GetID implements the PersistableEntity interface
