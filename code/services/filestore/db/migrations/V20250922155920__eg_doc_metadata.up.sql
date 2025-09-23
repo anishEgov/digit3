@@ -13,4 +13,4 @@ CREATE TABLE IF NOT EXISTS eg_doc_metadata_v2 (
 );
 
 
-ALTER TABLE eg_doc_metadata_v2 ADD CONSTRAINT pk_doc_metadata PRIMARY KEY (id); 
+ALTER TABLE eg_doc_metadata_v2 ADD CONSTRAINT pk_doc_metadata_v2 PRIMARY KEY (id); 
